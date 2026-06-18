@@ -59,10 +59,9 @@ const NUDGE_LIBRARY: Record<ExtendedPersona, { headline: string; body: string; c
   },
 };
 
-function mapPersona(p: Patient["persona"]): ExtendedPersona {
-  // Promote pending-VL patients of certain personas into "The Striver" framing
+function mapPersona(p: Patient): ExtendedPersona {
   if (p.persona === "The Forgetful" && (p.hcvVL === "รอผล" || p.hcvVL === "ไม่พอตรวจขอเจาะใหม่")) {
-    return Math.random() > 0.5 ? "The Forgetful" : "The Striver";
+    return "The Striver";
   }
   return p.persona as ExtendedPersona;
 }
