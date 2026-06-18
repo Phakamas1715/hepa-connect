@@ -23,6 +23,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PATIENTS, PERSONA_NUDGES, type Patient, hasCareGap } from "@/lib/hepa-data";
 import { toast } from "sonner";
+import { LineAgentNudgeButton } from "@/components/line-agent-nudge";
 
 export const Route = createFileRoute("/patients")({
   head: () => ({
@@ -203,14 +204,19 @@ function PatientsPage() {
                       </span>
                     </td>
                     <td className="px-3 py-2 text-right">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-8 gap-1.5 border-teal/40 text-teal hover:bg-teal/10"
-                        onClick={() => setSelected(p)}
-                      >
-                        <Sparkles className="h-3.5 w-3.5" /> AI Contact
-                      </Button>
+                      <div className="flex flex-wrap items-center justify-end gap-1.5">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-8 gap-1.5 border-teal/40 text-teal hover:bg-teal/10"
+                          onClick={() => setSelected(p)}
+                        >
+                          <Sparkles className="h-3.5 w-3.5" /> AI Contact
+                        </Button>
+                        {(p.hcvVL === "รอผล" || p.hcvVL === "ไม่พอตรวจขอเจาะใหม่") && (
+                          <LineAgentNudgeButton patient={p} />
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
