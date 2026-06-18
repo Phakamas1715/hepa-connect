@@ -125,8 +125,32 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-      <Outlet />
+      <AppLayout />
+      <Toaster />
     </QueryClientProvider>
+  );
+}
+
+function AppLayout() {
+  return (
+    <SidebarProvider>
+      <div className="flex min-h-screen w-full bg-background">
+        <AppSidebar />
+        <div className="flex min-w-0 flex-1 flex-col">
+          <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b border-border bg-background/80 px-4 backdrop-blur-md">
+            <SidebarTrigger />
+            <div className="ml-2 flex min-w-0 items-center gap-2">
+              <span className="text-sm font-semibold text-foreground">HEPA-GLUE Engine</span>
+              <span className="hidden text-xs text-muted-foreground sm:inline">
+                / Nam Phong HBV-HCV Elimination · FY2569
+              </span>
+            </div>
+          </header>
+          <main className="min-w-0 flex-1">
+            <Outlet />
+          </main>
+        </div>
+      </div>
+    </SidebarProvider>
   );
 }
