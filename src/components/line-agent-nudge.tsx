@@ -86,7 +86,7 @@ export function LineAgentNudgeButton({ patient }: { patient: Patient }) {
 
 function LineAgentDialog({ patient, onClose }: { patient: Patient; onClose: () => void }) {
   const [stage, setStage] = useState<"preview" | "executing" | "sent">("preview");
-  const persona = mapPersona(patient.persona);
+  const persona = mapPersona(patient);
   const nudge = NUDGE_LIBRARY[persona] ?? NUDGE_LIBRARY["The Forgetful"];
   const text = nudge.body.replace("{name}", patient.name);
 
