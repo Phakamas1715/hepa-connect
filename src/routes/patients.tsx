@@ -23,6 +23,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PATIENTS, PERSONA_NUDGES, type Patient, hasCareGap } from "@/lib/hepa-data";
 import { toast } from "sonner";
+import { LineAgentNudgeButton } from "@/components/line-agent-nudge";
 
 export const Route = createFileRoute("/patients")({
   head: () => ({
