@@ -1,0 +1,266 @@
+import { createFileRoute } from "@tanstack/react-router";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { CheckCircle2, Copy, Link2, Loader2, PlayCircle, QrCode, Send, ShieldCheck } from "lucide-react";
+import { useState } from "react";
+import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+
+export const Route = createFileRoute("/agent")({
+  head: () => ({
+    meta: [
+      { title: "HEPA Agent Orchestrator — HEPA-GLUE Engine" },
+      {
+        name: "description",
+        content: "ตัวดำเนินงานอัตโนมัติสำหรับสร้าง LINE invite, ผูกตัวตน และจัดคิวติดตาม care gap",
+      },
+    ],
+  }),
+  component: AgentPage,
+});
+
+type Store = {
+  invites: Array<{ id: string; hn: string; patientName?: string; status: string; expiresAt: string; usedAt?: string }>;
+  identities: Array<{ lineUserId: string; hn?: string; role: string; displayName?: string; verifiedAt: string; status: string }>;
+  tasks: Array<{ id: string; hn: string; type: string; status: string; message?: string; lineUserId?: string; createdAt: string }>;
+  audit: Array<{ id: string; at: string; actor: string; action: string; hn?: string; detail: string }>;
+};
+
+async function fetchStore(): Promise<Store> {
+  const response = await fetch("/api/agent-orchestrator");
+  if (!response.ok) throw new Error("โหลดสถานะ agent ไม่สำเร็จ");
+  return response.json();
+}
+
+async function postAgent(action: string, payload: Record<string, unknown>) {
+  const response = await fetch("/api/agent-orchestrator", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action, ...payload }),
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data?.message || "agent action failed");
+  return data;
+}
+
+function AgentPage() {
+  const [hn, setHn] = useState("");
+  const [patientName, setPatientName] = useState("");
+  const [latestLink, setLatestLink] = useState("");
+  const { data, refetch, isFetching } = useQuery({ queryKey: ["agent-store"], queryFn: fetchStore });
+
+  const createInvite = useMutation({
+    mutationFn: () => postAgent("create_invite", { hn, patientName }),
+    onSuccess: (result) => {
+      setLatestLink(result.link);
+      toast.success("สร้างลิงก์ผูก LINE แล้ว");
+      refetch();
+    },
+    onError: (error) => toast.error(error instanceof Error ? error.message : "สร้างลิงก์ไม่สำเร็จ"),
+  });
+
+  const queueNudge = useMutation({
+    mutationFn: () => postAgent("queue_nudge", { hn, persona: "The Engaged" }),
+    onSuccess: (result) => {
+      toast.success(result.task?.status === "blocked" ? "สร้าง task แล้ว แต่ยังไม่มี LINE identity" : "จัดคิวส่ง LINE แล้ว");
+      refetch();
+    },
+    onError: (error) => toast.error(error instanceof Error ? error.message : "จัดคิวไม่สำเร็จ"),
+  });
+
+  const sendNudge = useMutation({
+    mutationFn: () => postAgent("send_nudge", { hn, persona: "The Engaged", messageType: "LINE_NUDGE" }),
+    onSuccess: (result) => {
+      toast.success(result.status === "sent" ? "ส่ง LINE จริงแล้ว" : result.line?.message || "ยังไม่ได้ส่ง LINE");
+      refetch();
+    },
+    onError: (error) => toast.error(error instanceof Error ? error.message : "ส่ง LINE ไม่สำเร็จ"),
+  });
+
+  const copyLink = async () => {
+    await navigator.clipboard.writeText(latestLink);
+    toast.success("คัดลอกลิงก์แล้ว");
+  };
+
+  return (
+    <div className="mx-auto w-full max-w-7xl space-y-6 px-4 py-5 sm:px-6 lg:px-8">
+      <header className="border-b pb-5">
+        <Badge variant="outline" className="w-fit border-teal/30 bg-teal/5 text-teal">
+          HEPA Agent Orchestrator
+        </Badge>
+        <h1 className="mt-3 text-2xl font-bold tracking-tight sm:text-3xl">ตัวดำเนินงาน LINE closed loop</h1>
+        <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
+          ใช้สำหรับสร้างลิงก์/QR ผูก LINE กับ HN, จัดคิวติดตาม care gap และเก็บ audit log ทุก action ก่อนส่ง production จริง
+        </p>
+      </header>
+
+      <section className="grid gap-6 lg:grid-cols-[.9fr_1.1fr]">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <QrCode className="h-5 w-5 text-teal" />
+              สร้างลิงก์ให้ผู้ป่วยสแกน
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-muted-foreground">HN</label>
+                <Input value={hn} onChange={(event) => setHn(event.target.value)} placeholder="เช่น 0001234" />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-muted-foreground">ชื่อผู้ป่วย (ไม่บังคับ)</label>
+                <Input value={patientName} onChange={(event) => setPatientName(event.target.value)} placeholder="ใช้เฉพาะแสดงในงาน" />
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button disabled={!hn || createInvite.isPending} onClick={() => createInvite.mutate()} className="gap-2">
+                {createInvite.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Link2 className="h-4 w-4" />}
+                สร้าง invite
+              </Button>
+              <Button disabled={!hn || queueNudge.isPending} onClick={() => queueNudge.mutate()} variant="outline" className="gap-2">
+                <Send className="h-4 w-4" />
+                จัดคิวติดตาม
+              </Button>
+              <Button disabled={!hn || sendNudge.isPending} onClick={() => sendNudge.mutate()} variant="outline" className="gap-2">
+                {sendNudge.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                ส่ง LINE จริง
+              </Button>
+            </div>
+            {latestLink && (
+              <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-emerald-900">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
+                  <img
+                    src={`https://api.qrserver.com/v1/create-qr-code/?size=156x156&data=${encodeURIComponent(latestLink)}`}
+                    alt="QR สำหรับผูก LINE"
+                    className="h-36 w-36 rounded-lg border bg-white p-2"
+                  />
+                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm font-semibold">ลิงก์พร้อมให้สแกน</div>
+                    <div className="mt-1 text-xs leading-5 text-emerald-800">
+                      ให้ผู้ป่วยสแกน QR หรือกดลิงก์ใน LINE แล้วกดยืนยัน ระบบจะดึง HN จาก invite และดึง LINE userId จาก LIFF อัตโนมัติ
+                    </div>
+                    <div className="mt-2 break-all text-xs">{latestLink}</div>
+                    <Button size="sm" variant="outline" onClick={copyLink} className="mt-3 gap-2 bg-white/70">
+                      <Copy className="h-3.5 w-3.5" />
+                      คัดลอกลิงก์
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
+            <div className="rounded-lg border bg-muted/20 p-3 text-xs leading-5 text-muted-foreground">
+              ลดการพิมพ์จริง: เจ้าหน้าที่เลือก HN ครั้งเดียวจากทะเบียน, ระบบสร้าง QR เฉพาะคนไข้, ผู้ป่วยกดอนุญาตใน LINE, จากนั้น agent ใช้ mapping HN + LINE userId เพื่อติดตามอัตโนมัติ
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <ShieldCheck className="h-5 w-5 text-teal" />
+              สถานะระบบ
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-3 sm:grid-cols-3">
+            <div className="rounded-lg border bg-card p-3">
+              <div className="text-2xl font-bold">{data?.invites.length || 0}</div>
+              <div className="text-xs text-muted-foreground">invite ทั้งหมด</div>
+            </div>
+            <div className="rounded-lg border bg-card p-3">
+              <div className="text-2xl font-bold">{data?.identities.length || 0}</div>
+              <div className="text-xs text-muted-foreground">LINE identity</div>
+            </div>
+            <div className="rounded-lg border bg-card p-3">
+              <div className="text-2xl font-bold">{data?.tasks.length || 0}</div>
+              <div className="text-xs text-muted-foreground">agent tasks</div>
+            </div>
+          </CardContent>
+        </Card>
+      </section>
+
+      <section className="grid gap-6 xl:grid-cols-3">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Invite ล่าสุด</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {data?.invites.slice(0, 8).map((item) => (
+              <div key={item.id} className="rounded-lg border p-3 text-sm">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-mono text-xs">{item.hn}</span>
+                  <Badge variant="outline">{item.status}</Badge>
+                </div>
+                <div className="mt-1 text-xs text-muted-foreground">หมดอายุ {new Date(item.expiresAt).toLocaleString("th-TH")}</div>
+              </div>
+            ))}
+            {!data?.invites.length && <EmptyLine text="ยังไม่มี invite" />}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Identity map</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {data?.identities.slice(0, 8).map((item) => (
+              <div key={item.lineUserId} className="rounded-lg border p-3 text-sm">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-mono text-xs">{item.hn || "-"}</span>
+                  <Badge variant="outline">{item.role}</Badge>
+                </div>
+                <div className="mt-1 truncate text-xs text-muted-foreground">{item.lineUserId}</div>
+              </div>
+            ))}
+            {!data?.identities.length && <EmptyLine text="ยังไม่มีการผูก LINE" />}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Agent tasks</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {isFetching && <div className="text-xs text-muted-foreground">กำลังอัปเดต...</div>}
+            {data?.tasks.slice(0, 8).map((item) => (
+              <div key={item.id} className="rounded-lg border p-3 text-sm">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-mono text-xs">{item.hn}</span>
+                  <Badge variant="outline">{item.status}</Badge>
+                </div>
+                <div className="mt-1 text-xs text-muted-foreground">{item.message}</div>
+              </div>
+            ))}
+            {!data?.tasks.length && <EmptyLine text="ยังไม่มี task" />}
+          </CardContent>
+        </Card>
+      </section>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <PlayCircle className="h-5 w-5 text-teal" />
+            Audit log
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          {data?.audit.slice(0, 12).map((item) => (
+            <div key={item.id} className="grid gap-2 rounded-lg border p-3 text-sm md:grid-cols-[180px_140px_1fr]">
+              <div className="text-xs text-muted-foreground">{new Date(item.at).toLocaleString("th-TH")}</div>
+              <div className="font-mono text-xs">{item.action}</div>
+              <div className="text-xs text-muted-foreground">{item.detail}</div>
+            </div>
+          ))}
+          {!data?.audit.length && <EmptyLine text="ยังไม่มี audit log" />}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function EmptyLine({ text }: { text: string }) {
+  return <div className="rounded-lg border border-dashed p-4 text-center text-xs text-muted-foreground">{text}</div>;
+}

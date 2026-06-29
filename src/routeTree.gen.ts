@@ -11,7 +11,21 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as PatientsRouteImport } from './routes/patients'
 import { Route as IntegrationRouteImport } from './routes/integration'
+import { Route as IliReportRouteImport } from './routes/ili-report'
+import { Route as HealthRouteImport } from './routes/health'
+import { Route as ArchitectureRouteImport } from './routes/architecture'
+import { Route as AgentRouteImport } from './routes/agent'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as LineLinkRouteImport } from './routes/line.link'
+import { Route as ApiSubmitMophReportRouteImport } from './routes/api/submit-moph-report'
+import { Route as ApiSendNudgeRouteImport } from './routes/api/send-nudge'
+import { Route as ApiProductionAutomationRouteImport } from './routes/api/production-automation'
+import { Route as ApiLineWebhookRouteImport } from './routes/api/line-webhook'
+import { Route as ApiKumhosProxyRouteImport } from './routes/api/kumhos-proxy'
+import { Route as ApiIliReportRouteImport } from './routes/api/ili-report'
+import { Route as ApiHosxpBridgeRouteImport } from './routes/api/hosxp-bridge'
+import { Route as ApiConnectionStatusRouteImport } from './routes/api/connection-status'
+import { Route as ApiAgentOrchestratorRouteImport } from './routes/api/agent-orchestrator'
 
 const PatientsRoute = PatientsRouteImport.update({
   id: '/patients',
@@ -23,40 +37,218 @@ const IntegrationRoute = IntegrationRouteImport.update({
   path: '/integration',
   getParentRoute: () => rootRouteImport,
 } as any)
+const IliReportRoute = IliReportRouteImport.update({
+  id: '/ili-report',
+  path: '/ili-report',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HealthRoute = HealthRouteImport.update({
+  id: '/health',
+  path: '/health',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ArchitectureRoute = ArchitectureRouteImport.update({
+  id: '/architecture',
+  path: '/architecture',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AgentRoute = AgentRouteImport.update({
+  id: '/agent',
+  path: '/agent',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LineLinkRoute = LineLinkRouteImport.update({
+  id: '/line/link',
+  path: '/line/link',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiSubmitMophReportRoute = ApiSubmitMophReportRouteImport.update({
+  id: '/api/submit-moph-report',
+  path: '/api/submit-moph-report',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiSendNudgeRoute = ApiSendNudgeRouteImport.update({
+  id: '/api/send-nudge',
+  path: '/api/send-nudge',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiProductionAutomationRoute = ApiProductionAutomationRouteImport.update({
+  id: '/api/production-automation',
+  path: '/api/production-automation',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiLineWebhookRoute = ApiLineWebhookRouteImport.update({
+  id: '/api/line-webhook',
+  path: '/api/line-webhook',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiKumhosProxyRoute = ApiKumhosProxyRouteImport.update({
+  id: '/api/kumhos-proxy',
+  path: '/api/kumhos-proxy',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiIliReportRoute = ApiIliReportRouteImport.update({
+  id: '/api/ili-report',
+  path: '/api/ili-report',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiHosxpBridgeRoute = ApiHosxpBridgeRouteImport.update({
+  id: '/api/hosxp-bridge',
+  path: '/api/hosxp-bridge',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiConnectionStatusRoute = ApiConnectionStatusRouteImport.update({
+  id: '/api/connection-status',
+  path: '/api/connection-status',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAgentOrchestratorRoute = ApiAgentOrchestratorRouteImport.update({
+  id: '/api/agent-orchestrator',
+  path: '/api/agent-orchestrator',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/agent': typeof AgentRoute
+  '/architecture': typeof ArchitectureRoute
+  '/health': typeof HealthRoute
+  '/ili-report': typeof IliReportRoute
   '/integration': typeof IntegrationRoute
   '/patients': typeof PatientsRoute
+  '/api/agent-orchestrator': typeof ApiAgentOrchestratorRoute
+  '/api/connection-status': typeof ApiConnectionStatusRoute
+  '/api/hosxp-bridge': typeof ApiHosxpBridgeRoute
+  '/api/ili-report': typeof ApiIliReportRoute
+  '/api/kumhos-proxy': typeof ApiKumhosProxyRoute
+  '/api/line-webhook': typeof ApiLineWebhookRoute
+  '/api/production-automation': typeof ApiProductionAutomationRoute
+  '/api/send-nudge': typeof ApiSendNudgeRoute
+  '/api/submit-moph-report': typeof ApiSubmitMophReportRoute
+  '/line/link': typeof LineLinkRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/agent': typeof AgentRoute
+  '/architecture': typeof ArchitectureRoute
+  '/health': typeof HealthRoute
+  '/ili-report': typeof IliReportRoute
   '/integration': typeof IntegrationRoute
   '/patients': typeof PatientsRoute
+  '/api/agent-orchestrator': typeof ApiAgentOrchestratorRoute
+  '/api/connection-status': typeof ApiConnectionStatusRoute
+  '/api/hosxp-bridge': typeof ApiHosxpBridgeRoute
+  '/api/ili-report': typeof ApiIliReportRoute
+  '/api/kumhos-proxy': typeof ApiKumhosProxyRoute
+  '/api/line-webhook': typeof ApiLineWebhookRoute
+  '/api/production-automation': typeof ApiProductionAutomationRoute
+  '/api/send-nudge': typeof ApiSendNudgeRoute
+  '/api/submit-moph-report': typeof ApiSubmitMophReportRoute
+  '/line/link': typeof LineLinkRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/agent': typeof AgentRoute
+  '/architecture': typeof ArchitectureRoute
+  '/health': typeof HealthRoute
+  '/ili-report': typeof IliReportRoute
   '/integration': typeof IntegrationRoute
   '/patients': typeof PatientsRoute
+  '/api/agent-orchestrator': typeof ApiAgentOrchestratorRoute
+  '/api/connection-status': typeof ApiConnectionStatusRoute
+  '/api/hosxp-bridge': typeof ApiHosxpBridgeRoute
+  '/api/ili-report': typeof ApiIliReportRoute
+  '/api/kumhos-proxy': typeof ApiKumhosProxyRoute
+  '/api/line-webhook': typeof ApiLineWebhookRoute
+  '/api/production-automation': typeof ApiProductionAutomationRoute
+  '/api/send-nudge': typeof ApiSendNudgeRoute
+  '/api/submit-moph-report': typeof ApiSubmitMophReportRoute
+  '/line/link': typeof LineLinkRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/integration' | '/patients'
+  fullPaths:
+    | '/'
+    | '/agent'
+    | '/architecture'
+    | '/health'
+    | '/ili-report'
+    | '/integration'
+    | '/patients'
+    | '/api/agent-orchestrator'
+    | '/api/connection-status'
+    | '/api/hosxp-bridge'
+    | '/api/ili-report'
+    | '/api/kumhos-proxy'
+    | '/api/line-webhook'
+    | '/api/production-automation'
+    | '/api/send-nudge'
+    | '/api/submit-moph-report'
+    | '/line/link'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/integration' | '/patients'
-  id: '__root__' | '/' | '/integration' | '/patients'
+  to:
+    | '/'
+    | '/agent'
+    | '/architecture'
+    | '/health'
+    | '/ili-report'
+    | '/integration'
+    | '/patients'
+    | '/api/agent-orchestrator'
+    | '/api/connection-status'
+    | '/api/hosxp-bridge'
+    | '/api/ili-report'
+    | '/api/kumhos-proxy'
+    | '/api/line-webhook'
+    | '/api/production-automation'
+    | '/api/send-nudge'
+    | '/api/submit-moph-report'
+    | '/line/link'
+  id:
+    | '__root__'
+    | '/'
+    | '/agent'
+    | '/architecture'
+    | '/health'
+    | '/ili-report'
+    | '/integration'
+    | '/patients'
+    | '/api/agent-orchestrator'
+    | '/api/connection-status'
+    | '/api/hosxp-bridge'
+    | '/api/ili-report'
+    | '/api/kumhos-proxy'
+    | '/api/line-webhook'
+    | '/api/production-automation'
+    | '/api/send-nudge'
+    | '/api/submit-moph-report'
+    | '/line/link'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AgentRoute: typeof AgentRoute
+  ArchitectureRoute: typeof ArchitectureRoute
+  HealthRoute: typeof HealthRoute
+  IliReportRoute: typeof IliReportRoute
   IntegrationRoute: typeof IntegrationRoute
   PatientsRoute: typeof PatientsRoute
+  ApiAgentOrchestratorRoute: typeof ApiAgentOrchestratorRoute
+  ApiConnectionStatusRoute: typeof ApiConnectionStatusRoute
+  ApiHosxpBridgeRoute: typeof ApiHosxpBridgeRoute
+  ApiIliReportRoute: typeof ApiIliReportRoute
+  ApiKumhosProxyRoute: typeof ApiKumhosProxyRoute
+  ApiLineWebhookRoute: typeof ApiLineWebhookRoute
+  ApiProductionAutomationRoute: typeof ApiProductionAutomationRoute
+  ApiSendNudgeRoute: typeof ApiSendNudgeRoute
+  ApiSubmitMophReportRoute: typeof ApiSubmitMophReportRoute
+  LineLinkRoute: typeof LineLinkRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -75,6 +267,34 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IntegrationRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/ili-report': {
+      id: '/ili-report'
+      path: '/ili-report'
+      fullPath: '/ili-report'
+      preLoaderRoute: typeof IliReportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/health': {
+      id: '/health'
+      path: '/health'
+      fullPath: '/health'
+      preLoaderRoute: typeof HealthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/architecture': {
+      id: '/architecture'
+      path: '/architecture'
+      fullPath: '/architecture'
+      preLoaderRoute: typeof ArchitectureRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/agent': {
+      id: '/agent'
+      path: '/agent'
+      fullPath: '/agent'
+      preLoaderRoute: typeof AgentRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -82,14 +302,108 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/line/link': {
+      id: '/line/link'
+      path: '/line/link'
+      fullPath: '/line/link'
+      preLoaderRoute: typeof LineLinkRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/submit-moph-report': {
+      id: '/api/submit-moph-report'
+      path: '/api/submit-moph-report'
+      fullPath: '/api/submit-moph-report'
+      preLoaderRoute: typeof ApiSubmitMophReportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/send-nudge': {
+      id: '/api/send-nudge'
+      path: '/api/send-nudge'
+      fullPath: '/api/send-nudge'
+      preLoaderRoute: typeof ApiSendNudgeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/production-automation': {
+      id: '/api/production-automation'
+      path: '/api/production-automation'
+      fullPath: '/api/production-automation'
+      preLoaderRoute: typeof ApiProductionAutomationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/line-webhook': {
+      id: '/api/line-webhook'
+      path: '/api/line-webhook'
+      fullPath: '/api/line-webhook'
+      preLoaderRoute: typeof ApiLineWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/kumhos-proxy': {
+      id: '/api/kumhos-proxy'
+      path: '/api/kumhos-proxy'
+      fullPath: '/api/kumhos-proxy'
+      preLoaderRoute: typeof ApiKumhosProxyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/ili-report': {
+      id: '/api/ili-report'
+      path: '/api/ili-report'
+      fullPath: '/api/ili-report'
+      preLoaderRoute: typeof ApiIliReportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/hosxp-bridge': {
+      id: '/api/hosxp-bridge'
+      path: '/api/hosxp-bridge'
+      fullPath: '/api/hosxp-bridge'
+      preLoaderRoute: typeof ApiHosxpBridgeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/connection-status': {
+      id: '/api/connection-status'
+      path: '/api/connection-status'
+      fullPath: '/api/connection-status'
+      preLoaderRoute: typeof ApiConnectionStatusRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/agent-orchestrator': {
+      id: '/api/agent-orchestrator'
+      path: '/api/agent-orchestrator'
+      fullPath: '/api/agent-orchestrator'
+      preLoaderRoute: typeof ApiAgentOrchestratorRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AgentRoute: AgentRoute,
+  ArchitectureRoute: ArchitectureRoute,
+  HealthRoute: HealthRoute,
+  IliReportRoute: IliReportRoute,
   IntegrationRoute: IntegrationRoute,
   PatientsRoute: PatientsRoute,
+  ApiAgentOrchestratorRoute: ApiAgentOrchestratorRoute,
+  ApiConnectionStatusRoute: ApiConnectionStatusRoute,
+  ApiHosxpBridgeRoute: ApiHosxpBridgeRoute,
+  ApiIliReportRoute: ApiIliReportRoute,
+  ApiKumhosProxyRoute: ApiKumhosProxyRoute,
+  ApiLineWebhookRoute: ApiLineWebhookRoute,
+  ApiProductionAutomationRoute: ApiProductionAutomationRoute,
+  ApiSendNudgeRoute: ApiSendNudgeRoute,
+  ApiSubmitMophReportRoute: ApiSubmitMophReportRoute,
+  LineLinkRoute: LineLinkRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}

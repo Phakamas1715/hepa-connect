@@ -1,0 +1,19 @@
+[Unit]
+Description=HEPA Connect production service
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/hepa-connect
+Environment=NODE_ENV=production
+Environment=HOST=0.0.0.0
+Environment=PORT=3000
+EnvironmentFile=-/opt/hepa-connect/.env
+ExecStart=/usr/bin/node /opt/hepa-connect/server.mjs
+Restart=always
+RestartSec=5
+User=www-data
+Group=www-data
+
+[Install]
+WantedBy=multi-user.target

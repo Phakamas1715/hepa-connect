@@ -1,35 +1,35 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
-  Outlet,
+  HeadContent,
   Link,
+  Outlet,
+  Scripts,
   createRootRouteWithContext,
   useRouter,
-  HeadContent,
-  Scripts,
 } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
-import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { Toaster } from "@/components/ui/sonner";
+import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 
 function NotFoundComponent() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
         <h1 className="text-7xl font-bold text-foreground">404</h1>
-        <h2 className="mt-4 text-xl font-semibold text-foreground">Page not found</h2>
+        <h2 className="mt-4 text-xl font-semibold text-foreground">ไม่พบหน้านี้</h2>
         <p className="mt-2 text-sm text-muted-foreground">
-          The page you're looking for doesn't exist or has been moved.
+          หน้าที่ต้องการไม่มีอยู่ หรือถูกย้ายไปแล้ว
         </p>
         <div className="mt-6">
           <Link
             to="/"
             className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
           >
-            Go home
+            กลับแดชบอร์ด
           </Link>
         </div>
       </div>
@@ -47,11 +47,9 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
-        <h1 className="text-xl font-semibold tracking-tight text-foreground">
-          This page didn't load
-        </h1>
+        <h1 className="text-xl font-semibold tracking-tight text-foreground">โหลดหน้านี้ไม่สำเร็จ</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Something went wrong on our end. You can try refreshing or head back home.
+          ระบบขัดข้องชั่วคราว ลองโหลดใหม่หรือกลับไปหน้าแดชบอร์ด
         </p>
         <div className="mt-6 flex flex-wrap justify-center gap-2">
           <button
@@ -61,13 +59,13 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
             }}
             className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
           >
-            Try again
+            ลองใหม่
           </button>
           <a
             href="/"
             className="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
           >
-            Go home
+            กลับแดชบอร์ด
           </a>
         </div>
       </div>
@@ -80,17 +78,17 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "HEPA-GLUE Engine — Nam Phong HBV/HCV Elimination" },
+      { title: "HEPA-GLUE Engine — ระบบกำจัดไวรัสตับอักเสบ น้ำพอง" },
       {
         name: "description",
         content:
-          "Operational command center for HBV/HCV elimination in Nam Phong District, Khon Kaen — KPIs, behavioral AI nudges, and MOPH auto-reporting.",
+          "ศูนย์บัญชาการงานไวรัสตับอักเสบ B/C อำเภอน้ำพอง: KPI, AI nudge และรายงาน MOPH อัตโนมัติ",
       },
-      { name: "author", content: "Nam Phong Hospital" },
+      { name: "author", content: "โรงพยาบาลน้ำพอง" },
       { property: "og:title", content: "HEPA-GLUE Engine" },
       {
         property: "og:description",
-        content: "HBV/HCV elimination command center for Nam Phong District.",
+        content: "ศูนย์บัญชาการงานไวรัสตับอักเสบ B/C อำเภอน้ำพอง",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
@@ -111,7 +109,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootShell({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="th">
       <head>
         <HeadContent />
       </head>
@@ -137,23 +135,21 @@ function RootComponent() {
 function AppLayout() {
   return (
     <SidebarProvider>
-      <div className="flex min-h-screen w-full bg-background">
-        <AppSidebar />
-        <div className="flex min-w-0 flex-1 flex-col">
-          <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b border-border bg-background/80 px-4 backdrop-blur-md">
-            <SidebarTrigger />
-            <div className="ml-2 flex min-w-0 items-center gap-2">
-              <span className="text-sm font-semibold text-foreground">HEPA-GLUE Engine</span>
-              <span className="hidden text-xs text-muted-foreground sm:inline">
-                / Nam Phong HBV-HCV Elimination · FY2569
-              </span>
-            </div>
-          </header>
-          <main className="min-w-0 flex-1">
-            <Outlet />
-          </main>
-        </div>
-      </div>
+      <AppSidebar />
+      <SidebarInset className="min-w-0">
+        <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b border-border bg-background/80 px-4 backdrop-blur-md">
+          <SidebarTrigger />
+          <div className="ml-2 flex min-w-0 items-center gap-2">
+            <span className="shrink-0 text-sm font-semibold text-foreground">HEPA-GLUE Engine</span>
+            <span className="hidden truncate text-xs text-muted-foreground sm:inline">
+              / กำจัด HBV-HCV อำเภอน้ำพอง · ปีงบ 2569
+            </span>
+          </div>
+        </header>
+        <main className="min-w-0 flex-1">
+          <Outlet />
+        </main>
+      </SidebarInset>
     </SidebarProvider>
   );
 }

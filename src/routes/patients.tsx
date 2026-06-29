@@ -1,156 +1,214 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { Building2, CheckCircle2, Loader2, MapPin, QrCode, Search, Send, Users } from "lucide-react";
 import { useMemo, useState } from "react";
-import { Search, Sparkles, MessageSquare, Phone, Send, CheckCircle2, Users, MapPin } from "lucide-react";
+import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { PATIENTS, PERSONA_NUDGES, type Patient, hasCareGap } from "@/lib/hepa-data";
-import { toast } from "sonner";
-import { LineAgentNudgeButton } from "@/components/line-agent-nudge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { hasCareGap, type Patient } from "@/lib/hepa-data";
+import { calculateHepaRaaia, type HepaRaaiaScore } from "@/lib/hepa-raaia";
+import { HEPA_PRIMARY_CARE_UNITS, resolveHepaServiceArea } from "@/lib/hepa-service-area";
+import { fetchPatients } from "@/lib/supabase";
 
 export const Route = createFileRoute("/patients")({
   head: () => ({
     meta: [
-      { title: "Patient Care Gap — HEPA-GLUE Engine" },
+      { title: "ทะเบียน Care Gap — HEPA-GLUE Engine" },
       {
         name: "description",
-        content:
-          "Behavioral AI command center: persona-tailored nudges, LINE Health Card dispatch to อสม., and care-gap triage.",
+        content: "ทะเบียนผู้ป่วยไวรัสตับอักเสบ B/C พร้อม HEPA-RAAIA scoring และ QR ผูก LINE",
       },
     ],
   }),
   component: PatientsPage,
 });
 
-const personaColor: Record<string, string> = {
-  "The Forgetful": "bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-500/30",
-  "The Fearful": "bg-warning/20 text-warning-foreground border-warning/40",
-  "The Denier": "bg-destructive/15 text-destructive border-destructive/40",
-  "The Engaged": "bg-success/15 text-success border-success/40",
+const bandColor: Record<HepaRaaiaScore["band"], string> = {
+  critical: "border-destructive/40 bg-destructive/15 text-destructive",
+  high: "border-warning/50 bg-warning/20 text-warning-foreground",
+  watch: "border-sky-500/30 bg-sky-500/10 text-sky-700 dark:text-sky-300",
+  low: "border-success/30 bg-success/10 text-success",
 };
 
-function ResultBadge({ value }: { value: string }) {
-  if (value === "Positive")
-    return <Badge variant="destructive" className="font-semibold">Positive</Badge>;
-  if (value === "Negative")
-    return <Badge variant="outline" className="text-muted-foreground">Negative</Badge>;
-  if (value === "Detected")
-    return <Badge variant="destructive">Detected</Badge>;
-  if (value === "Not Detected")
-    return <Badge className="bg-success text-success-foreground">Not Detected</Badge>;
-  if (value === "รอผล" || value === "ไม่พอตรวจขอเจาะใหม่")
-    return (
-      <span className="blink-warning inline-flex items-center rounded-md border border-warning/50 bg-warning/20 px-2 py-0.5 text-[11px] font-semibold text-warning-foreground">
-        ⚠ {value}
-      </span>
-    );
-  return <span className="text-xs text-muted-foreground">{value}</span>;
+const actionLabel: Record<HepaRaaiaScore["nextAction"], string> = {
+  create_line_qr: "สร้าง QR ผูก LINE",
+  send_line_nudge: "ส่ง LINE nudge",
+  staff_call: "โทรตามโดยเจ้าหน้าที่",
+  vhv_followup: "ส่งต่อ อสม.",
+  routine_followup: "ติดตามตามรอบ",
+};
+
+function ResultBadge({ value }: { value?: string }) {
+  if (value === "Positive" || value === "Detected") return <Badge variant="destructive">ผลบวก</Badge>;
+  if (value === "Negative" || value === "Not Detected") return <Badge variant="outline">ผลลบ</Badge>;
+  if (!value) return <span className="text-xs text-muted-foreground">-</span>;
+  return (
+    <Badge className="border-warning/50 bg-warning/20 text-warning-foreground" variant="outline">
+      {value}
+    </Badge>
+  );
+}
+
+async function postAgent(action: string, payload: Record<string, unknown>) {
+  const response = await fetch("/api/agent-orchestrator", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action, ...payload }),
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data?.message || "agent action failed");
+  return data;
 }
 
 function PatientsPage() {
   const [query, setQuery] = useState("");
-  const [filter, setFilter] = useState<"all" | "hbv+" | "hcv+" | "gap">("all");
-  const [selected, setSelected] = useState<Patient | null>(null);
+  const [filter, setFilter] = useState<"all" | "gap" | "high" | "need_qr">("all");
+  const [latestLink, setLatestLink] = useState("");
+  const { data: patients, isLoading, error, refetch } = useQuery({ queryKey: ["patients"], queryFn: fetchPatients });
+
+  const createInvite = useMutation({
+    mutationFn: (patient: Patient) => postAgent("create_invite", { hn: patient.hn, patientName: patient.name }),
+    onSuccess: (result) => {
+      setLatestLink(result.link);
+      toast.success("สร้าง QR ผูก LINE แล้ว");
+    },
+    onError: (err) => toast.error(err instanceof Error ? err.message : "สร้าง QR ไม่สำเร็จ"),
+  });
+
+  const queueNudge = useMutation({
+    mutationFn: (patient: Patient) => postAgent("queue_nudge", { hn: patient.hn, persona: patient.persona }),
+    onSuccess: (result) => toast.success(result.task?.status === "blocked" ? "ยังไม่มี LINE identity ให้สร้าง QR ก่อน" : "จัดคิว LINE แล้ว"),
+    onError: (err) => toast.error(err instanceof Error ? err.message : "จัดคิวไม่สำเร็จ"),
+  });
+
+  const scored = useMemo(() => {
+    return (patients || []).map((patient) => ({ patient, raaia: calculateHepaRaaia(patient) }));
+  }, [patients]);
 
   const filtered = useMemo(() => {
-    return PATIENTS.filter((p) => {
-      const q = query.toLowerCase();
-      const matches =
+    const q = query.trim().toLowerCase();
+    return scored.filter(({ patient, raaia }) => {
+      const serviceArea = resolveHepaServiceArea(patient);
+      const matchesText =
         !q ||
-        p.name.toLowerCase().includes(q) ||
-        p.hn.toLowerCase().includes(q) ||
-        p.village.toLowerCase().includes(q);
-      const matchFilter =
-        filter === "all"
-          ? true
-          : filter === "hbv+"
-            ? p.hbsag === "Positive"
-            : filter === "hcv+"
-              ? p.hcvAb === "Positive"
-              : hasCareGap(p);
-      return matches && matchFilter;
+        patient.hn.toLowerCase().includes(q) ||
+        patient.name.toLowerCase().includes(q) ||
+        patient.cid.toLowerCase().includes(q) ||
+        patient.village.toLowerCase().includes(q) ||
+        patient.subdistrict.toLowerCase().includes(q) ||
+        (serviceArea?.code ?? "").toLowerCase().includes(q) ||
+        (serviceArea?.unitName ?? "").toLowerCase().includes(q);
+      const matchesFilter =
+        filter === "all" ||
+        (filter === "gap" && hasCareGap(patient)) ||
+        (filter === "high" && (raaia.band === "critical" || raaia.band === "high")) ||
+        (filter === "need_qr" && raaia.nextAction === "create_line_qr");
+      return matchesText && matchesFilter;
     });
-  }, [query, filter]);
+  }, [filter, query, scored]);
 
   const stats = useMemo(
     () => ({
-      total: PATIENTS.length,
-      hbv: PATIENTS.filter((p) => p.hbsag === "Positive").length,
-      hcv: PATIENTS.filter((p) => p.hcvAb === "Positive").length,
-      gaps: PATIENTS.filter(hasCareGap).length,
+      total: scored.length,
+      gaps: scored.filter(({ patient }) => hasCareGap(patient)).length,
+      high: scored.filter(({ raaia }) => raaia.band === "critical" || raaia.band === "high").length,
+      needQr: scored.filter(({ raaia }) => raaia.nextAction === "create_line_qr").length,
+      mapped: scored.filter(({ patient }) => resolveHepaServiceArea(patient)).length,
+      units: HEPA_PRIMARY_CARE_UNITS.length,
     }),
-    [],
+    [scored],
   );
+
+  if (isLoading) return <div className="p-8 text-center text-sm text-muted-foreground">กำลังโหลดทะเบียนผู้ป่วย...</div>;
+  if (error) return <div className="p-8 text-center text-sm text-destructive">โหลดทะเบียนไม่สำเร็จ: {error.message}</div>;
 
   return (
     <div className="mx-auto w-full max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-          Patient Care Gap & Behavioral AI Command
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Active patient triage with persona-tailored nudges and อสม. dispatch.
-        </p>
-      </div>
+      <header className="flex flex-col gap-3 border-b pb-5 lg:flex-row lg:items-end lg:justify-between">
+        <div>
+          <Badge variant="outline" className="w-fit border-teal/30 bg-teal/5 text-teal">
+            HEPA-RAAIA
+          </Badge>
+          <h1 className="mt-3 text-2xl font-bold tracking-tight sm:text-3xl">ทะเบียน Care Gap และลดการพิมพ์</h1>
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
+            ใช้สูตร RAAIA ที่แปลงเป็นงานไวรัสตับอักเสบ เพื่อจัดลำดับผู้ป่วย เลือก action ถัดไป และสร้าง QR ผูก LINE จากรายชื่อเดิมโดยไม่ต้องพิมพ์ HN ซ้ำ
+          </p>
+        </div>
+        <Button variant="outline" onClick={() => refetch()} className="w-fit gap-2">
+          <CheckCircle2 className="h-4 w-4" />
+          รีเฟรช
+        </Button>
+      </header>
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
         {[
-          { label: "Active Patients", value: stats.total, icon: Users, tone: "text-foreground" },
-          { label: "HBV Positive", value: stats.hbv, icon: Users, tone: "text-destructive" },
-          { label: "HCV Positive", value: stats.hcv, icon: Users, tone: "text-destructive" },
-          { label: "Care Gaps", value: stats.gaps, icon: Users, tone: "text-warning-foreground" },
-        ].map((s) => (
-          <Card key={s.label}>
+          { label: "รายชื่อทั้งหมด", value: stats.total },
+          { label: "Care Gap", value: stats.gaps },
+          { label: "เสี่ยงสูง", value: stats.high },
+          { label: "ควรสร้าง QR", value: stats.needQr },
+          { label: "Mapped Area", value: stats.mapped },
+          { label: "รพ.สต.ปัจจุบัน", value: stats.units },
+        ].map((item) => (
+          <Card key={item.label}>
             <CardContent className="p-4">
-              <div className="text-[11px] uppercase tracking-wider text-muted-foreground">
-                {s.label}
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-2xl font-bold">{item.value}</div>
+                  <div className="text-xs text-muted-foreground">{item.label}</div>
+                </div>
+                {item.label === "Mapped Area" ? (
+                  <MapPin className="h-5 w-5 text-teal" />
+                ) : item.label === "รพ.สต.ปัจจุบัน" ? (
+                  <Building2 className="h-5 w-5 text-teal" />
+                ) : (
+                  <Users className="h-5 w-5 text-teal" />
+                )}
               </div>
-              <div className={`mt-1 text-2xl font-bold ${s.tone}`}>{s.value}</div>
             </CardContent>
           </Card>
         ))}
-      </div>
+      </section>
+
+      {latestLink && (
+        <Card className="border-emerald-200 bg-emerald-50">
+          <CardContent className="flex flex-col gap-3 p-4 text-emerald-900 sm:flex-row sm:items-center">
+            <img
+              src={`https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(latestLink)}`}
+              alt="QR ผูก LINE"
+              className="h-32 w-32 rounded-lg border bg-white p-2"
+            />
+            <div className="min-w-0">
+              <div className="font-semibold">QR พร้อมให้ผู้ป่วยสแกน</div>
+              <p className="mt-1 text-sm leading-6">
+                ผู้ป่วยสแกนแล้วกดยืนยัน ระบบรู้ HN จาก token และดึง LINE userId ผ่าน LIFF เมื่อขึ้นใช้งานจริง
+              </p>
+              <div className="mt-2 break-all text-xs">{latestLink}</div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <CardTitle className="text-base">Active Patient List</CardTitle>
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <CardTitle className="text-base">รายชื่อผู้ป่วย</CardTitle>
             <div className="flex flex-col gap-2 sm:flex-row">
               <div className="relative">
                 <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  placeholder="Search HN, name, village…"
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  className="h-9 pl-9 sm:w-64"
-                />
+                <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="ค้นหา HN / ชื่อ / CID" className="pl-9 sm:w-64" />
               </div>
-              <Select value={filter} onValueChange={(v) => setFilter(v as typeof filter)}>
-                <SelectTrigger className="h-9 sm:w-44">
+              <Select value={filter} onValueChange={(value) => setFilter(value as typeof filter)}>
+                <SelectTrigger className="sm:w-44">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All patients</SelectItem>
-                  <SelectItem value="hbv+">HBV Positive</SelectItem>
-                  <SelectItem value="hcv+">HCV Positive</SelectItem>
+                  <SelectItem value="all">ทั้งหมด</SelectItem>
                   <SelectItem value="gap">Care Gap</SelectItem>
+                  <SelectItem value="high">เสี่ยงสูง</SelectItem>
+                  <SelectItem value="need_qr">ควรสร้าง QR</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -158,73 +216,80 @@ function PatientsPage() {
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto rounded-lg border">
-            <table className="w-full min-w-[1100px] text-sm">
-              <thead className="bg-muted/50">
-                <tr className="text-left text-[11px] uppercase tracking-wider text-muted-foreground">
+            <table className="w-full min-w-[1340px] text-sm">
+              <thead className="bg-muted/50 text-left text-[11px] uppercase tracking-wider text-muted-foreground">
+                <tr>
                   <th className="px-3 py-2">HN</th>
-                  <th className="px-3 py-2">Patient</th>
-                  <th className="px-3 py-2">Village / Subdistrict</th>
-                  <th className="px-3 py-2">Test Date</th>
-                  <th className="px-3 py-2">FY</th>
+                  <th className="px-3 py-2">ผู้ป่วย</th>
+                  <th className="px-3 py-2">พื้นที่</th>
+                  <th className="px-3 py-2">หน่วยรับผิดชอบ</th>
                   <th className="px-3 py-2">HBsAg</th>
-                  <th className="px-3 py-2">HBsAb</th>
                   <th className="px-3 py-2">HCV Ab</th>
-                  <th className="px-3 py-2">HCV VL</th>
-                  <th className="px-3 py-2">AI Flag</th>
-                  <th className="px-3 py-2 text-right">Action</th>
+                  <th className="px-3 py-2">HCV RNA</th>
+                  <th className="px-3 py-2">Persona</th>
+                  <th className="px-3 py-2">HEPA-RAAIA</th>
+                  <th className="px-3 py-2">Action</th>
+                  <th className="px-3 py-2 text-right">ทำงาน</th>
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((p) => (
-                  <tr key={p.hn} className="border-t align-middle hover:bg-muted/30">
-                    <td className="px-3 py-2 font-mono text-xs text-muted-foreground">{p.hn}</td>
-                    <td className="px-3 py-2 font-medium text-foreground">{p.name}</td>
-                    <td className="px-3 py-2 text-xs text-muted-foreground">
-                      <div className="flex items-center gap-1">
-                        <MapPin className="h-3 w-3" />
-                        <span>{p.village}</span>
-                      </div>
-                      <div className="text-[10px] opacity-70">ต.{p.subdistrict}</div>
-                    </td>
-                    <td className="px-3 py-2 tabular-nums text-xs text-muted-foreground">
-                      {p.testDate}
-                    </td>
-                    <td className="px-3 py-2 text-xs text-muted-foreground">{p.fiscalYear}</td>
-                    <td className="px-3 py-2"><ResultBadge value={p.hbsag} /></td>
-                    <td className="px-3 py-2"><ResultBadge value={p.hbsab} /></td>
-                    <td className="px-3 py-2"><ResultBadge value={p.hcvAb} /></td>
-                    <td className="px-3 py-2"><ResultBadge value={p.hcvVL} /></td>
-                    <td className="px-3 py-2">
-                      <span
-                        className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[10px] font-semibold ${
-                          personaColor[p.persona]
-                        }`}
-                      >
-                        {p.persona}
-                      </span>
-                    </td>
-                    <td className="px-3 py-2 text-right">
-                      <div className="flex flex-wrap items-center justify-end gap-1.5">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-8 gap-1.5 border-teal/40 text-teal hover:bg-teal/10"
-                          onClick={() => setSelected(p)}
-                        >
-                          <Sparkles className="h-3.5 w-3.5" /> AI Contact
-                        </Button>
-                        {(p.hcvVL === "รอผล" || p.hcvVL === "ไม่พอตรวจขอเจาะใหม่") && (
-                          <LineAgentNudgeButton patient={p} />
+                {filtered.map(({ patient, raaia }) => {
+                  const serviceArea = resolveHepaServiceArea(patient);
+                  return (
+                    <tr key={patient.hn} className="border-t hover:bg-muted/30">
+                      <td className="px-3 py-2 font-mono text-xs text-muted-foreground">{patient.hn}</td>
+                      <td className="px-3 py-2">
+                        <div className="font-medium text-foreground">{patient.name}</div>
+                        <div className="text-[10px] text-muted-foreground">CID {patient.cid}</div>
+                      </td>
+                      <td className="px-3 py-2 text-xs text-muted-foreground">
+                        {patient.village} / {patient.subdistrict}
+                      </td>
+                      <td className="px-3 py-2">
+                        {serviceArea ? (
+                          <div className="space-y-1">
+                            <div className="flex flex-wrap items-center gap-1">
+                              <Badge variant="outline" className="font-mono">
+                                {serviceArea.code}
+                              </Badge>
+                              {serviceArea.unitType === "hospital" && <Badge className="bg-slate-100 text-slate-700 hover:bg-slate-100">รพ.</Badge>}
+                            </div>
+                            <div className="max-w-56 text-xs leading-5 text-muted-foreground">{serviceArea.unitName}</div>
+                            {serviceArea.coverageNote && <div className="text-[10px] text-muted-foreground">{serviceArea.coverageNote}</div>}
+                          </div>
+                        ) : (
+                          <Badge className="border-warning/50 bg-warning/20 text-warning-foreground" variant="outline">
+                            ยังไม่พบ mapping
+                          </Badge>
                         )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-                {filtered.length === 0 && (
+                      </td>
+                      <td className="px-3 py-2"><ResultBadge value={patient.hbsag} /></td>
+                      <td className="px-3 py-2"><ResultBadge value={patient.hcvAb} /></td>
+                      <td className="px-3 py-2"><ResultBadge value={patient.hcvVL} /></td>
+                      <td className="px-3 py-2"><Badge variant="outline">{patient.persona}</Badge></td>
+                      <td className="px-3 py-2">
+                        <Badge variant="outline" className={bandColor[raaia.band]}>Score {raaia.score}</Badge>
+                        <div className="mt-1 text-[10px] text-muted-foreground">{raaia.explanation}</div>
+                      </td>
+                      <td className="px-3 py-2 text-xs text-muted-foreground">{actionLabel[raaia.nextAction]}</td>
+                      <td className="px-3 py-2 text-right">
+                        <div className="flex justify-end gap-1.5">
+                          <Button size="sm" variant="outline" className="h-8 gap-1.5" onClick={() => createInvite.mutate(patient)}>
+                            {createInvite.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <QrCode className="h-3.5 w-3.5" />}
+                            QR
+                          </Button>
+                          <Button size="sm" variant="outline" className="h-8 gap-1.5" onClick={() => queueNudge.mutate(patient)}>
+                            <Send className="h-3.5 w-3.5" />
+                            LINE
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+                {!filtered.length && (
                   <tr>
-                    <td colSpan={11} className="px-3 py-8 text-center text-sm text-muted-foreground">
-                      No patients match filters.
-                    </td>
+                    <td colSpan={11} className="px-3 py-8 text-center text-sm text-muted-foreground">ไม่พบผู้ป่วยตามตัวกรองนี้</td>
                   </tr>
                 )}
               </tbody>
@@ -232,130 +297,6 @@ function PatientsPage() {
           </div>
         </CardContent>
       </Card>
-
-      <AIContactDialog patient={selected} onClose={() => setSelected(null)} />
     </div>
-  );
-}
-
-function AIContactDialog({
-  patient,
-  onClose,
-}: {
-  patient: Patient | null;
-  onClose: () => void;
-}) {
-  const [step, setStep] = useState<"compose" | "sent">("compose");
-
-  if (!patient) return null;
-
-  const nudge = PERSONA_NUDGES[patient.persona];
-  const date = "พุธ 25 มี.ค. 2569";
-  const sms = nudge.sms.replace("{name}", patient.name).replace("{date}", date);
-
-  const handleSend = () => {
-    setStep("sent");
-    toast.success("LINE Health Card dispatched to อสม.", {
-      description: `Village ${patient.village} • SMS queued to ${patient.name}`,
-    });
-  };
-
-  const handleClose = () => {
-    setStep("compose");
-    onClose();
-  };
-
-  return (
-    <Dialog open onOpenChange={handleClose}>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-teal" />
-            AI Behavioral Contact
-          </DialogTitle>
-          <DialogDescription>
-            Persona-tailored nudge for{" "}
-            <strong className="text-foreground">{patient.name}</strong> ·{" "}
-            <Badge variant="outline" className="ml-1">{patient.persona}</Badge>
-          </DialogDescription>
-        </DialogHeader>
-
-        {step === "compose" ? (
-          <Tabs defaultValue="sms" className="w-full">
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="sms" className="gap-1.5"><MessageSquare className="h-3.5 w-3.5" /> SMS</TabsTrigger>
-              <TabsTrigger value="call" className="gap-1.5"><Phone className="h-3.5 w-3.5" /> Call Script</TabsTrigger>
-              <TabsTrigger value="line" className="gap-1.5"><Send className="h-3.5 w-3.5" /> อสม.</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="sms">
-              <div className="rounded-lg border bg-muted/30 p-4">
-                <div className="mb-2 text-[10px] uppercase tracking-wider text-muted-foreground">
-                  SMS Draft · TH
-                </div>
-                <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">{sms}</p>
-              </div>
-              <div className="mt-2 rounded-md bg-teal/10 px-3 py-2 text-[11px] text-teal">
-                Nudge: {patient.persona === "The Fearful" ? "Reassurance + Free-of-charge framing" : patient.persona === "The Forgetful" ? "Commitment device + reminder cadence" : patient.persona === "The Denier" ? "Loss aversion + social proof" : "Positive reinforcement"}
-              </div>
-            </TabsContent>
-
-            <TabsContent value="call">
-              <div className="rounded-lg border bg-muted/30 p-4">
-                <div className="mb-2 text-[10px] uppercase tracking-wider text-muted-foreground">
-                  Phone Call Script · Behavioral Economics
-                </div>
-                <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed text-foreground">{nudge.script}</pre>
-              </div>
-            </TabsContent>
-
-            <TabsContent value="line">
-              <div className="rounded-lg border border-success/30 bg-success/5 p-4">
-                <div className="mb-3 flex items-center gap-2">
-                  <div className="grid h-8 w-8 place-items-center rounded-md bg-success text-success-foreground">
-                    <Send className="h-4 w-4" />
-                  </div>
-                  <div>
-                    <div className="text-sm font-semibold text-foreground">LINE Health Card</div>
-                    <div className="text-[11px] text-muted-foreground">To อสม. · {patient.village}</div>
-                  </div>
-                </div>
-                <div className="rounded-md bg-card p-3 text-sm leading-relaxed text-foreground shadow-sm">
-                  📋 <strong>คำขอเยี่ยมบ้าน</strong><br />
-                  ผู้ป่วย: {patient.name} (HN {patient.hn})<br />
-                  ที่อยู่: {patient.village}<br />
-                  ประเด็น: {patient.hcvAb === "Positive" ? "HCV Ab Positive — ติดตามนัดเจาะ Viral Load" : "HBV Positive — ติดตามเข้าระบบรักษา"}<br />
-                  Persona: <em>{patient.persona}</em><br />
-                  Action: นัดมา รพ.น้ำพอง วันที่ {date}
-                </div>
-              </div>
-            </TabsContent>
-          </Tabs>
-        ) : (
-          <div className="grid gap-3 py-6 text-center">
-            <div className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-success/15 text-success">
-              <CheckCircle2 className="h-7 w-7" />
-            </div>
-            <div className="text-lg font-semibold">Nudge sent successfully</div>
-            <div className="text-sm text-muted-foreground">
-              SMS queued · LINE Health Card delivered to อสม. · Logged in care registry
-            </div>
-          </div>
-        )}
-
-        <DialogFooter>
-          {step === "compose" ? (
-            <>
-              <Button variant="outline" onClick={handleClose}>Cancel</Button>
-              <Button className="gradient-medical text-white" onClick={handleSend}>
-                <Send className="mr-1.5 h-4 w-4" /> Send All Channels
-              </Button>
-            </>
-          ) : (
-            <Button onClick={handleClose}>Close</Button>
-          )}
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
   );
 }

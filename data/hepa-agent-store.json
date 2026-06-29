@@ -1,0 +1,180 @@
+{
+  "invites": [
+    {
+      "id": "inv_98c57c7c78f93ae7",
+      "tokenHash": "4ceb05d24c9b7e133845cce1a393a83480983f2de424a051c9ca0869eac93dff",
+      "hn": "HN-0001",
+      "patientName": "สมชาย ทดสอบ",
+      "purpose": "hepatitis_followup",
+      "createdAt": "2026-06-20T03:40:59.187Z",
+      "expiresAt": "2026-06-27T03:40:59.189Z",
+      "status": "active"
+    },
+    {
+      "id": "inv_6c3ce52b3502dfb9",
+      "tokenHash": "ebad1d56aa77a482a9cab9eea33bada041b308464dd091c71ae2b451c9718a65",
+      "hn": "NO-TYPE-001",
+      "patientName": "????????????",
+      "purpose": "hepatitis_followup",
+      "createdAt": "2026-06-20T03:31:19.132Z",
+      "expiresAt": "2026-06-27T03:31:19.133Z",
+      "status": "active"
+    },
+    {
+      "id": "inv_5d21877dc66e0138",
+      "tokenHash": "9de3f4cb331036c130c4d8c9decdc4882df513b60eadc4e9a2d665a7f2701eda",
+      "hn": "TEST-HN-001",
+      "patientName": "Local Test",
+      "purpose": "hepatitis_followup",
+      "createdAt": "2026-06-18T10:51:32.813Z",
+      "expiresAt": "2026-06-25T10:51:32.813Z",
+      "status": "used",
+      "usedAt": "2026-06-18T10:52:11.239Z"
+    }
+  ],
+  "identities": [
+    {
+      "lineUserId": "U1234567890abcdef1234567890abcdef",
+      "hn": "TEST-HN-001",
+      "role": "patient",
+      "displayName": "Local LINE Test",
+      "verifiedAt": "2026-06-18T10:52:11.239Z",
+      "consentAt": "2026-06-18T10:52:11.239Z",
+      "status": "verified"
+    }
+  ],
+  "tasks": [
+    {
+      "id": "task_2a8c74f48af83af8",
+      "hn": "HN-0001",
+      "type": "create_invite",
+      "status": "agent_prepared",
+      "inviteId": "inv_98c57c7c78f93ae7",
+      "message": "สร้างลิงก์ผูก LINE สำหรับติดตาม care gap",
+      "createdAt": "2026-06-20T03:40:59.187Z",
+      "updatedAt": "2026-06-20T03:40:59.187Z"
+    },
+    {
+      "id": "task_4001ca73a6446a8c",
+      "hn": "NO-TYPE-001",
+      "type": "create_invite",
+      "status": "agent_prepared",
+      "inviteId": "inv_6c3ce52b3502dfb9",
+      "message": "สร้างลิงก์ผูก LINE สำหรับติดตาม care gap",
+      "createdAt": "2026-06-20T03:31:19.132Z",
+      "updatedAt": "2026-06-20T03:31:19.132Z"
+    },
+    {
+      "id": "task_9f81d152d82e119eda5d9392",
+      "hn": "TEST-HN-001",
+      "type": "line_nudge",
+      "status": "blocked",
+      "lineUserId": "U1234567890abcdef1234567890abcdef",
+      "persona": "The Engaged",
+      "message": "LINE Messaging API ส่งไม่สำเร็จ",
+      "createdAt": "2026-06-18T10:53:46.258Z",
+      "updatedAt": "2026-06-18T10:53:46.258Z"
+    },
+    {
+      "id": "task_127c4cd86a34b819eda5d64cc",
+      "hn": "TEST-HN-001",
+      "type": "line_nudge",
+      "status": "blocked",
+      "lineUserId": "U1234567890abcdef1234567890abcdef",
+      "persona": "The Engaged",
+      "message": "LINE Messaging API ส่งไม่สำเร็จ",
+      "createdAt": "2026-06-18T10:53:34.284Z",
+      "updatedAt": "2026-06-18T10:53:34.284Z"
+    },
+    {
+      "id": "task_603b18c63d8476d8",
+      "hn": "TEST-HN-001",
+      "type": "line_nudge",
+      "status": "pending",
+      "lineUserId": "U1234567890abcdef1234567890abcdef",
+      "persona": "The Engaged",
+      "message": "????? queue nudge ??????? LINE identity",
+      "createdAt": "2026-06-18T10:52:20.965Z",
+      "updatedAt": "2026-06-18T10:52:20.965Z"
+    },
+    {
+      "id": "task_ba963ae50f88a4f0",
+      "hn": "TEST-HN-001",
+      "type": "line_nudge",
+      "status": "verified",
+      "inviteId": "inv_5d21877dc66e0138",
+      "lineUserId": "U1234567890abcdef1234567890abcdef",
+      "message": "ผูก LINE userId กับ HN สำเร็จ พร้อมส่งข้อความติดตาม",
+      "createdAt": "2026-06-18T10:52:11.239Z",
+      "updatedAt": "2026-06-18T10:52:11.239Z"
+    },
+    {
+      "id": "task_2c281676863f05bf",
+      "hn": "TEST-HN-001",
+      "type": "create_invite",
+      "status": "agent_prepared",
+      "inviteId": "inv_5d21877dc66e0138",
+      "message": "สร้างลิงก์ผูก LINE สำหรับติดตาม care gap",
+      "createdAt": "2026-06-18T10:51:32.813Z",
+      "updatedAt": "2026-06-18T10:51:32.813Z"
+    }
+  ],
+  "audit": [
+    {
+      "id": "audit_4d1142090f43ba45",
+      "at": "2026-06-20T03:40:59.194Z",
+      "actor": "agent",
+      "action": "create_line_invite",
+      "hn": "HN-0001",
+      "detail": "สร้าง invite inv_98c57c7c78f93ae7 หมดอายุ 2026-06-27T03:40:59.189Z"
+    },
+    {
+      "id": "audit_85c9504eb3790456",
+      "at": "2026-06-20T03:31:19.137Z",
+      "actor": "agent",
+      "action": "create_line_invite",
+      "hn": "NO-TYPE-001",
+      "detail": "สร้าง invite inv_6c3ce52b3502dfb9 หมดอายุ 2026-06-27T03:31:19.133Z"
+    },
+    {
+      "id": "audit_d3f99c29fc040497",
+      "at": "2026-06-18T10:53:46.258Z",
+      "actor": "agent",
+      "action": "send_line_nudge",
+      "hn": "TEST-HN-001",
+      "detail": "LINE Messaging API ส่งไม่สำเร็จ"
+    },
+    {
+      "id": "audit_aa0d69111f124f62",
+      "at": "2026-06-18T10:53:34.285Z",
+      "actor": "agent",
+      "action": "send_line_nudge",
+      "hn": "TEST-HN-001",
+      "detail": "LINE Messaging API ส่งไม่สำเร็จ"
+    },
+    {
+      "id": "audit_e268ea7b52ffdd30",
+      "at": "2026-06-18T10:52:20.966Z",
+      "actor": "agent",
+      "action": "queue_line_nudge",
+      "hn": "TEST-HN-001",
+      "detail": "????? queue nudge ??????? LINE identity"
+    },
+    {
+      "id": "audit_c79f8c1962471e7c",
+      "at": "2026-06-18T10:52:11.239Z",
+      "actor": "system",
+      "action": "verify_line_identity",
+      "hn": "TEST-HN-001",
+      "detail": "ผูก LINE U1234567... กับ HN สำเร็จ"
+    },
+    {
+      "id": "audit_497346d1f2bd84d0",
+      "at": "2026-06-18T10:51:32.814Z",
+      "actor": "agent",
+      "action": "create_line_invite",
+      "hn": "TEST-HN-001",
+      "detail": "สร้าง invite inv_5d21877dc66e0138 หมดอายุ 2026-06-25T10:51:32.813Z"
+    }
+  ]
+}
