@@ -1,37 +1,39 @@
-# HEPA-Connect x Grok CLI
+# HEPA-Connect x Grok Build
 
-Grok CLI is an optional developer agent for reviewing, testing, and maintaining this repository.
-It is not part of the patient workflow and must not receive identifiable health information.
+Grok Build is xAI's official optional developer agent for reviewing, testing, and maintaining this
+repository. SuperGrok and X Premium+ subscribers can sign in with their subscription account without
+creating a separate API key. It is not part of the patient workflow and must not receive identifiable
+health information.
 
 ## Install
 
 ```bash
-bun add -g grok-dev
+curl -fsSL https://x.ai/cli/install.sh | bash
 grok --version
+grok --oauth
 ```
 
-Set credentials only in the local or server environment:
+After successful OAuth login, set the readiness flag only on the machine where that login is valid:
 
 ```env
-GROK_CLI_PATH=/absolute/path/to/grok
-GROK_API_KEY=
-GROK_BASE_URL=https://api.x.ai/v1
-GROK_MODEL=
+GROK_CLI_PATH=/absolute/path/to/.grok/bin/grok
+GROK_SUBSCRIPTION_AUTHENTICATED=true
 ```
 
-Never commit the API key. Rotate the key if it is pasted into chat, logs, screenshots, or Git history.
+API billing is separate from the subscription. `GROK_API_KEY` is optional and should be used only
+when API-based automation is intentionally required.
 
 ## Project commands
 
 ```bash
 pnpm grok:version
-pnpm grok:verify
 ```
 
 For a read-only review without patient data:
 
 ```bash
-grok --directory . --prompt "Review the application architecture. Do not read .env, data files, patient records, or secrets."
+grok --cwd . --permission-mode plan \
+  "Review the application architecture. Do not read .env, data files, patient records, or secrets."
 ```
 
 ## Allowed use
@@ -55,5 +57,5 @@ administration/development machine. If the production server needs repository ve
 restricted service account, sandbox mode where supported, and a sanitized checkout without patient
 data.
 
-The Integration page checks the CLI version and whether `GROK_API_KEY` exists. It never returns the
-key value to the browser.
+The Integration page checks the official CLI first. It never reads or returns OAuth credentials or
+API key values to the browser.

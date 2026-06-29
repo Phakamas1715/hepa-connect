@@ -16,8 +16,7 @@
     "hermes:setup": "hermes setup",
     "hermes:status": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/hermes-status.ps1",
     "hermes:ask": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/hermes-hepa-oneshot.ps1",
-    "grok:version": "grok --version",
-    "grok:verify": "grok --verify"
+    "grok:version": "grok --version"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

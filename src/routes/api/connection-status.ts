@@ -8,7 +8,7 @@ type CheckState = "ready" | "partial" | "blocked" | "not_configured";
 
 const execFileAsync = promisify(execFile);
 const HERMES_AGENT_REPO = "https://github.com/NousResearch/hermes-agent";
-const GROK_CLI_REPO = "https://github.com/superagent-ai/grok-cli";
+const GROK_BUILD_URL = "https://x.ai/cli";
 
 function hermesModelReady() {
   return Boolean(
@@ -79,31 +79,48 @@ async function findGrokVersion() {
   const explicitPath = serverEnv("GROK_CLI_PATH");
   if (explicitPath) return runGrokVersion(explicitPath);
 
+  const home = process.env.HOME || process.env.USERPROFILE;
+  if (home) {
+    try {
+      return await runGrokVersion(`${home}/.grok/bin/grok`);
+    } catch {
+      // Fall through to PATH for installations managed outside the user account.
+    }
+  }
+
   try {
     return await runGrokVersion("grok");
   } catch {
-    const home = process.env.HOME || process.env.USERPROFILE;
-    if (home) return runGrokVersion(`${home}/.bun/bin/grok`);
     throw new Error("Grok CLI not found");
   }
 }
 
 async function getGrokStatus(): Promise<{ state: CheckState; detail: string }> {
   const apiKeyReady = Boolean(serverEnv("GROK_API_KEY"));
+  const subscriptionReady = serverEnv("GROK_SUBSCRIPTION_AUTHENTICATED") === "true";
   try {
     const version = await findGrokVersion();
+    const officialBuild = version.toLowerCase().startsWith("grok ");
+
+    if (officialBuild) {
+      return {
+        state: subscriptionReady ? "ready" : "partial",
+        detail: subscriptionReady
+          ? `Grok Build ${version} ตัวทางการ ติดตั้งและยืนยันบัญชี SuperGrok/X Premium+ แล้ว`
+          : `Grok Build ${version} ตัวทางการติดตั้งแล้ว ให้เปิด terminal และ login ด้วยบัญชี SuperGrok/X Premium+`,
+      };
+    }
+
     return {
       state: apiKeyReady ? "ready" : "partial",
       detail: apiKeyReady
-        ? `Grok CLI ${version} ติดตั้งแล้วและพบ GROK_API_KEY สำหรับงานพัฒนา/ตรวจระบบ`
-        : `Grok CLI ${version} ติดตั้งแล้ว แต่ยังไม่มี GROK_API_KEY จึงยังเรียกโมเดลไม่ได้`,
+        ? `Community Grok CLI ${version} ติดตั้งแล้วและพบ GROK_API_KEY`
+        : `Community Grok CLI ${version} ติดตั้งแล้ว แต่แพ็กเกจสมาชิกใช้กับตัวนี้ไม่ได้ ให้ติดตั้ง Grok Build ตัวทางการ`,
     };
   } catch {
     return {
-      state: apiKeyReady ? "partial" : "not_configured",
-      detail: apiKeyReady
-        ? "พบ GROK_API_KEY แต่ยังเรียก Grok CLI ไม่ได้ ให้กำหนด GROK_CLI_PATH"
-        : `ยังไม่พบ Grok CLI ติดตั้งจาก ${GROK_CLI_REPO} และตั้ง GROK_API_KEY เฉพาะ environment`,
+      state: "not_configured",
+      detail: `ยังไม่พบ Grok Build ตัวทางการ ติดตั้งจาก ${GROK_BUILD_URL} แล้ว login ด้วยบัญชี SuperGrok/X Premium+`,
     };
   }
 }
