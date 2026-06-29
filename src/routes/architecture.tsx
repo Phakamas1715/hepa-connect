@@ -1,19 +1,19 @@
 import { createFileRoute } from "@tanstack/react-router";
 import {
-  AlertTriangle,
   BellRing,
   Bot,
   CheckCircle2,
   Cloud,
-  Database,
+  ClipboardList,
   FileCheck2,
   HeartPulse,
   Hospital,
   MessageCircle,
-  Network,
+  QrCode,
   ScanLine,
   ShieldCheck,
   Stethoscope,
+  Users,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,7 +24,7 @@ export const Route = createFileRoute("/architecture")({
       { title: "สถาปัตยกรรมระบบ — HEPA-GLUE Engine" },
       {
         name: "description",
-        content: "แผนภาพ Data Flow และสถานะการเชื่อมต่อจริงของ HEPA-GLUE Engine",
+        content: "Data Flow งานคัดกรองไวรัสตับอักเสบแบบใช้รายชื่อเป้าหมายและ QR scan โดย รพ.สต.",
       },
     ],
   }),
@@ -33,93 +33,94 @@ export const Route = createFileRoute("/architecture")({
 
 const statusItems = [
   {
-    title: "หน้าเว็บ local",
-    status: "พร้อมใช้งาน",
-    detail: "แดชบอร์ดและหน้า architecture รันอยู่บน localhost:5174",
-    icon: CheckCircle2,
+    title: "รายชื่อเป้าหมายกลาง",
+    status: "เป็นแหล่งข้อมูลหลัก",
+    detail: "ระบบใช้รายชื่อที่จัดทำและ mapping ให้แต่ละ รพ.สต. ไม่ดึงคัดกรองจาก JHCIS เป็นหลัก",
+    icon: ClipboardList,
     tone: "border-emerald-200 bg-emerald-50 text-emerald-800",
   },
   {
-    title: "Smart Query server",
-    status: "เชื่อมได้บางส่วน",
-    detail: "ล็อกอิน demo admin ได้ และดึง OPD/IPD preview ผ่าน API ได้",
-    icon: CheckCircle2,
+    title: "QR Scan โดย รพ.สต.",
+    status: "ลดการพิมพ์ซ้ำ",
+    detail: "เจ้าหน้าที่เลือกหรือสแกนจากรายชื่อเป้าหมาย แล้วบันทึกผล rapid test เข้า HEPA โดยตรง",
+    icon: QrCode,
     tone: "border-sky-200 bg-sky-50 text-sky-800",
   },
   {
-    title: "HOSxP MySQL ตรง",
-    status: "ยังถูก block",
-    detail: "server ตอบกลับว่า host เครื่องนี้ไม่ได้รับอนุญาตให้ต่อ MariaDB",
-    icon: AlertTriangle,
-    tone: "border-amber-200 bg-amber-50 text-amber-900",
+    title: "LINE น้ำพองรักตับ",
+    status: "พร้อม closed loop",
+    detail: "ใช้ผูกตัวตนผู้ป่วย ส่งนัด แจ้งเตือน และติดตาม care gap หลังคัดกรอง",
+    icon: MessageCircle,
+    tone: "border-teal-200 bg-teal-50 text-teal-800",
   },
   {
-    title: "Lab HBsAg / HCV RNA",
-    status: "ต้องเพิ่ม endpoint หรือสิทธิ์",
-    detail: "dataset ที่เข้าถึงได้ตอนนี้ยังไม่มี lab_order สำหรับไวรัสตับอักเสบโดยตรง",
-    icon: AlertTriangle,
-    tone: "border-orange-200 bg-orange-50 text-orange-900",
+    title: "ผลยืนยันโรงพยาบาล",
+    status: "ใช้เมื่อจำเป็น",
+    detail: "HOSxP/Lab ใช้ยืนยันผลหลัง rapid test หรือปิด loop การรักษา ไม่ใช่จุดเริ่มต้นของรายชื่อคัดกรอง",
+    icon: Hospital,
+    tone: "border-amber-200 bg-amber-50 text-amber-900",
   },
 ];
 
 const sources = [
   {
-    title: "รพ.สต. / อสม.",
-    subtitle: "คัดกรอง Rapid Test ในชุมชน",
-    icon: ScanLine,
+    title: "รายชื่อที่เราจัดทำ",
+    subtitle: "HN/CID/ชื่อ/หมู่บ้าน/ตำบล/รพ.สต.รับผิดชอบ",
+    icon: Users,
     tone: "bg-emerald-50 text-emerald-700 border-emerald-200",
-    points: ["HBsAg / Anti-HCV", "กลุ่มเป้าหมายเกิดก่อนปี 2535", "ส่งผลเข้าระบบกลางแบบ zero-typing"],
+    points: ["แยกตาม รพ.สต. 18 หน่วย", "สร้าง QR เฉพาะราย", "ไม่ต้องค้นจาก JHCIS ตอนออกคัดกรอง"],
   },
   {
-    title: "HOSxP โรงพยาบาล",
-    subtitle: "ผลยืนยันจากห้องแล็บ",
-    icon: Hospital,
+    title: "รพ.สต. สแกนและบันทึก",
+    subtitle: "หน้างานส่งผลคัดกรองเข้า HEPA โดยตรง",
+    icon: ScanLine,
     tone: "bg-sky-50 text-sky-700 border-sky-200",
-    points: ["ELISA / HCV RNA", "รับ lab event หรือ query เฉพาะช่วง", "ต้องมีสิทธิ์ต่อ DB/API ที่ถูกต้อง"],
+    points: ["เลือก HBsAg / Anti-HCV", "ระบุวันที่และผู้บันทึก", "ลดการพิมพ์ HN/CID ซ้ำ"],
   },
 ];
 
 const cloudNodes = [
-  { title: "Local Agent", desc: "อ่านข้อมูลจาก JHCIS/HOSxP แล้วส่งขึ้น cloud ผ่าน HTTPS", icon: Network },
-  { title: "HEPA-GLUE Cloud", desc: "รวม care gap, persona, cascade และสถานะ linkage to care", icon: Cloud },
-  { title: "AI Decision Layer", desc: "ประเมินผลบวก ค้างนัด และเลือก behavioral nudge ตามบริบท", icon: Bot },
+  { title: "HEPA Target Registry", desc: "เก็บรายชื่อเป้าหมายและ mapping รพ.สต./ตำบล/หมู่บ้าน", icon: ClipboardList },
+  { title: "HEPA-GLUE Cloud", desc: "รวมผลคัดกรอง, care gap, persona, cascade และสถานะ linkage to care", icon: Cloud },
+  { title: "AI Decision Layer", desc: "จัดลำดับความเสี่ยง เลือก action ถัดไป และสร้าง LINE follow-up", icon: Bot },
 ];
 
 const outputs = [
-  { title: "LINE น้ำพองรักตับ", desc: "แจ้ง อสม. และผู้ป่วย พร้อม QR/ใบนัด เมื่อเชื่อม LINE channel แล้ว", icon: MessageCircle },
-  { title: "MOPH Auto Reporting", desc: "เตรียมข้อมูล Hep-BC-DDC, D506 และ DOE ด้วยรหัสหน่วย 11000", icon: FileCheck2 },
+  { title: "แดชบอร์ดผู้บริหาร", desc: "เห็นยอดเป้าหมาย คัดกรอง ผลบวก และ care gap แยกตาม รพ.สต.", icon: HeartPulse },
+  { title: "LINE Closed Loop", desc: "ส่งลิงก์/นัด/แจ้งเตือนผู้ป่วยและ อสม. จากสถานะจริง", icon: MessageCircle },
+  { title: "รายงาน MOPH", desc: "เตรียมข้อมูลรายงานหลังตรวจสอบความถูกต้อง ไม่บันทึกกลับ HOSxP โดยตรง", icon: FileCheck2 },
 ];
 
 const sequence = [
-  ["1", "คัดกรองในชุมชน", "อสม. ตรวจ Rapid Test และบันทึกผลผ่านระบบที่กำหนด"],
-  ["2", "Agent อ่านข้อมูล", "ดึง rapid result จาก JHCIS และผลยืนยันจาก HOSxP/API"],
-  ["3", "Cloud วิเคราะห์ care gap", "ตรวจคนที่ผลบวกแต่ยังไม่มีผลยืนยัน หรือขาดนัดเกินเกณฑ์"],
-  ["4", "ส่ง nudge", "เลือกข้อความตาม persona แล้วส่งผ่าน LINE Bot"],
-  ["5", "กลับมาตรวจยืนยัน", "ผู้ป่วยเข้ารับการเจาะเลือดดำที่โรงพยาบาล"],
-  ["6", "อัปเดตผล lab", "HCV RNA / HBsAg ถูก sync กลับเข้า HEPA-GLUE"],
-  ["7", "รายงานประเทศ", "จัดรูปแบบและส่งข้อมูลเข้า DDC/D506/DOE"],
-  ["8", "ปิดลูปการรักษา", "อัปเดตสถานะรักษา นัดรับยา และตัวชี้วัด cascade"],
+  ["1", "เตรียมรายชื่อเป้าหมาย", "นำรายชื่อที่มีอยู่มา mapping รพ.สต./ตำบล/หมู่บ้าน และสร้างรายการคัดกรอง"],
+  ["2", "แจก QR/ลิงก์ให้ รพ.สต.", "แต่ละหน่วยเปิดรายชื่อของตัวเองหรือสแกน QR จากระบบ HEPA"],
+  ["3", "สแกนหน้างาน", "เจ้าหน้าที่เลือกผู้ป่วยจากรายชื่อเดิม ระบบรู้ HN/CID/พื้นที่อยู่แล้ว"],
+  ["4", "บันทึกผล rapid test", "ส่งผล HBsAg และ Anti-HCV เข้า HEPA โดยตรง พร้อมวันที่และผู้บันทึก"],
+  ["5", "ระบบหา care gap", "แยกผลบวก/รอ confirm/ยังไม่ผูก LINE/ยังไม่พบแพทย์"],
+  ["6", "ส่ง LINE ติดตาม", "สร้าง QR ผูก LINE หรือส่ง nudge ตาม persona โดยมี audit log"],
+  ["7", "ยืนยันที่โรงพยาบาล", "เฉพาะรายที่ต้อง confirm lab หรือเข้าสู่การรักษา จึงใช้ HOSxP/Lab ปิด loop"],
+  ["8", "ขึ้นแดชบอร์ดและรายงาน", "ผู้บริหารเห็นยอดรายหน่วย และเตรียมรายงาน MOPH/ILI ตามรอบ"],
 ];
 
 const pillars = [
   {
-    title: "Zero-Typing Screening",
-    desc: "ลดงานกรอกซ้ำของคนหน้างาน โดยให้ข้อมูลวิ่งจาก workflow เดิมหรือ LINE quick action",
-    icon: ScanLine,
+    title: "Prepared Target List",
+    desc: "เริ่มจากรายชื่อที่เราทำไว้ ไม่ต้องรอ query จาก JHCIS ตอนปฏิบัติงาน",
+    icon: ClipboardList,
   },
   {
-    title: "Smart Data Agent",
-    desc: "ทำงานเบื้องหลังเพื่อรวมข้อมูลจาก JHCIS, HOSxP และ server API อย่างเป็นรอบ",
-    icon: Database,
+    title: "Scan-First Workflow",
+    desc: "รพ.สต. สแกนหรือเลือกจากรายชื่อเดิม ระบบเติมข้อมูลคนไข้ให้ ลดการพิมพ์และลดผิดคน",
+    icon: QrCode,
   },
   {
     title: "Automated Follow-up",
-    desc: "AI จัดกลุ่ม persona แล้วช่วยสั่ง nudge เพื่อพาผู้ป่วยกลับเข้าสู่การตรวจยืนยันและรักษา",
+    desc: "ผลบวกหรือขาดขั้นตอนถัดไปจะเข้าคิว LINE/เจ้าหน้าที่/อสม. อัตโนมัติ",
     icon: BellRing,
   },
   {
-    title: "National Reporting",
-    desc: "ลดภาระคีย์รายงานซ้ำ โดยเตรียม payload สำหรับส่งเข้าระบบกระทรวง",
+    title: "Guarded Reporting",
+    desc: "รายงานและ dashboard ใช้ข้อมูลที่ส่งเข้า HEPA พร้อมตรวจสอบก่อนส่งออกภายนอก",
     icon: ShieldCheck,
   },
 ];
@@ -133,11 +134,10 @@ function ArchitecturePage() {
         </Badge>
         <div className="max-w-3xl">
           <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-            สถาปัตยกรรมระบบและการไหลของข้อมูล
+            Data Flow แบบใช้รายชื่อเป้าหมายและ QR scan
           </h1>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">
-            ภาพรวมระบบปิดลูปสำหรับงานไวรัสตับอักเสบ B/C ตั้งแต่คัดกรองในชุมชน,
-            ยืนยันผลในโรงพยาบาล, แจ้งเตือนผ่าน LINE และส่งรายงานเข้าสู่ระบบกระทรวง
+            ระบบนี้ไม่ใช้ JHCIS เป็นแหล่งคัดกรองหลัก แต่เริ่มจากรายชื่อที่เราจัดทำให้แต่ละ รพ.สต. จากนั้นให้หน้างานสแกน/เลือกผู้ป่วยและส่งผลคัดกรองเข้า HEPA โดยตรง
           </p>
         </div>
       </header>
