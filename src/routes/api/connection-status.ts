@@ -1,5 +1,4 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { existsSync } from "node:fs";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { serverEnv } from "@/lib/server-env";
@@ -8,33 +7,103 @@ import { getKumhosHosxpProxyStatus } from "@/lib/kumhos-client";
 type CheckState = "ready" | "partial" | "blocked" | "not_configured";
 
 const execFileAsync = promisify(execFile);
+const HERMES_AGENT_REPO = "https://github.com/NousResearch/hermes-agent";
+const GROK_CLI_REPO = "https://github.com/superagent-ai/grok-cli";
 
-async function getHermesStatus(): Promise<{ state: CheckState; detail: string }> {
-  const localAppData = process.env.LOCALAPPDATA;
-  if (!localAppData) {
-    return { state: "not_configured", detail: "ตรวจ Hermes Agent ได้เฉพาะเครื่อง Windows local; บน VPS ถือเป็น optional" };
-  }
+function hermesModelReady() {
+  return Boolean(
+    serverEnv("NOUS_API_KEY") ||
+    serverEnv("OPENROUTER_API_KEY") ||
+    serverEnv("OPENAI_API_KEY") ||
+    serverEnv("GLM_API_KEY") ||
+    serverEnv("ZAI_API_KEY") ||
+    serverEnv("Z_AI_API_KEY"),
+  );
+}
 
-  const hermesExe = `${localAppData}\\hermes\\hermes-agent\\venv\\Scripts\\hermes.exe`;
-  if (!existsSync(hermesExe)) {
-    return { state: "not_configured", detail: "ยังไม่พบ hermes.exe ในเครื่องนี้" };
+async function runHermesVersion(command: string) {
+  const { stdout } = await execFileAsync(command, ["version"], { timeout: 10_000 });
+  return stdout.split(/\r?\n/).find((line) => line.trim().startsWith("Hermes Agent"));
+}
+
+async function findHermesVersion() {
+  const explicitPath = serverEnv("HERMES_CLI_PATH");
+  if (explicitPath) {
+    return runHermesVersion(explicitPath);
   }
 
   try {
-    const { stdout } = await execFileAsync(hermesExe, ["version"], { timeout: 10_000 });
-    const versionLine = stdout.split(/\r?\n/).find((line) => line.trim().startsWith("Hermes Agent"));
-    const zaiReady = Boolean(serverEnv("GLM_API_KEY") || serverEnv("ZAI_API_KEY") || serverEnv("Z_AI_API_KEY"));
+    return await runHermesVersion("hermes");
+  } catch {
+    // Fall through to the Windows installer path used by the native Hermes installer.
+  }
+
+  const localAppData = process.env.LOCALAPPDATA;
+  if (localAppData) {
+    return runHermesVersion(`${localAppData}\\hermes\\hermes-agent\\venv\\Scripts\\hermes.exe`);
+  }
+
+  throw new Error("Hermes CLI not found");
+}
+
+async function getHermesStatus(): Promise<{ state: CheckState; detail: string }> {
+  const modelReady = hermesModelReady();
+  try {
     return {
-      state: zaiReady ? "ready" : "partial",
-      detail: zaiReady
-        ? `${versionLine || "Hermes Agent ติดตั้งแล้ว"} และตั้งค่า Z.AI/GLM provider แล้ว`
-        : `${versionLine || "Hermes Agent ติดตั้งแล้ว"} แต่ยังไม่พบ Z.AI/GLM API key ใน env`,
+      state: modelReady ? "ready" : "partial",
+      detail: modelReady
+        ? `${(await findHermesVersion()) || "Hermes Agent ติดตั้งแล้ว"} จาก NousResearch และตั้งค่า model provider แล้ว`
+        : `${(await findHermesVersion()) || "Hermes Agent ติดตั้งแล้ว"} จาก NousResearch แต่ยังไม่พบ provider API key ใน env`,
     };
   } catch {
-    const zaiReady = Boolean(serverEnv("GLM_API_KEY") || serverEnv("ZAI_API_KEY") || serverEnv("Z_AI_API_KEY"));
+    if (modelReady) {
+      return {
+        state: "partial",
+        detail: `พบ provider API key แล้ว แต่ยังเรียก Hermes CLI ไม่ได้ ให้ติดตั้งจาก ${HERMES_AGENT_REPO} หรือกำหนด HERMES_CLI_PATH`,
+      };
+    }
+
     return {
-      state: zaiReady ? "ready" : "partial",
-      detail: zaiReady ? "พบ Hermes Agent และตั้งค่า Z.AI/GLM provider แล้ว" : "พบ hermes.exe แล้ว แต่ยังไม่พบ Z.AI/GLM API key ใน env",
+      state: "not_configured",
+      detail: `ยังไม่พบ Hermes CLI และ provider API key ให้ติดตั้งจาก ${HERMES_AGENT_REPO} แล้วตั้งค่า NOUS_API_KEY/OpenRouter/OpenAI หรือ Z.AI`,
+    };
+  }
+}
+
+async function runGrokVersion(command: string) {
+  const { stdout } = await execFileAsync(command, ["--version"], { timeout: 10_000 });
+  return stdout.trim();
+}
+
+async function findGrokVersion() {
+  const explicitPath = serverEnv("GROK_CLI_PATH");
+  if (explicitPath) return runGrokVersion(explicitPath);
+
+  try {
+    return await runGrokVersion("grok");
+  } catch {
+    const home = process.env.HOME || process.env.USERPROFILE;
+    if (home) return runGrokVersion(`${home}/.bun/bin/grok`);
+    throw new Error("Grok CLI not found");
+  }
+}
+
+async function getGrokStatus(): Promise<{ state: CheckState; detail: string }> {
+  const apiKeyReady = Boolean(serverEnv("GROK_API_KEY"));
+  try {
+    const version = await findGrokVersion();
+    return {
+      state: apiKeyReady ? "ready" : "partial",
+      detail: apiKeyReady
+        ? `Grok CLI ${version} ติดตั้งแล้วและพบ GROK_API_KEY สำหรับงานพัฒนา/ตรวจระบบ`
+        : `Grok CLI ${version} ติดตั้งแล้ว แต่ยังไม่มี GROK_API_KEY จึงยังเรียกโมเดลไม่ได้`,
+    };
+  } catch {
+    return {
+      state: apiKeyReady ? "partial" : "not_configured",
+      detail: apiKeyReady
+        ? "พบ GROK_API_KEY แต่ยังเรียก Grok CLI ไม่ได้ ให้กำหนด GROK_CLI_PATH"
+        : `ยังไม่พบ Grok CLI ติดตั้งจาก ${GROK_CLI_REPO} และตั้ง GROK_API_KEY เฉพาะ environment`,
     };
   }
 }
@@ -70,7 +139,10 @@ async function getLineStatus(): Promise<{ state: CheckState; detail: string }> {
       detail: `${name}${basicId} ตรวจ token ผ่านแล้ว${pushEnabled ? " และเปิดโหมดส่งจริง" : " แต่ยังไม่ได้เปิด LINE_PUSH_ENABLED=true"}`,
     };
   } catch {
-    return { state: "blocked", detail: "เรียก LINE Bot Info API ไม่สำเร็จ กรุณาตรวจอินเทอร์เน็ตหรือ token" };
+    return {
+      state: "blocked",
+      detail: "เรียก LINE Bot Info API ไม่สำเร็จ กรุณาตรวจอินเทอร์เน็ตหรือ token",
+    };
   }
 }
 
@@ -112,7 +184,9 @@ async function getHosxpBridgeStatus(): Promise<{ state: CheckState; detail: stri
       };
     }
 
-    const hasTables = Boolean(payload.tables?.lab_head && payload.tables?.lab_order && payload.tables?.patient);
+    const hasTables = Boolean(
+      payload.tables?.lab_head && payload.tables?.lab_order && payload.tables?.patient,
+    );
     return {
       state: hasTables ? "ready" : "partial",
       detail: hasTables
@@ -145,15 +219,65 @@ async function getKumhosProxyStatus(): Promise<{ state: CheckState; detail: stri
   }
 }
 
+async function getAppointmentStatus(): Promise<{ state: CheckState; detail: string }> {
+  const appointmentUrl = serverEnv("NPH_APPOINTMENT_URL");
+  const username = serverEnv("NPH_APPOINTMENT_USERNAME");
+  const password = serverEnv("NPH_APPOINTMENT_PASSWORD");
+
+  if (!appointmentUrl) {
+    return {
+      state: "not_configured",
+      detail: "ยังไม่ได้ตั้งค่า NPH_APPOINTMENT_URL สำหรับระบบนัดหมาย",
+    };
+  }
+
+  try {
+    const response = await fetch(appointmentUrl, {
+      redirect: "manual",
+      signal: AbortSignal.timeout(8_000),
+    });
+    const loginRedirect =
+      response.status >= 300 &&
+      response.status < 400 &&
+      response.headers.get("location")?.includes("login");
+    const reachable = response.ok || loginRedirect;
+    if (!reachable) {
+      return {
+        state: "blocked",
+        detail: `ระบบนัดหมายตอบกลับ ${response.status}; ตรวจ URL หรือ network ไป 192.168.215.18`,
+      };
+    }
+
+    if (username && password) {
+      return {
+        state: "ready",
+        detail: "เข้าถึงระบบนัดหมายได้ และมี credential ใน env แล้ว",
+      };
+    }
+
+    return {
+      state: "partial",
+      detail: "เข้าถึงระบบนัดหมายได้ แต่ยังไม่ได้ตั้งค่า NPH_APPOINTMENT_USERNAME/PASSWORD",
+    };
+  } catch (error) {
+    return {
+      state: "blocked",
+      detail: `ยังเรียกระบบนัดหมายไม่สำเร็จ: ${error instanceof Error ? error.message : "unknown error"}`,
+    };
+  }
+}
+
 export const Route = createFileRoute("/api/connection-status")({
   server: {
     handlers: {
       GET: async () => {
-        const [hermes, line, hosxpBridge, kumhosProxy] = await Promise.all([
+        const [hermes, grok, line, hosxpBridge, kumhosProxy, appointment] = await Promise.all([
           getHermesStatus(),
+          getGrokStatus(),
           getLineStatus(),
           getHosxpBridgeStatus(),
           getKumhosProxyStatus(),
+          getAppointmentStatus(),
         ]);
 
         const checks: Array<{
@@ -172,7 +296,8 @@ export const Route = createFileRoute("/api/connection-status")({
             id: "rphst_scan",
             name: "รพ.สต. scan workflow",
             state: "ready",
-            detail: "พร้อมสร้าง QR/ลิงก์จากรายชื่อเดิม ให้ รพ.สต. สแกนและบันทึกผล rapid test เข้า HEPA โดยตรง",
+            detail:
+              "พร้อมสร้าง QR/ลิงก์จากรายชื่อเดิม ให้ รพ.สต. สแกนและบันทึกผล rapid test เข้า HEPA โดยตรง",
           },
           {
             id: "line_bot",
@@ -182,9 +307,15 @@ export const Route = createFileRoute("/api/connection-status")({
           },
           {
             id: "hermes_zai",
-            name: "Hermes Agent + Z.AI",
+            name: "Hermes Agent provider",
             state: hermes.state,
             detail: hermes.detail,
+          },
+          {
+            id: "grok_cli",
+            name: "Grok CLI developer agent",
+            state: grok.state,
+            detail: `${grok.detail} · ไม่ส่ง CID/HN หรือข้อมูลสุขภาพจริงออกไปใน prompt`,
           },
           {
             id: "hosxp_bridge",
@@ -197,6 +328,12 @@ export const Route = createFileRoute("/api/connection-status")({
             name: "KUMHOS HOSxP proxy",
             state: kumhosProxy.state,
             detail: kumhosProxy.detail,
+          },
+          {
+            id: "nph_appointment",
+            name: "ระบบนัดหมาย NPH",
+            state: appointment.state,
+            detail: appointment.detail,
           },
           {
             id: "moph_production",

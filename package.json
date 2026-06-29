@@ -11,8 +11,13 @@
     "preview": "vite preview",
     "lint": "eslint .",
     "format": "prettier --write .",
+    "hermes:version": "hermes version",
+    "hermes:doctor": "hermes doctor",
+    "hermes:setup": "hermes setup",
     "hermes:status": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/hermes-status.ps1",
-    "hermes:ask": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/hermes-hepa-oneshot.ps1"
+    "hermes:ask": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/hermes-hepa-oneshot.ps1",
+    "grok:version": "grok --version",
+    "grok:verify": "grok --verify"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

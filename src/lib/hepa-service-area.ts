@@ -14,12 +14,27 @@ export type HepaServiceArea = HepaServiceUnit & {
   coverageNote?: string;
 };
 
+const HOSPITAL_NAMPHONG: HepaServiceUnit = {
+  code: "NPH",
+  unitName: "โรงพยาบาลน้ำพอง",
+  unitType: "hospital",
+};
+
 export const HEPA_PRIMARY_CARE_UNITS: HepaServiceUnit[] = [
   { code: "SM", unitName: "โรงพยาบาลส่งเสริมสุขภาพตำบลทรายมูล", unitType: "primary_care" },
   { code: "BY", unitName: "โรงพยาบาลส่งเสริมสุขภาพตำบลบัวใหญ่", unitType: "primary_care" },
   { code: "BL", unitName: "โรงพยาบาลส่งเสริมสุขภาพตำบลบ้านเหล่าใหญ่", unitType: "primary_care" },
   { code: "NK", unitName: "โรงพยาบาลส่งเสริมสุขภาพตำบลหนองกุง", unitType: "primary_care" },
-  { code: "NP", unitName: "โรงพยาบาลส่งเสริมสุขภาพตำบลน้ำพอง", unitType: "primary_care" },
+  {
+    code: "NP",
+    unitName: "โรงพยาบาลส่งเสริมสุขภาพตำบลน้ำพอง (เขตน้ำพอง)",
+    unitType: "primary_care",
+  },
+  {
+    code: "NPGKS",
+    unitName: "โรงพยาบาลส่งเสริมสุขภาพตำบลน้ำพอง (เขตกุดน้ำใส)",
+    unitType: "primary_care",
+  },
   { code: "WC", unitName: "โรงพยาบาลส่งเสริมสุขภาพตำบลวังชัย", unitType: "primary_care" },
   { code: "KB", unitName: "โรงพยาบาลส่งเสริมสุขภาพตำบลบ้านคำบง", unitType: "primary_care" },
   { code: "NW", unitName: "โรงพยาบาลส่งเสริมสุขภาพตำบลบ้านหนองหว้า", unitType: "primary_care" },
@@ -29,17 +44,20 @@ export const HEPA_PRIMARY_CARE_UNITS: HepaServiceUnit[] = [
   { code: "KY", unitName: "โรงพยาบาลส่งเสริมสุขภาพตำบลโคกใหญ่", unitType: "primary_care" },
   { code: "NS", unitName: "โรงพยาบาลส่งเสริมสุขภาพตำบลนาศรี", unitType: "primary_care" },
   { code: "BK", unitName: "โรงพยาบาลส่งเสริมสุขภาพตำบลบ้านขาม", unitType: "primary_care" },
-  { code: "KK", unitName: "โรงพยาบาลส่งเสริมสุขภาพตำบลคำแก่นคูณ", unitType: "primary_care" },
+  {
+    code: "KMW",
+    unitName: "โรงพยาบาลส่งเสริมสุขภาพตำบลคำแก่นคูณ (เขตม่วงหวาน)",
+    unitType: "primary_care",
+  },
+  {
+    code: "KNK",
+    unitName: "โรงพยาบาลส่งเสริมสุขภาพตำบลคำแก่นคูณ (เขตหนองกุง)",
+    unitType: "primary_care",
+  },
   { code: "BN", unitName: "โรงพยาบาลส่งเสริมสุขภาพตำบลบัวเงิน", unitType: "primary_care" },
   { code: "KS", unitName: "โรงพยาบาลส่งเสริมสุขภาพตำบลกุดน้ำใส", unitType: "primary_care" },
   { code: "PT", unitName: "โรงพยาบาลส่งเสริมสุขภาพตำบลพังทุย", unitType: "primary_care" },
 ];
-
-const HOSPITAL_NAMPHONG: HepaServiceUnit = {
-  code: "NPH",
-  unitName: "โรงพยาบาลน้ำพอง",
-  unitType: "hospital",
-};
 
 function unit(code: string) {
   const found = HEPA_PRIMARY_CARE_UNITS.find((item) => item.code === code);
@@ -48,14 +66,31 @@ function unit(code: string) {
 }
 
 export const HEPA_SERVICE_AREAS: HepaServiceArea[] = [
-  { ...HOSPITAL_NAMPHONG, subdistrict: "น้ำพอง", villages: [1, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 15, 16, 17], coverageNote: "พื้นที่โรงพยาบาลน้ำพอง ไม่รวมใน 18 รพ.สต." },
+  {
+    ...HOSPITAL_NAMPHONG,
+    subdistrict: "น้ำพอง",
+    villages: [1, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 15, 16, 17],
+  },
   { ...unit("SM"), subdistrict: "ทรายมูล", villages: [1, 2, 3, 7, 8, 9, 11] },
-  { ...unit("BY"), subdistrict: "บัวใหญ่", villages: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17] },
+  {
+    ...unit("BY"),
+    subdistrict: "บัวใหญ่",
+    villages: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17],
+  },
   { ...unit("BL"), subdistrict: "บ้านขาม", villages: [8, 11, 12, 13] },
-  { ...unit("NK"), subdistrict: "หนองกุง", villages: [1, 2, 3, 4, 5, 6, 9, 10, 11] },
+  { ...unit("NK"), subdistrict: "หนองกุง", villages: [1, 2, 3, 4, 5, 6, 8, 9, 10, 11] },
   { ...unit("NP"), subdistrict: "น้ำพอง", villages: [2, 13], coverageNote: "เขตน้ำพอง" },
-  { ...unit("NP"), subdistrict: "กุดน้ำใส", villages: [6, 7, 8, 9], coverageNote: "เขตกุดน้ำใส" },
-  { ...unit("WC"), subdistrict: "วังชัย", villages: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16] },
+  {
+    ...unit("NPGKS"),
+    subdistrict: "กุดน้ำใส",
+    villages: [6, 7, 8, 9],
+    coverageNote: "เขตกุดน้ำใส",
+  },
+  {
+    ...unit("WC"),
+    subdistrict: "วังชัย",
+    villages: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16],
+  },
   { ...unit("KB"), subdistrict: "สะอาด", villages: [6, 7, 8, 9, 11, 13, 14] },
   { ...unit("NW"), subdistrict: "ทรายมูล", villages: [4, 5, 6, 10] },
   { ...unit("TM"), subdistrict: "ท่ากระเสริม", villages: [6, 7, 8, 9] },
@@ -64,9 +99,18 @@ export const HEPA_SERVICE_AREAS: HepaServiceArea[] = [
   { ...unit("KY"), subdistrict: "บัวเงิน", villages: [8, 9, 11, 13] },
   { ...unit("NS"), subdistrict: "สะอาด", villages: [1, 2, 3, 4, 5, 10, 12] },
   { ...unit("BK"), subdistrict: "บ้านขาม", villages: [1, 2, 3, 4, 5, 6, 7, 9, 10] },
-  { ...unit("KK"), subdistrict: "ม่วงหวาน", villages: [5, 6, 7, 8, 10], coverageNote: "เขตม่วงหวาน" },
-  { ...unit("KK"), subdistrict: "หนองกุง", villages: [8], coverageNote: "เขตหนองกุง" },
-  { ...unit("BN"), subdistrict: "บัวเงิน", villages: [1, 2, 3, 4, 5, 6, 7, 10, 12, 14, 15, 16, 17] },
+  {
+    ...unit("KMW"),
+    subdistrict: "ม่วงหวาน",
+    villages: [5, 6, 7, 8, 10],
+    coverageNote: "เขตม่วงหวาน",
+  },
+  { ...unit("KNK"), subdistrict: "หนองกุง", villages: [8], coverageNote: "เขตหนองกุง" },
+  {
+    ...unit("BN"),
+    subdistrict: "บัวเงิน",
+    villages: [1, 2, 3, 4, 5, 6, 7, 10, 12, 14, 15, 16, 17],
+  },
   { ...unit("KS"), subdistrict: "กุดน้ำใส", villages: [1, 2, 3, 4, 5, 10] },
   { ...unit("PT"), subdistrict: "พังทุย", villages: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13] },
 ];
@@ -86,6 +130,9 @@ export function resolveHepaServiceArea(input: Pick<Patient, "subdistrict" | "vil
   const villageNo = normalizeVillageNo(input.village);
   if (!subdistrict || villageNo === null) return null;
 
-  const matches = HEPA_SERVICE_AREAS.filter((area) => normalizeThaiText(area.subdistrict) === subdistrict && area.villages.includes(villageNo));
+  const matches = HEPA_SERVICE_AREAS.filter(
+    (area) =>
+      normalizeThaiText(area.subdistrict) === subdistrict && area.villages.includes(villageNo),
+  );
   return matches.at(-1) ?? null;
 }

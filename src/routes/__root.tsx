@@ -47,7 +47,9 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
-        <h1 className="text-xl font-semibold tracking-tight text-foreground">โหลดหน้านี้ไม่สำเร็จ</h1>
+        <h1 className="text-xl font-semibold tracking-tight text-foreground">
+          โหลดหน้านี้ไม่สำเร็จ
+        </h1>
         <p className="mt-2 text-sm text-muted-foreground">
           ระบบขัดข้องชั่วคราว ลองโหลดใหม่หรือกลับไปหน้าแดชบอร์ด
         </p>
@@ -137,10 +139,10 @@ function AppLayout() {
     <SidebarProvider>
       <AppSidebar />
       <SidebarInset className="min-w-0">
-        <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b border-border bg-background/80 px-4 backdrop-blur-md">
-          <SidebarTrigger />
-          <div className="ml-2 flex min-w-0 items-center gap-2">
-            <span className="shrink-0 text-sm font-semibold text-foreground">HEPA-GLUE Engine</span>
+        <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-border bg-background/90 px-4 backdrop-blur-md">
+          <SidebarTrigger className="h-9 w-9 rounded-lg border border-border bg-card text-muted-foreground shadow-sm hover:bg-accent hover:text-foreground" />
+          <div className="flex min-w-0 items-baseline gap-2">
+            <span className="shrink-0 text-sm font-semibold text-foreground">HEPA-GLUE</span>
             <span className="hidden truncate text-xs text-muted-foreground sm:inline">
               / กำจัด HBV-HCV อำเภอน้ำพอง · ปีงบ 2569
             </span>

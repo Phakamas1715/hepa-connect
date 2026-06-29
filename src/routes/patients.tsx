@@ -1,16 +1,31 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { Building2, CheckCircle2, Loader2, MapPin, QrCode, Search, Send, Users } from "lucide-react";
+import {
+  Building2,
+  CheckCircle2,
+  Loader2,
+  MapPin,
+  QrCode,
+  Search,
+  Send,
+  Users,
+} from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { hasCareGap, type Patient } from "@/lib/hepa-data";
 import { calculateHepaRaaia, type HepaRaaiaScore } from "@/lib/hepa-raaia";
-import { HEPA_PRIMARY_CARE_UNITS, resolveHepaServiceArea } from "@/lib/hepa-service-area";
+import { HEPA_SERVICE_AREAS, resolveHepaServiceArea } from "@/lib/hepa-service-area";
 import { fetchPatients } from "@/lib/supabase";
 
 export const Route = createFileRoute("/patients")({
@@ -42,8 +57,10 @@ const actionLabel: Record<HepaRaaiaScore["nextAction"], string> = {
 };
 
 function ResultBadge({ value }: { value?: string }) {
-  if (value === "Positive" || value === "Detected") return <Badge variant="destructive">ผลบวก</Badge>;
-  if (value === "Negative" || value === "Not Detected") return <Badge variant="outline">ผลลบ</Badge>;
+  if (value === "Positive" || value === "Detected")
+    return <Badge variant="destructive">ผลบวก</Badge>;
+  if (value === "Negative" || value === "Not Detected")
+    return <Badge variant="outline">ผลลบ</Badge>;
   if (!value) return <span className="text-xs text-muted-foreground">-</span>;
   return (
     <Badge className="border-warning/50 bg-warning/20 text-warning-foreground" variant="outline">
@@ -67,10 +84,16 @@ function PatientsPage() {
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<"all" | "gap" | "high" | "need_qr">("all");
   const [latestLink, setLatestLink] = useState("");
-  const { data: patients, isLoading, error, refetch } = useQuery({ queryKey: ["patients"], queryFn: fetchPatients });
+  const {
+    data: patients,
+    isLoading,
+    error,
+    refetch,
+  } = useQuery({ queryKey: ["patients"], queryFn: fetchPatients });
 
   const createInvite = useMutation({
-    mutationFn: (patient: Patient) => postAgent("create_invite", { hn: patient.hn, patientName: patient.name }),
+    mutationFn: (patient: Patient) =>
+      postAgent("create_invite", { hn: patient.hn, patientName: patient.name }),
     onSuccess: (result) => {
       setLatestLink(result.link);
       toast.success("สร้าง QR ผูก LINE แล้ว");
@@ -79,8 +102,14 @@ function PatientsPage() {
   });
 
   const queueNudge = useMutation({
-    mutationFn: (patient: Patient) => postAgent("queue_nudge", { hn: patient.hn, persona: patient.persona }),
-    onSuccess: (result) => toast.success(result.task?.status === "blocked" ? "ยังไม่มี LINE identity ให้สร้าง QR ก่อน" : "จัดคิว LINE แล้ว"),
+    mutationFn: (patient: Patient) =>
+      postAgent("queue_nudge", { hn: patient.hn, persona: patient.persona }),
+    onSuccess: (result) =>
+      toast.success(
+        result.task?.status === "blocked"
+          ? "ยังไม่มี LINE identity ให้สร้าง QR ก่อน"
+          : "จัดคิว LINE แล้ว",
+      ),
     onError: (err) => toast.error(err instanceof Error ? err.message : "จัดคิวไม่สำเร็จ"),
   });
 
@@ -117,13 +146,23 @@ function PatientsPage() {
       high: scored.filter(({ raaia }) => raaia.band === "critical" || raaia.band === "high").length,
       needQr: scored.filter(({ raaia }) => raaia.nextAction === "create_line_qr").length,
       mapped: scored.filter(({ patient }) => resolveHepaServiceArea(patient)).length,
-      units: HEPA_PRIMARY_CARE_UNITS.length,
+      areas: HEPA_SERVICE_AREAS.length,
     }),
     [scored],
   );
 
-  if (isLoading) return <div className="p-8 text-center text-sm text-muted-foreground">กำลังโหลดทะเบียนผู้ป่วย...</div>;
-  if (error) return <div className="p-8 text-center text-sm text-destructive">โหลดทะเบียนไม่สำเร็จ: {error.message}</div>;
+  if (isLoading)
+    return (
+      <div className="p-8 text-center text-sm text-muted-foreground">
+        กำลังโหลดทะเบียนผู้ป่วย...
+      </div>
+    );
+  if (error)
+    return (
+      <div className="p-8 text-center text-sm text-destructive">
+        โหลดทะเบียนไม่สำเร็จ: {error.message}
+      </div>
+    );
 
   return (
     <div className="mx-auto w-full max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
@@ -132,9 +171,12 @@ function PatientsPage() {
           <Badge variant="outline" className="w-fit border-teal/30 bg-teal/5 text-teal">
             HEPA-RAAIA
           </Badge>
-          <h1 className="mt-3 text-2xl font-bold tracking-tight sm:text-3xl">ทะเบียน Care Gap และลดการพิมพ์</h1>
+          <h1 className="mt-3 text-2xl font-bold tracking-tight sm:text-3xl">
+            ทะเบียน Care Gap และลดการพิมพ์
+          </h1>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
-            ใช้สูตร RAAIA ที่แปลงเป็นงานไวรัสตับอักเสบ เพื่อจัดลำดับผู้ป่วย เลือก action ถัดไป และสร้าง QR ผูก LINE จากรายชื่อเดิมโดยไม่ต้องพิมพ์ HN ซ้ำ
+            ใช้สูตร RAAIA ที่แปลงเป็นงานไวรัสตับอักเสบ เพื่อจัดลำดับผู้ป่วย เลือก action ถัดไป
+            และสร้าง QR ผูก LINE จากรายชื่อเดิมโดยไม่ต้องพิมพ์ HN ซ้ำ
           </p>
         </div>
         <Button variant="outline" onClick={() => refetch()} className="w-fit gap-2">
@@ -150,7 +192,7 @@ function PatientsPage() {
           { label: "เสี่ยงสูง", value: stats.high },
           { label: "ควรสร้าง QR", value: stats.needQr },
           { label: "Mapped Area", value: stats.mapped },
-          { label: "รพ.สต.ปัจจุบัน", value: stats.units },
+          { label: "เขตรับผิดชอบ", value: stats.areas },
         ].map((item) => (
           <Card key={item.label}>
             <CardContent className="p-4">
@@ -161,7 +203,7 @@ function PatientsPage() {
                 </div>
                 {item.label === "Mapped Area" ? (
                   <MapPin className="h-5 w-5 text-teal" />
-                ) : item.label === "รพ.สต.ปัจจุบัน" ? (
+                ) : item.label === "เขตรับผิดชอบ" ? (
                   <Building2 className="h-5 w-5 text-teal" />
                 ) : (
                   <Users className="h-5 w-5 text-teal" />
@@ -183,7 +225,8 @@ function PatientsPage() {
             <div className="min-w-0">
               <div className="font-semibold">QR พร้อมให้ผู้ป่วยสแกน</div>
               <p className="mt-1 text-sm leading-6">
-                ผู้ป่วยสแกนแล้วกดยืนยัน ระบบรู้ HN จาก token และดึง LINE userId ผ่าน LIFF เมื่อขึ้นใช้งานจริง
+                ผู้ป่วยสแกนแล้วกดยืนยัน ระบบรู้ HN จาก token และดึง LINE userId ผ่าน LIFF
+                เมื่อขึ้นใช้งานจริง
               </p>
               <div className="mt-2 break-all text-xs">{latestLink}</div>
             </div>
@@ -198,7 +241,12 @@ function PatientsPage() {
             <div className="flex flex-col gap-2 sm:flex-row">
               <div className="relative">
                 <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="ค้นหา HN / ชื่อ / CID" className="pl-9 sm:w-64" />
+                <Input
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                  placeholder="ค้นหา HN / ชื่อ / CID"
+                  className="pl-9 sm:w-64"
+                />
               </div>
               <Select value={filter} onValueChange={(value) => setFilter(value as typeof filter)}>
                 <SelectTrigger className="sm:w-44">
@@ -237,7 +285,9 @@ function PatientsPage() {
                   const serviceArea = resolveHepaServiceArea(patient);
                   return (
                     <tr key={patient.hn} className="border-t hover:bg-muted/30">
-                      <td className="px-3 py-2 font-mono text-xs text-muted-foreground">{patient.hn}</td>
+                      <td className="px-3 py-2 font-mono text-xs text-muted-foreground">
+                        {patient.hn}
+                      </td>
                       <td className="px-3 py-2">
                         <div className="font-medium text-foreground">{patient.name}</div>
                         <div className="text-[10px] text-muted-foreground">CID {patient.cid}</div>
@@ -252,33 +302,74 @@ function PatientsPage() {
                               <Badge variant="outline" className="font-mono">
                                 {serviceArea.code}
                               </Badge>
-                              {serviceArea.unitType === "hospital" && <Badge className="bg-slate-100 text-slate-700 hover:bg-slate-100">รพ.</Badge>}
+                              {serviceArea.unitType === "hospital" && (
+                                <Badge className="bg-slate-100 text-slate-700 hover:bg-slate-100">
+                                  รพ.
+                                </Badge>
+                              )}
                             </div>
-                            <div className="max-w-56 text-xs leading-5 text-muted-foreground">{serviceArea.unitName}</div>
-                            {serviceArea.coverageNote && <div className="text-[10px] text-muted-foreground">{serviceArea.coverageNote}</div>}
+                            <div className="max-w-56 text-xs leading-5 text-muted-foreground">
+                              {serviceArea.unitName}
+                            </div>
+                            {serviceArea.coverageNote && (
+                              <div className="text-[10px] text-muted-foreground">
+                                {serviceArea.coverageNote}
+                              </div>
+                            )}
                           </div>
                         ) : (
-                          <Badge className="border-warning/50 bg-warning/20 text-warning-foreground" variant="outline">
+                          <Badge
+                            className="border-warning/50 bg-warning/20 text-warning-foreground"
+                            variant="outline"
+                          >
                             ยังไม่พบ mapping
                           </Badge>
                         )}
                       </td>
-                      <td className="px-3 py-2"><ResultBadge value={patient.hbsag} /></td>
-                      <td className="px-3 py-2"><ResultBadge value={patient.hcvAb} /></td>
-                      <td className="px-3 py-2"><ResultBadge value={patient.hcvVL} /></td>
-                      <td className="px-3 py-2"><Badge variant="outline">{patient.persona}</Badge></td>
                       <td className="px-3 py-2">
-                        <Badge variant="outline" className={bandColor[raaia.band]}>Score {raaia.score}</Badge>
-                        <div className="mt-1 text-[10px] text-muted-foreground">{raaia.explanation}</div>
+                        <ResultBadge value={patient.hbsag} />
                       </td>
-                      <td className="px-3 py-2 text-xs text-muted-foreground">{actionLabel[raaia.nextAction]}</td>
+                      <td className="px-3 py-2">
+                        <ResultBadge value={patient.hcvAb} />
+                      </td>
+                      <td className="px-3 py-2">
+                        <ResultBadge value={patient.hcvVL} />
+                      </td>
+                      <td className="px-3 py-2">
+                        <Badge variant="outline">{patient.persona}</Badge>
+                      </td>
+                      <td className="px-3 py-2">
+                        <Badge variant="outline" className={bandColor[raaia.band]}>
+                          Score {raaia.score}
+                        </Badge>
+                        <div className="mt-1 text-[10px] text-muted-foreground">
+                          {raaia.explanation}
+                        </div>
+                      </td>
+                      <td className="px-3 py-2 text-xs text-muted-foreground">
+                        {actionLabel[raaia.nextAction]}
+                      </td>
                       <td className="px-3 py-2 text-right">
                         <div className="flex justify-end gap-1.5">
-                          <Button size="sm" variant="outline" className="h-8 gap-1.5" onClick={() => createInvite.mutate(patient)}>
-                            {createInvite.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <QrCode className="h-3.5 w-3.5" />}
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-8 gap-1.5"
+                            onClick={() => createInvite.mutate(patient)}
+                          >
+                            {createInvite.isPending ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <QrCode className="h-3.5 w-3.5" />
+                            )}
                             QR
                           </Button>
-                          <Button size="sm" variant="outline" className="h-8 gap-1.5" onClick={() => queueNudge.mutate(patient)}>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-8 gap-1.5"
+                            onClick={() => queueNudge.mutate(patient)}
+                          >
                             <Send className="h-3.5 w-3.5" />
                             LINE
                           </Button>
@@ -289,7 +380,12 @@ function PatientsPage() {
                 })}
                 {!filtered.length && (
                   <tr>
-                    <td colSpan={11} className="px-3 py-8 text-center text-sm text-muted-foreground">ไม่พบผู้ป่วยตามตัวกรองนี้</td>
+                    <td
+                      colSpan={11}
+                      className="px-3 py-8 text-center text-sm text-muted-foreground"
+                    >
+                      ไม่พบผู้ป่วยตามตัวกรองนี้
+                    </td>
                   </tr>
                 )}
               </tbody>

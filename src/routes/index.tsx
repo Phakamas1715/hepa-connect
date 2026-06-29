@@ -17,7 +17,15 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
-import { KPI, SUBDISTRICTS, allocateKits } from "@/lib/hepa-data";
+import {
+  KPI,
+  HBV_CUP_SUMMARY,
+  HBV_HDC_PERFORMANCE,
+  TARGET_REGISTRY_SOURCE,
+  buildSubdistrictDashboard,
+  allocateKits,
+} from "@/lib/hepa-data";
+import { HEPA_PRIMARY_CARE_UNITS } from "@/lib/hepa-service-area";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -25,7 +33,8 @@ export const Route = createFileRoute("/")({
       { title: "แดชบอร์ดผู้บริหาร — HEPA-GLUE Engine" },
       {
         name: "description",
-        content: "KPI ปีงบ 2569, HCV care cascade และการจัดสรรชุดตรวจด้วย AI สำหรับ 18 รพ.สต. อำเภอน้ำพอง",
+        content:
+          "KPI ปีงบ 2569, HCV care cascade และการจัดสรรชุดตรวจด้วย AI ตาม mapping รพ.สต. อำเภอน้ำพอง",
       },
     ],
   }),
@@ -36,7 +45,10 @@ function ScoreDots({ score }: { score: number }) {
   return (
     <div className="flex gap-1">
       {[1, 2, 3, 4, 5].map((i) => (
-        <span key={i} className={`h-1.5 w-3 rounded-full ${i <= score ? "bg-destructive" : "bg-muted"}`} />
+        <span
+          key={i}
+          className={`h-1.5 w-3 rounded-full ${i <= score ? "bg-destructive" : "bg-muted"}`}
+        />
       ))}
     </div>
   );
@@ -69,7 +81,9 @@ function KpiCard({
   return (
     <Card className={`relative overflow-hidden ${ring}`}>
       <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
-        <CardTitle className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{title}</CardTitle>
+        <CardTitle className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+          {title}
+        </CardTitle>
         <div
           className={`grid h-9 w-9 shrink-0 place-items-center rounded-lg ${
             tone === "critical"
@@ -85,13 +99,17 @@ function KpiCard({
       <CardContent>
         <div className="flex items-baseline gap-2">
           <div className="text-3xl font-bold tracking-tight text-foreground">{value}</div>
-          {pct !== undefined && <div className="text-sm font-semibold text-muted-foreground">{pct}%</div>}
+          {pct !== undefined && (
+            <div className="text-sm font-semibold text-muted-foreground">{pct}%</div>
+          )}
         </div>
         <p className="mt-1 text-xs text-muted-foreground">{sub}</p>
         {pct !== undefined && <Progress value={pct} className="mt-3 h-1.5" />}
         {score !== undefined && (
           <div className="mt-3 flex items-center justify-between">
-            <span className="text-[10px] uppercase tracking-wider text-muted-foreground">คะแนน</span>
+            <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+              คะแนน
+            </span>
             <ScoreDots score={score} />
           </div>
         )}
@@ -115,12 +133,23 @@ function CascadeStage({
 }) {
   const pct = typeof value === "number" ? (value / total) * 100 : 0;
   return (
-    <div className={`flex-1 rounded-xl border p-3 ${highlight ? "border-destructive/50 bg-destructive/5" : "border-border bg-card"}`}>
-      <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</div>
+    <div
+      className={`flex-1 rounded-xl border p-3 ${highlight ? "border-destructive/50 bg-destructive/5" : "border-border bg-card"}`}
+    >
+      <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+        {label}
+      </div>
       <div className="mt-1 text-2xl font-bold text-foreground">{value}</div>
-      <div className={`mt-2 h-1.5 rounded-full ${tone}`} style={{ width: `${Math.max(8, pct)}%` }} />
+      <div
+        className={`mt-2 h-1.5 rounded-full ${tone}`}
+        style={{ width: `${Math.max(8, pct)}%` }}
+      />
     </div>
   );
+}
+
+function percentForDisplay(value: number, total: number) {
+  return total > 0 ? Number(((value / total) * 100).toFixed(2)) : 0;
 }
 
 function Dashboard() {
@@ -128,54 +157,165 @@ function Dashboard() {
   const [allocated, setAllocated] = useState<ReturnType<typeof allocateKits> | null>(null);
 
   const c = KPI.hcvCascade;
-  const totalRisk = useMemo(() => SUBDISTRICTS.reduce((sum, item) => sum + item.riskDensity, 0), []);
-  const totalTarget = useMemo(() => SUBDISTRICTS.reduce((sum, item) => sum + item.target, 0), []);
+  const hbv = HBV_CUP_SUMMARY;
+  const primaryCareUnitCount = HEPA_PRIMARY_CARE_UNITS.length;
+  const subdistricts = useMemo(() => buildSubdistrictDashboard(), []);
+  const totalRisk = useMemo(
+    () => subdistricts.reduce((sum, item) => sum + item.riskDensity, 0),
+    [subdistricts],
+  );
+  const totalTarget = useMemo(
+    () => subdistricts.reduce((sum, item) => sum + item.target, 0),
+    [subdistricts],
+  );
+  const treatmentGap = Math.max(0, c.positive - c.onTreatment);
+  const treatmentGapPct = c.positive > 0 ? Math.round((treatmentGap / c.positive) * 100) : 0;
 
   const handleAllocate = () => {
-    const result = allocateKits(kitPool, SUBDISTRICTS);
+    const result = allocateKits(kitPool, subdistricts);
     setAllocated(result);
-    toast.success(`AI จัดสรรชุดตรวจ ${kitPool.toLocaleString()} ชุดให้ 18 รพ.สต. แล้ว`, {
-      description: "คำนวณจากกลุ่มเป้าหมาย 60% และดัชนีความเสี่ยง 40%",
-    });
+    toast.success(
+      `AI จัดสรรชุดตรวจ ${kitPool.toLocaleString()} ชุดให้ ${subdistricts.length} รพ.สต. แล้ว`,
+      {
+        description: "คำนวณจากกลุ่มเป้าหมาย 60% และดัชนีความเสี่ยง 40%",
+      },
+    );
   };
 
   return (
     <div className="mx-auto w-full max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">แดชบอร์ดผู้บริหาร</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+          แดชบอร์ดผู้บริหาร
+        </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          ผลการดำเนินงานกำจัดไวรัสตับอักเสบ B/C อำเภอน้ำพอง ปีงบประมาณ 2569 · กลุ่มเป้าหมายเกิดก่อนปี 2535
+          ผลการดำเนินงานกำจัดไวรัสตับอักเสบ B/C อำเภอน้ำพอง ปีงบประมาณ 2569 ·{" "}
+          {TARGET_REGISTRY_SOURCE.label}
         </p>
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <KpiCard title="ประชากรเป้าหมาย" value="6,556" sub="เกิดก่อนปี 2535 ครอบคลุมทั้งอำเภอ" icon={Users} />
         <KpiCard
-          title="คัดกรอง HBV"
-          value={KPI.hbv.screened.toLocaleString()}
-          sub={`ผลงานเทียบเป้าหมาย (${KPI.targetPopulation.toLocaleString()})`}
-          pct={KPI.hbv.pct}
+          title="เป้าหมาย CUP HBV"
+          value={hbv.targetTotal.toLocaleString()}
+          sub="เป้าหมายรวม รพ. และ รพ.สต. อำเภอน้ำพอง"
+          icon={Users}
+        />
+        <KpiCard
+          title="Dashboard สปสช."
+          value={hbv.dashboardNhsoScreened.toLocaleString()}
+          sub={`ผลงานเทียบเป้าหมาย ${hbv.dashboardPct}%`}
+          pct={hbv.dashboardPct}
           score={KPI.hbv.score}
           icon={Target}
           tone="warning"
         />
         <KpiCard
-          title="คัดกรอง HCV"
-          value={KPI.hcv.screened.toLocaleString()}
-          sub="ผลงานเทียบเป้าหมาย · จำกัดด้วยจำนวนชุดตรวจ"
-          pct={KPI.hcv.pct}
-          score={KPI.hcv.score}
+          title="HDC รวม HBV"
+          value={hbv.hdcReportedTotal.toLocaleString()}
+          sub={`HDC รายงานรวม · ${hbv.hdcReportedPct}% ของเป้าหมาย`}
           icon={Activity}
           tone="warning"
         />
         <KpiCard
-          title="HCV เข้าสู่การรักษา"
-          value="46.53%"
-          sub="รักษาแล้ว 47 จากผลบวก 101 ราย · เร่งด่วน"
+          title="รพ.สต. บันทึก HDC"
+          value={hbv.primaryCareHdc.toLocaleString()}
+          sub={`${hbv.primaryCareWithHdc} รพ.สต. มีผลงานจาก HDC · ต้องตรวจการส่งข้อมูล`}
           icon={ShieldAlert}
           tone="critical"
         />
       </div>
+
+      <Card className="border-amber-300 bg-amber-50/80">
+        <CardHeader>
+          <div className="flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2 text-base text-amber-950">
+                <AlertTriangle className="h-5 w-5 text-amber-700" />
+                HBV HDC Reconciliation
+              </CardTitle>
+              <p className="mt-1 text-xs leading-5 text-amber-900/80">
+                ผลงาน HDC กระจุกอยู่ที่โรงพยาบาลน้ำพอง ขณะที่ รพ.สต. ส่วนใหญ่ยังเป็น 0 จึงควรตรวจ
+                mapping หน่วยบริการและการส่งข้อมูลก่อนสรุปรายงานระดับอำเภอ
+              </p>
+            </div>
+            <Badge variant="outline" className="w-fit bg-white/70 text-amber-900">
+              ผลรวมแถว HDC {hbv.hdcRowTotal.toLocaleString()} · ต่างจากสรุป {hbv.hdcTotalVariance}
+            </Badge>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-3 md:grid-cols-3">
+            <div className="rounded-lg border border-amber-200 bg-white/70 p-3">
+              <div className="text-2xl font-bold text-amber-950">
+                {hbv.hospitalHdc.toLocaleString()}
+              </div>
+              <div className="text-xs text-amber-900/75">ผลงาน HDC ที่โรงพยาบาลน้ำพอง</div>
+            </div>
+            <div className="rounded-lg border border-amber-200 bg-white/70 p-3">
+              <div className="text-2xl font-bold text-amber-950">
+                {hbv.primaryCareHdc.toLocaleString()}
+              </div>
+              <div className="text-xs text-amber-900/75">ผลงาน HDC รวม รพ.สต.</div>
+            </div>
+            <div className="rounded-lg border border-amber-200 bg-white/70 p-3">
+              <div className="text-2xl font-bold text-amber-950">{hbv.primaryCareWithHdc}</div>
+              <div className="text-xs text-amber-900/75">รพ.สต. ที่มีผลงานมากกว่า 0</div>
+            </div>
+          </div>
+          <div className="overflow-x-auto rounded-lg border border-amber-200 bg-white">
+            <table className="w-full min-w-[720px] text-sm">
+              <thead className="bg-amber-100/70 text-left text-[11px] uppercase tracking-wider text-amber-950/70">
+                <tr>
+                  <th className="px-3 py-2">หน่วยบริการ</th>
+                  <th className="px-3 py-2 text-right">เป้าหมาย</th>
+                  <th className="px-3 py-2 text-right">ผลงาน HDC</th>
+                  <th className="px-3 py-2">สถานะ</th>
+                </tr>
+              </thead>
+              <tbody>
+                {HBV_HDC_PERFORMANCE.map((unit) => {
+                  const pct = percentForDisplay(unit.hdcScreened, unit.target);
+                  const status =
+                    unit.unitType === "hospital"
+                      ? "รวมที่โรงพยาบาล"
+                      : unit.hdcScreened > 0
+                        ? "มีข้อมูลเข้า HDC"
+                        : "ยังเป็น 0";
+                  return (
+                    <tr key={unit.id} className="border-t hover:bg-amber-50/50">
+                      <td className="px-3 py-2 font-medium text-foreground">{unit.name}</td>
+                      <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">
+                        {unit.target.toLocaleString()}
+                      </td>
+                      <td className="px-3 py-2 text-right tabular-nums font-semibold">
+                        {unit.hdcScreened.toLocaleString()}
+                      </td>
+                      <td className="px-3 py-2">
+                        <div className="flex items-center gap-2">
+                          <Progress value={Math.min(100, pct)} className="h-1.5 flex-1" />
+                          <Badge
+                            variant="outline"
+                            className={
+                              unit.hdcScreened === 0
+                                ? "border-slate-200 bg-slate-50 text-slate-700"
+                                : unit.unitType === "hospital"
+                                  ? "border-amber-300 bg-amber-50 text-amber-900"
+                                  : "border-emerald-200 bg-emerald-50 text-emerald-800"
+                            }
+                          >
+                            {status}
+                          </Badge>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
 
       <Card className="border-destructive/40 bg-gradient-to-r from-destructive/10 to-warning/10">
         <CardContent className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center">
@@ -184,17 +324,25 @@ function Dashboard() {
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-sm font-bold uppercase tracking-wider text-destructive">ประเด็นเร่งด่วน</span>
-              <Badge variant="destructive" className="text-[10px]">สัญญาณเหลือง/แดง</Badge>
+              <span className="text-sm font-bold uppercase tracking-wider text-destructive">
+                ประเด็นเร่งด่วน
+              </span>
+              <Badge variant="destructive" className="text-[10px]">
+                สัญญาณเหลือง/แดง
+              </Badge>
             </div>
             <h3 className="mt-1 text-base font-bold text-foreground sm:text-lg">
-              ผู้ป่วย HCV ผลบวก 54 รายยังไม่เข้าสู่การรักษาด้วย Sofvel
+              ผู้ป่วย HCV ผลบวก {treatmentGap.toLocaleString()} รายยังไม่เข้าสู่การรักษาด้วย Sofvel
             </h3>
             <p className="mt-1 text-sm text-muted-foreground">
-              การปิดช่องว่างนี้เป็นงานที่มีผลสูงสุดต่อเป้าหมายปีงบ 2569 ให้ใช้ AI nudge จากโมดูลทะเบียน Care Gap เพื่อติดตามผู้ป่วย
+              การปิดช่องว่างนี้เป็นงานที่มีผลสูงสุดต่อเป้าหมายปีงบ 2569 ให้ใช้ AI nudge
+              จากโมดูลทะเบียน Care Gap ซึ่งอ่านจากรายชื่อกลางเดียวกับแดชบอร์ด
             </p>
           </div>
-          <Button size="lg" className="shrink-0 bg-destructive text-destructive-foreground hover:bg-destructive/90">
+          <Button
+            size="lg"
+            className="shrink-0 bg-destructive text-destructive-foreground hover:bg-destructive/90"
+          >
             เปิดคิวติดตาม <ArrowRight className="ml-2 h-4 w-4" />
           </Button>
         </CardContent>
@@ -205,23 +353,54 @@ function Dashboard() {
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
               <CardTitle className="text-base">HCV Care Cascade</CardTitle>
-              <p className="mt-1 text-xs text-muted-foreground">ลำดับการดูแลตั้งแต่คัดกรองจนถึงหายขาดทางไวรัส (SVR12)</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                ลำดับการดูแลตั้งแต่คัดกรองจนถึงหายขาดทางไวรัส (SVR12)
+              </p>
             </div>
-            <Badge variant="outline" className="border-teal text-teal">ปีงบ 2569</Badge>
+            <Badge variant="outline" className="border-teal text-teal">
+              ปีงบ 2569
+            </Badge>
           </div>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
-            <CascadeStage label="คัดกรองแล้ว" value={c.screened} total={c.screened} tone="bg-teal" />
-            <CascadeStage label="HCV Ab บวก" value={c.positive} total={c.screened} tone="bg-primary" />
-            <CascadeStage label="ยืนยัน Viral Load" value={c.confirmed} total={c.screened} tone="bg-accent" />
-            <CascadeStage label="รับยา Sofvel" value={c.onTreatment} total={c.screened} tone="bg-warning" highlight />
-            <CascadeStage label="หายขาด (SVR12)" value={c.cured} total={c.screened} tone="bg-success" />
+            <CascadeStage
+              label="คัดกรองแล้ว"
+              value={c.screened}
+              total={c.screened}
+              tone="bg-teal"
+            />
+            <CascadeStage
+              label="HCV Ab บวก"
+              value={c.positive}
+              total={c.screened}
+              tone="bg-primary"
+            />
+            <CascadeStage
+              label="ยืนยัน Viral Load"
+              value={c.confirmed}
+              total={c.screened}
+              tone="bg-accent"
+            />
+            <CascadeStage
+              label="รับยา Sofvel"
+              value={c.onTreatment}
+              total={c.screened}
+              tone="bg-warning"
+              highlight
+            />
+            <CascadeStage
+              label="หายขาด (SVR12)"
+              value={c.cured}
+              total={c.screened}
+              tone="bg-success"
+            />
           </div>
           <div className="mt-4 flex flex-wrap items-center gap-2 rounded-lg bg-muted/50 p-3 text-xs text-muted-foreground">
             <TrendingDown className="h-4 w-4 text-destructive" />
             <span>
-              <strong className="text-destructive">หลุดจากระบบ 53%</strong> ระหว่างผลบวก (101) กับเริ่มรักษา (47) · เป็นจุดรั่วหลักของระบบ
+              <strong className="text-destructive">หลุดจากระบบ {treatmentGapPct}%</strong>{" "}
+              ระหว่างผลบวก ({c.positive}) กับเริ่มรักษา ({c.onTreatment}) · เป็นจุดรั่วหลักของระบบ
             </span>
           </div>
         </CardContent>
@@ -231,13 +410,24 @@ function Dashboard() {
         <CardHeader>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <CardTitle className="text-base">18 หน่วยบริการปฐมภูมิ (รพ.สต.)</CardTitle>
-              <p className="mt-1 text-xs text-muted-foreground">ทุกหน่วยยังอยู่ที่ 0% screening · รอจัดสรรชุดตรวจ rapid test</p>
+              <CardTitle className="text-base">
+                {primaryCareUnitCount} หน่วยบริการปฐมภูมิ/เขตรับผิดชอบ
+              </CardTitle>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {TARGET_REGISTRY_SOURCE.description}
+              </p>
             </div>
             <div className="flex flex-wrap items-end gap-2">
               <div className="min-w-0">
-                <label className="block text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">จำนวนชุดตรวจ</label>
-                <Input type="number" value={kitPool} onChange={(event) => setKitPool(Number(event.target.value) || 0)} className="h-9 w-32" />
+                <label className="block text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  จำนวนชุดตรวจ
+                </label>
+                <Input
+                  type="number"
+                  value={kitPool}
+                  onChange={(event) => setKitPool(Number(event.target.value) || 0)}
+                  className="h-9 w-32"
+                />
               </div>
               <Button onClick={handleAllocate} className="gap-2 gradient-medical text-white">
                 <Sparkles className="h-4 w-4" /> ให้ AI แนะนำการจัดสรร
@@ -258,17 +448,27 @@ function Dashboard() {
                 </tr>
               </thead>
               <tbody>
-                {SUBDISTRICTS.map((subdistrict, index) => {
+                {subdistricts.map((subdistrict, index) => {
                   const allocation = allocated?.[index];
+                  const screenedPct =
+                    subdistrict.target > 0
+                      ? Math.round((subdistrict.screened / subdistrict.target) * 100)
+                      : 0;
                   return (
                     <tr key={subdistrict.id} className="border-t hover:bg-muted/30">
                       <td className="px-3 py-2 font-medium text-foreground">{subdistrict.name}</td>
-                      <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{subdistrict.target}</td>
-                      <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{subdistrict.riskDensity.toFixed(2)}</td>
+                      <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">
+                        {subdistrict.target}
+                      </td>
+                      <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">
+                        {subdistrict.riskDensity.toFixed(2)}
+                      </td>
                       <td className="px-3 py-2">
                         <div className="flex items-center gap-2">
-                          <Progress value={0} className="h-1.5 flex-1" />
-                          <span className="w-8 text-right text-[10px] text-muted-foreground">0%</span>
+                          <Progress value={screenedPct} className="h-1.5 flex-1" />
+                          <span className="w-8 text-right text-[10px] text-muted-foreground">
+                            {screenedPct}%
+                          </span>
                         </div>
                       </td>
                       <td className="px-3 py-2 text-right">
@@ -288,7 +488,7 @@ function Dashboard() {
               {allocated && (
                 <tfoot>
                   <tr className="border-t bg-muted/30 text-xs font-semibold">
-                    <td className="px-3 py-2">รวม 18 หน่วย</td>
+                    <td className="px-3 py-2">รวม {subdistricts.length} หน่วยในตารางจัดสรร</td>
                     <td className="px-3 py-2 text-right tabular-nums">{totalTarget}</td>
                     <td className="px-3 py-2 text-right tabular-nums">{totalRisk.toFixed(2)}</td>
                     <td />
@@ -301,7 +501,11 @@ function Dashboard() {
             </table>
           </div>
           <p className="mt-3 text-[11px] text-muted-foreground">
-            สูตร: <code className="rounded bg-muted px-1 py-0.5">จัดสรร = ชุดตรวจทั้งหมด × (0.6 × เป้าหมาย/ผลรวมเป้าหมาย + 0.4 × ความเสี่ยง/ผลรวมความเสี่ยง)</code>
+            สูตร:{" "}
+            <code className="rounded bg-muted px-1 py-0.5">
+              จัดสรร = ชุดตรวจทั้งหมด × (0.6 × เป้าหมาย/ผลรวมเป้าหมาย + 0.4 ×
+              ความเสี่ยง/ผลรวมความเสี่ยง)
+            </code>
           </p>
         </CardContent>
       </Card>
