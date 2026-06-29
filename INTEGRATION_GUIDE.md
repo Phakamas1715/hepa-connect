@@ -1,286 +1,140 @@
-# HEPA-GLUE Engine × hepa-connect Integration Guide
+# HEPA-GLUE x hepa-connect Integration Guide
 
-## Overview
+## Purpose
 
-This document describes the full integration of the **HEPA-GLUE Engine** (Backend/Agent System) with the **hepa-connect** frontend application. The integration enables real-time patient data synchronization, behavioral AI nudges via LINE, and automated MOPH reporting.
+คู่มือนี้อธิบายการเชื่อม HEPA-GLUE กับ hepa-connect ตามรูปแบบล่าสุด:
 
-## Architecture
+**รายชื่อเป้าหมายกลาง -> รพ.สต. สแกน/เลือกจากรายชื่อ -> บันทึกผลคัดกรองเข้า HEPA -> LINE/แดชบอร์ดติดตาม -> HOSxP/Lab ยืนยันผลเฉพาะรายที่ต้องปิด loop**
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    hepa-connect Frontend                     │
-│  (TanStack Start + React + TypeScript + TailwindCSS)        │
-└─────────────────────────────────────────────────────────────┘
-                              ↕
-                    ┌─────────────────┐
-                    │  Supabase API   │
-                    │  (PostgreSQL)   │
-                    └─────────────────┘
-                              ↕
-┌─────────────────────────────────────────────────────────────┐
-│            HEPA-GLUE Engine (Backend Services)              │
-│  ┌──────────────────────────────────────────────────────┐  │
-│  │ 1. hepa_glue_agent.py (Local Proxy)                 │  │
-│  │    - Connects to HOSxP/JHCIS (192.168.215.x)        │  │
-│  │    - Syncs data to Supabase                         │  │
-│  └──────────────────────────────────────────────────────┘  │
-│  ┌──────────────────────────────────────────────────────┐  │
-│  │ 2. LINE Bot MCP Server (line_mcp_handler.py)        │  │
-│  │    - Sends persona-tailored nudges via LINE         │  │
-│  │    - Dispatches Health Cards to อสม.               │  │
-│  └──────────────────────────────────────────────────────┘  │
-│  ┌──────────────────────────────────────────────────────┐  │
-│  │ 3. MOPH Reporter (moph_reporter.py)                 │  │
-│  │    - Submits reports to ddsdoe, d506, DOE portals   │  │
-│  │    - Manages ICD-10 mapping & transaction tracking  │  │
-│  └──────────────────────────────────────────────────────┘  │
-└─────────────────────────────────────────────────────────────┘
-```
+ระบบนี้ไม่ใช้ JHCIS เป็นจุดเริ่มต้นของข้อมูลคัดกรองแล้ว
 
-## Setup Instructions
+## Data Ownership
 
-### Phase 1: Database Setup
+### Primary Source
 
-1. **Create Supabase Project**
-   - Go to [supabase.com](https://supabase.com) and create a new project
-   - Note your `SUPABASE_URL` and `SUPABASE_ANON_KEY`
+รายชื่อเป้าหมายที่ทีมงานจัดทำและ mapping ให้แต่ละ รพ.สต.
 
-2. **Run Database Schema**
-   - Copy the contents of `full_production_schema.sql` from the HEPA-GLUE Engine package
-   - Paste into Supabase SQL Editor and execute
-   - This creates tables: `patients_care_gap`, `nudge_logs`, `moph_sync_logs`
+ข้อมูลขั้นต่ำ:
 
-3. **Configure Environment Variables**
-   ```bash
-   cp .env.example .env.local
-   # Edit .env.local with your Supabase credentials
-   VITE_SUPABASE_URL=https://your-project.supabase.co
-   VITE_SUPABASE_ANON_KEY=your-anon-key
-   ```
+| Field | Meaning |
+| --- | --- |
+| hn | HN |
+| cid | เลขบัตรประชาชน หรือ masked CID ตามนโยบาย |
+| name | ชื่อผู้ป่วย |
+| birth_date | วันเกิด |
+| subdistrict | ตำบล |
+| village | หมู่ |
+| service_unit_code | รหัส รพ.สต. |
+| service_unit_name | ชื่อ รพ.สต. |
 
-### Phase 2: Deploy HEPA-GLUE Agent (On-Premise)
+### Screening Result
 
-1. **On a machine within the hospital network:**
-   ```bash
-   # Copy hepa_glue_agent.py from HEPA-GLUE package
-   python3 hepa_glue_agent.py
-   ```
+รพ.สต. ส่งเข้า HEPA โดยตรง:
 
-2. **Configure credentials in `hepa_glue_agent.py`:**
-   ```python
-   HOSXP_LOCAL_CONFIG = {
-       'host': '192.168.215.21',
-       'port': 3306,
-       'user': 'nphosxp',
-       'password': 'YOUR_ACTUAL_PASSWORD',
-       'database': 'nphosxp'
-   }
-   
-   SUPABASE_URL = "https://your-project.supabase.co/rest/v1/patients_care_gap"
-   API_HEADERS = {
-       "apikey": "YOUR_SUPABASE_ANON_KEY",
-       "Authorization": "Bearer YOUR_SUPABASE_ANON_KEY",
-       "Content-Type": "application/json",
-   }
-   ```
+| Field | Meaning |
+| --- | --- |
+| hn | HN จากรายชื่อกลาง |
+| rapid_hbv_result | ผล HBsAg rapid |
+| rapid_hcv_result | ผล Anti-HCV rapid |
+| test_date | วันที่ตรวจ |
+| recorder_unit | หน่วยที่บันทึก |
+| recorder_name | ผู้บันทึก ถ้ามี |
 
-3. **Run as a service (Linux/systemd):**
-   ```bash
-   sudo systemctl enable hepa-glue-agent
-   sudo systemctl start hepa-glue-agent
-   ```
+### Confirmation Source
 
-### Phase 3: Frontend Integration
+HOSxP/Lab ใช้เฉพาะหลังคัดกรอง:
 
-1. **Install dependencies:**
-   ```bash
-   pnpm install
-   ```
+- HBsAg confirm
+- Anti-HCV confirm
+- HCV RNA
+- วันที่รายงานผล
+- สถานะพบแพทย์/รักษา
 
-2. **Start development server:**
-   ```bash
-   pnpm dev
-   ```
+## Runtime Architecture
 
-3. **Build for production:**
-   ```bash
-   pnpm build
-   pnpm preview
-   ```
-
-## Key Features Integrated
-
-### 1. Real-Time Patient Data Fetching
-- **File:** `src/lib/supabase.ts`
-- **Function:** `fetchPatients()`
-- **Usage:** Fetches all patients from `patients_care_gap` table
-- **Integration:** Used in `src/routes/patients.tsx` via React Query
-
-### 2. LINE Nudge Dispatch
-- **Component:** `src/components/line-agent-nudge.tsx`
-- **API Endpoint:** `/api/send-nudge` (POST)
-- **Payload:**
-  ```json
-  {
-    "recipientId": "HN-12345",
-    "persona": "The Fearful",
-    "messageType": "LINE_NUDGE"
-  }
-  ```
-- **Response:** Dispatches 2 messages (to อสม. and patient)
-
-### 3. MOPH Report Submission
-- **Component:** `src/routes/integration.tsx`
-- **API Endpoint:** `/api/submit-moph-report` (POST)
-- **Payload:**
-  ```json
-  {
-    "patientData": { ... },
-    "portalType": "ddsdoe"
-  }
-  ```
-- **Response:** Transaction ID and sync status
-
-### 4. Behavioral AI Classification
-- **File:** `src/lib/hepa-data.ts`
-- **Personas:** The Fearful, The Forgetful, The Denier, The Engaged, The Striver
-- **Nudges:** Persona-specific SMS and call scripts
-
-## API Endpoints
-
-### POST /api/send-nudge
-Sends a LINE nudge to a patient via อสม.
-
-**Request:**
-```json
-{
-  "recipientId": "NPH-66-0142",
-  "persona": "The Fearful",
-  "messageType": "LINE_NUDGE"
-}
+```mermaid
+flowchart LR
+  A["Target list"] --> B["HEPA Target Registry"]
+  B --> C["RPHST QR/List page"]
+  C --> D["Rapid screening form"]
+  D --> E["HEPA dashboard"]
+  E --> F["Care gap engine"]
+  F --> G["LINE closed loop"]
+  F --> H["MOPH report draft"]
+  I["HOSxP/Lab bridge"] --> F
 ```
 
-**Response:**
-```json
-{
-  "status": "success",
-  "message": "LINE nudge sent successfully",
-  "recipientId": "NPH-66-0142",
-  "persona": "The Fearful",
-  "messageType": "LINE_NUDGE"
-}
-```
+## LINE Role
 
-### POST /api/submit-moph-report
-Submits patient data to MOPH portals.
+LINE ไม่ใช่ฐานข้อมูลหลัก แต่เป็นช่องทาง closed loop:
 
-**Request:**
-```json
-{
-  "patientData": {
-    "hn": "NPH-66-0142",
-    "name": "นายสมชาย ทองดี",
-    "hbsag": "Positive",
-    "hcvAb": "Positive"
-  },
-  "portalType": "ddsdoe"
-}
-```
+- ผูก LINE userId กับ HN ผ่าน LIFF
+- ส่งนัดและเตือนผู้ป่วย
+- แจ้ง อสม./เจ้าหน้าที่เมื่อเกิด care gap
+- เก็บ audit ว่าส่งอะไร เมื่อไร ให้ใคร
 
-**Response:**
-```json
-{
-  "status": "success",
-  "message": "MOPH report submitted successfully",
-  "transactionId": "TXN-1718704800000",
-  "patientData": { ... },
-  "portalType": "ddsdoe"
-}
-```
+## API Status
 
-## Database Schema
+ตรวจระบบ:
 
-### patients_care_gap
-Main table for storing patient data and care status.
-
-| Field | Type | Description |
-|-------|------|-------------|
-| hn | VARCHAR(20) | Hospital Number (Primary Key) |
-| name | VARCHAR(255) | Patient Name |
-| cid | VARCHAR(13) | Citizen ID |
-| birth_date | DATE | Date of Birth |
-| testDate | DATE | Test Date |
-| subdistrict | VARCHAR(100) | Subdistrict |
-| village | VARCHAR(10) | Village Number |
-| hbsag | VARCHAR(50) | HBsAg Result |
-| hcvAb | VARCHAR(50) | HCV Antibody Result |
-| hcvVL | VARCHAR(100) | HCV Viral Load |
-| persona | VARCHAR(50) | Behavioral Persona |
-| care_status | VARCHAR(50) | Care Status (Pending, Confirmed, In Treatment, Completed) |
-| moph_sync_status | VARCHAR(50) | MOPH Sync Status |
-| reported | BOOLEAN | Whether reported to MOPH |
-| created_at | TIMESTAMP | Creation Timestamp |
-| updated_at | TIMESTAMP | Last Update Timestamp |
-
-### nudge_logs
-Tracks all nudge dispatches.
-
-| Field | Type | Description |
-|-------|------|-------------|
-| id | BIGSERIAL | Primary Key |
-| hn | VARCHAR(20) | Patient HN (FK) |
-| persona | VARCHAR(50) | Persona Used |
-| message_type | VARCHAR(100) | Type of Message |
-| sent_at | TIMESTAMP | Send Timestamp |
-| status | VARCHAR(50) | Delivery Status |
-
-### moph_sync_logs
-Tracks all MOPH report submissions.
-
-| Field | Type | Description |
-|-------|------|-------------|
-| id | BIGSERIAL | Primary Key |
-| hn | VARCHAR(20) | Patient HN (FK) |
-| portal_type | VARCHAR(50) | Portal Type (ddsdoe, d506, doe) |
-| icd10_code | VARCHAR(10) | ICD-10 Code |
-| transaction_id | VARCHAR(100) | MOPH Transaction ID |
-| sync_at | TIMESTAMP | Sync Timestamp |
-| status | VARCHAR(50) | Sync Status |
-
-## Troubleshooting
-
-### Issue: "Loading patients data from Supabase..." stuck
-**Solution:** Check that `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` are correctly set in `.env.local`
-
-### Issue: LINE nudge fails to send
-**Solution:** Verify that `/api/send-nudge` endpoint is reachable and the LINE Bot MCP Server is running
-
-### Issue: MOPH report submission fails
-**Solution:** Check MOPH credentials in `src/lib/hepa-data.ts` and ensure portal connectivity
-
-## Deployment
-
-### Docker Deployment
 ```bash
-docker build -t hepa-connect .
-docker run -p 3000:3000 -e VITE_SUPABASE_URL=... -e VITE_SUPABASE_ANON_KEY=... hepa-connect
+curl http://54.254.201.52/health
+curl http://54.254.201.52/api/connection-status
+curl http://54.254.201.52/api/production-automation
 ```
 
-### Vercel Deployment
-```bash
-vercel env add VITE_SUPABASE_URL
-vercel env add VITE_SUPABASE_ANON_KEY
-vercel deploy
+สถานะที่คาดหวัง:
+
+- `target_registry`: ready
+- `rphst_scan`: ready
+- `line_bot`: ready เมื่อ token ถูกต้อง
+- `hosxp_bridge`: optional/confirm source
+
+## Deployment Notes
+
+Cloud/VPS มองไม่เห็น IP ภายในโรงพยาบาล เช่น `172.16.x.x` หรือ `192.168.x.x` โดยตรง จึงไม่ควรออกแบบให้ cloud ดึง HOSxP โดยตรง
+
+แนวทางที่ถูกต้อง:
+
+1. รพ.สต. ส่งผลคัดกรองเข้า HEPA ผ่าน public web/LIFF
+2. ถ้าต้องใช้ HOSxP/Lab ให้ IT ทำ read-only bridge ภายในโรงพยาบาล
+3. Bridge ตอบเฉพาะผลยืนยัน ไม่ต้องส่งข้อมูลทุกอย่าง
+
+## IT Request Template
+
+ส่งให้ IT ได้:
+
+```text
+ขอทำ read-only HOSxP/Lab bridge สำหรับ HEPA เฉพาะข้อมูลยืนยันผลหลังคัดกรอง
+
+ไม่ต้องดึงข้อมูลคัดกรองจาก JHCIS
+HEPA จะใช้รายชื่อเป้าหมายกลางและให้ รพ.สต. ส่งผล rapid test เข้า HEPA โดยตรง
+
+ข้อมูลที่ต้องการจาก HOSxP/Lab:
+- HN
+- HBsAg confirm
+- Anti-HCV confirm
+- HCV RNA
+- วันที่รายงานผล
+- สถานะพบแพทย์/เริ่มรักษา ถ้ามี
+
+ขอเป็น read-only API พร้อม token
 ```
 
-## Support
+## Security
 
-For issues or questions, please refer to:
-- HEPA-GLUE Engine documentation
-- Supabase documentation: https://supabase.com/docs
-- TanStack Start documentation: https://tanstack.com/start
+- ห้าม push `.env` จริง
+- ใช้ HTTPS สำหรับ LINE webhook/LIFF
+- token ทุกตัวเก็บบน VPS หรือ Secret Manager
+- patient data ควร mask CID เมื่อแสดงต่อสาธารณะ
 
----
+## Production Checklist
 
-**Last Updated:** June 18, 2026
-**Version:** 1.0.0-production
+- [ ] รายชื่อเป้าหมายเข้า HEPA แล้ว
+- [ ] mapping รพ.สต. ครบ
+- [ ] รพ.สต. สแกน/เลือกจากรายชื่อได้
+- [ ] ส่งผล rapid test เข้า HEPA ได้
+- [ ] LINE identity mapping ทำงาน
+- [ ] ส่ง LINE test ผ่าน
+- [ ] HOSxP/Lab bridge พร้อมสำหรับ confirm result
+- [ ] dashboard ตรวจยอดได้ราย รพ.สต.

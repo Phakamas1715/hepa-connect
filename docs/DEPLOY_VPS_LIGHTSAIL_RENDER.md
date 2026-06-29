@@ -1,111 +1,25 @@
 # Deploy HEPA-GLUE x hepa-connect
 
-เอกสารนี้ใช้สำหรับเอาระบบขึ้น production บน VPS, AWS Lightsail หรือ Render โดยยังคงเชื่อม workflow LINE, agent, KUMHOS/HOSxP และหน้า HEPA-RAAIA ได้
+เอกสารนี้ใช้สำหรับ deploy ระบบ HEPA ขึ้น VPS, AWS Lightsail หรือ Render โดยยึด workflow ล่าสุด:
 
-## สรุปตัวเลือก
+**รายชื่อเป้าหมายกลาง + รพ.สต. สแกน + ส่งผลคัดกรองเข้า HEPA โดยตรง**
 
-| ทางเลือก | เหมาะกับ | จุดที่ต้องระวัง |
-| --- | --- | --- |
-| VPS ทั่วไป | คุมเครื่องเอง, ตั้ง VPN/tunnel ได้, เก็บไฟล์ audit ในเครื่องได้ | ต้องดูแล OS, SSL, backup เอง |
-| AWS Lightsail | VPS ที่จัดการง่ายกว่า, มี static IP และ snapshot | ยังต้องตั้ง Nginx/SSL/backup เอง |
-| Render | ขึ้นเว็บเร็ว, auto deploy จาก Git, SSL พร้อม | ต่อ IP ภายใน รพ. เช่น 172.16.x.x / 192.168.x.x ไม่ได้โดยตรง ต้องมี agent/tunnel |
+HOSxP/Lab ใช้เป็นแหล่งยืนยันผลหลังคัดกรอง ไม่ใช่ source หลักของรายชื่อคัดกรอง
 
-คำแนะนำสำหรับระบบนี้: ถ้าต้องคุยกับ HOSxP/KUMHOS ในวง LAN จริง ให้เลือก Lightsail/VPS พร้อม tunnel หรือรัน agent ไว้ในโรงพยาบาล ถ้าต้องการแค่ public app + LINE webhook เร็ว ๆ Render ใช้ง่ายที่สุด
+## Current Production
 
-## Architecture ที่ควรใช้จริง
+- VPS IP: `54.254.201.52`
+- Web: `http://54.254.201.52`
+- Health: `http://54.254.201.52/health`
+- Service path: `/opt/hepa-connect`
+- Service name: `hepa-connect`
+- Runtime user: `www-data`
 
-```mermaid
-flowchart LR
-  A["ผู้ป่วย / อสม. / เจ้าหน้าที่"] --> B["LINE OA น้ำพองรักตับ"]
-  A --> C["HEPA Connect Web"]
-  B --> C
-  C --> D["Production API / Agent Orchestrator"]
-  D --> E["Persistent DB หรือ Supabase"]
-  D --> F["Secure Tunnel / Hospital Agent"]
-  F --> G["KUMHOS API"]
-  F --> H["HOSxP MySQL / Bridge"]
-```
-
-เหตุผล: Cloud provider อยู่ข้างนอกวง LAN โรงพยาบาล จึงมองไม่เห็น `172.16.213.55` หรือ `192.168.215.21` โดยตรง ต้องมีอย่างใดอย่างหนึ่ง:
-
-- วาง HEPA Hospital Agent ในเครื่องที่อยู่ในวง LAN แล้วให้ cloud เรียกผ่าน HTTPS/tunnel
-- เปิด VPN site-to-site หรือ Tailscale/WireGuard
-- ใช้ Cloudflare Tunnel จากเครื่องในโรงพยาบาลออกไปยัง cloud endpoint
-- วางแอปทั้งตัวไว้บน server ภายในโรงพยาบาล แล้ว expose เฉพาะ HTTPS ผ่าน reverse proxy/tunnel
-
-## Environment variables
-
-ตั้งค่าใน `.env` บน VPS/Lightsail หรือหน้า Environment ของ Render ห้าม commit ค่า secret จริง
-
-```env
-NODE_ENV=production
-HOST=0.0.0.0
-PORT=3000
-
-LINE_CHANNEL_ID=2010439606
-LINE_CHANNEL_NAME=น้ำพองรักตับ
-LINE_BOT_BASIC_ID=@290xergg
-LINE_CHANNEL_SECRET=change-me
-LINE_CHANNEL_ACCESS_TOKEN=change-me
-LINE_PUSH_ENABLED=true
-LINE_TEST_RECIPIENT_ID=change-me
-
-VITE_LIFF_ID=change-me
-
-KUMHOS_BASE_URL=http://172.16.213.55/kumhos/kumhos_lab_api
-KUMHOS_USERNAME=change-me
-KUMHOS_PASSWORD=change-me
-KUMHOS_TEST_HN=0000001
-
-HEPA_HOSXP_PROXY_URL=https://your-hospital-agent.example.go.th/hepa_glue_hepatitis_proxy.php
-HEPA_HOSXP_PROXY_TOKEN=change-me
-
-Z_AI_API_KEY=change-me
-```
-
-หมายเหตุ: ตอนนี้ agent store ใช้ไฟล์ `data/hepa-agent-store.json` ได้สำหรับเริ่มใช้งานบน VPS แต่ production ระยะยาวควรย้ายไป Supabase/Postgres หรือ mount persistent disk เพราะ Render filesystem อาจหายเมื่อ redeploy ถ้าไม่ได้ตั้ง disk
-
-## Build และ Run
-
-คำสั่งกลางของโปรเจกต์:
-
-```bash
-corepack enable
-pnpm install --frozen-lockfile
-NODE_OPTIONS=--max-old-space-size=4096 pnpm build
-pnpm start
-```
-
-`pnpm start` จะเปิด `server.mjs` และ listen ตาม `PORT`
-
-## Deploy บน Render
-
-1. Push repo ขึ้น GitHub
-2. เข้า Render แล้วสร้าง Blueprint จาก `render.yaml` หรือสร้าง Web Service เอง
-3. ตั้ง Build Command:
-
-```bash
-corepack enable && pnpm install --frozen-lockfile && pnpm build
-```
-
-4. ตั้ง Start Command:
-
-```bash
-pnpm start
-```
-
-5. ใส่ Environment variables ทั้งหมดในหน้า Render
-6. ถ้าต้องใช้ HOSxP/KUMHOS ภายใน รพ. ให้ตั้ง `HEPA_HOSXP_PROXY_URL` เป็น public HTTPS ของ hospital agent/tunnel
-
-เหมาะสำหรับ: public dashboard, LINE webhook, LINE LIFF linking, agent orchestrator ที่ไม่ต้องต่อ LAN ตรง
-
-## Deploy บน AWS Lightsail หรือ VPS Ubuntu
-
-ตัวอย่างนี้ใช้ path `/opt/hepa-connect`
+## Deploy On AWS Lightsail / Ubuntu VPS
 
 ```bash
 sudo apt update
-sudo apt install -y nginx git curl
+sudo apt install -y nginx git curl unzip
 curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
 sudo apt install -y nodejs
 sudo corepack enable
@@ -116,10 +30,19 @@ git clone https://github.com/Phakamas1715/hepa-connect.git /opt/hepa-connect
 cd /opt/hepa-connect
 
 pnpm install --frozen-lockfile
-NODE_OPTIONS=--max-old-space-size=4096 pnpm build
+NODE_OPTIONS=--max-old-space-size=1536 pnpm build
 ```
 
-สร้างไฟล์ `.env` บน server แล้วคัดลอกจาก `.env.example` โดยใส่ secret จริงเฉพาะบนเครื่อง server
+สร้าง `.env` บน server เท่านั้น:
+
+```bash
+cp deploy/env.production.example .env
+nano .env
+sudo chown www-data:www-data .env
+sudo chmod 640 .env
+```
+
+ติดตั้ง service:
 
 ```bash
 sudo cp deploy/hepa-connect.service /etc/systemd/system/hepa-connect.service
@@ -132,47 +55,105 @@ sudo systemctl status hepa-connect
 
 ```bash
 sudo cp deploy/nginx-hepa-connect.conf /etc/nginx/sites-available/hepa-connect
-sudo ln -s /etc/nginx/sites-available/hepa-connect /etc/nginx/sites-enabled/hepa-connect
+sudo ln -sf /etc/nginx/sites-available/hepa-connect /etc/nginx/sites-enabled/hepa-connect
+sudo rm -f /etc/nginx/sites-enabled/default
 sudo nginx -t
 sudo systemctl reload nginx
 ```
 
-จากนั้นติดตั้ง SSL ด้วย Certbot หรือใช้ reverse proxy/tunnel ที่มี SSL ให้แล้ว
-
-## Deploy ด้วย Docker
+## Update Existing VPS
 
 ```bash
-docker build -t hepa-connect .
-docker run -d --name hepa-connect --env-file .env -p 3000:3000 hepa-connect
+cd /opt/hepa-connect
+git pull
+pnpm install --frozen-lockfile
+NODE_OPTIONS=--max-old-space-size=1536 pnpm build
+sudo chown www-data:www-data .env
+sudo chmod 640 .env
+sudo systemctl restart hepa-connect
 ```
 
-ถ้าใช้ Docker Compose ให้ mount `./data:/app/data` เพื่อเก็บ invite/audit ไม่ให้หาย
+ตรวจ:
 
-## LINE webhook และ LIFF
+```bash
+curl http://127.0.0.1:3000/health
+curl http://54.254.201.52/health
+curl http://54.254.201.52/api/connection-status
+```
 
-หลัง deploy แล้วให้ตั้งใน LINE Developers:
+## Environment Variables
 
-- Webhook URL: `https://hepa.namphonghospital.go.th/api/line-webhook`
-- LIFF Endpoint URL: `https://hepa.namphonghospital.go.th/line/link`
-- Callback/Endpoint ต้องเป็น HTTPS
+ใช้ template:
 
-ถ้าใช้ Render จะได้ HTTPS อัตโนมัติ ถ้าใช้ VPS/Lightsail ต้องมี SSL ก่อน LINE จะใช้งานจริงได้
+```bash
+deploy/env.production.example
+```
 
-## Production checklist
+ค่าจริงต้องอยู่ใน:
 
-- เปิด HTTPS แล้ว
-- ตั้ง `LINE_PUSH_ENABLED=true`
-- ตั้ง secret ใน environment เท่านั้น
-- ตั้ง persistent storage หรือ database ให้ agent store
-- Hospital agent/tunnel ต่อถึง KUMHOS/HOSxP ได้
-- `/api/production-automation` readiness เป็น 100
-- ทดสอบสร้าง QR ใน `/patients`
-- ทดสอบผูก LINE ผ่าน `/line/link?token=...`
-- ทดสอบส่ง LINE จริงหนึ่งเคสก่อนปล่อยกลุ่มใหญ่
+```bash
+/opt/hepa-connect/.env
+```
 
-## แหล่งอ้างอิง
+อย่า push `.env` จริงขึ้น GitHub
 
-- Render Node deploy: https://render.com/docs/deploy-node-express-app
-- AWS Lightsail Node.js stack: https://docs.aws.amazon.com/lightsail/latest/userguide/amazon-lightsail-quick-start-guide-nodejs.html
-- Cloudflare Tunnel setup: https://developers.cloudflare.com/tunnel/setup/
-- Cloudflare Tunnel service on Linux: https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/do-more-with-tunnels/local-management/as-a-service/linux/
+## LINE Webhook And LIFF
+
+LINE production ต้องใช้ HTTPS domain จริง
+
+ตัวอย่างเมื่อมีโดเมน:
+
+```text
+Webhook URL:
+https://hepa.namphonghospital.go.th/api/line-webhook
+
+LIFF Endpoint URL:
+https://hepa.namphonghospital.go.th/line/link
+```
+
+ถ้ายังไม่มีโดเมน ใช้ `http://54.254.201.52` ดูระบบได้ แต่ยังไม่พอสำหรับ webhook/LIFF production
+
+## HOSxP / Lab
+
+Cloud/VPS มองไม่เห็น IP ภายในโรงพยาบาลโดยตรง เช่น:
+
+- `172.16.213.55`
+- `192.168.215.21`
+
+ดังนั้นระบบคัดกรองจริงให้เริ่มจาก:
+
+1. รายชื่อเป้าหมายกลางใน HEPA
+2. รพ.สต. สแกนหรือเลือกจากรายชื่อ
+3. ส่งผล rapid test เข้า HEPA โดยตรง
+
+HOSxP/Lab bridge ใช้ภายหลังสำหรับ:
+
+- HBsAg confirm
+- Anti-HCV confirm
+- HCV RNA
+- สถานะพบแพทย์/รักษา
+
+## Render Option
+
+Render เหมาะกับ public web และ LINE webhook เพราะมี HTTPS ให้ง่าย แต่ยังเข้า IP LAN โรงพยาบาลไม่ได้โดยตรง
+
+ใช้ Render เมื่อ:
+
+- ต้องการ public dashboard เร็ว
+- ต้องการ HTTPS webhook
+- ไม่ต้อง query HOSxP/Lab ภายในโดยตรง
+
+ถ้าต้อง query lab ภายใน ให้มี hospital bridge/tunnel เพิ่ม
+
+## Production Checklist
+
+- [ ] Web เปิดได้
+- [ ] `/health` ตอบ JSON
+- [ ] CSS/JS โหลด 200
+- [ ] `.env` owner เป็น `www-data:www-data`
+- [ ] LINE token ตรวจผ่าน
+- [ ] LINE push test ผ่าน
+- [ ] รายชื่อเป้าหมายกลางพร้อม
+- [ ] รพ.สต. สแกน/เลือกจากรายชื่อได้
+- [ ] HOSxP/Lab bridge พร้อมเฉพาะผลยืนยัน
+- [ ] HTTPS domain จริงพร้อมก่อนเปิด LINE webhook/LIFF production
