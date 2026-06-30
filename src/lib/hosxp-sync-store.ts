@@ -120,7 +120,11 @@ export function mergeHosxpSyncRecords(records: Array<Record<string, unknown>>, m
 export function getSyncedResultsForDate(date: string): HosxpSyncRecord[] {
   const sync = readHosxpSync();
   if (!sync?.records?.length) return [];
-  return sync.records.filter((r) => !r.test_date || r.test_date.startsWith(date));
+  const dated = sync.records.filter((r) => r.test_date && r.test_date.startsWith(date));
+  if (dated.length > 0) return dated;
+  // Fresh push/bootstrap without exact date — use all cached records for automation
+  if (isHosxpSyncFresh()) return sync.records;
+  return [];
 }
 
 export function getSyncedPositiveResults(date: string) {

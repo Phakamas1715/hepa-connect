@@ -2,10 +2,11 @@ import { PREPARED_PATIENTS, isPositive } from "@/lib/hepa-data";
 import { mergeHosxpSyncRecords } from "@/lib/hosxp-sync-store";
 
 export function bootstrapFromPreparedPatients() {
+  const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
   const records = PREPARED_PATIENTS.filter(isPositive).map((patient) => ({
     hn: patient.hn,
     name: patient.name,
-    test_date: patient.testDate,
+    test_date: yesterday,
     hbsag: patient.hbsag,
     hcvAb: patient.hcvAb,
     hcvVL: patient.hcvVL,
