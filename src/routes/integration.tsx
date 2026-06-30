@@ -3,6 +3,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import {
   AlertTriangle,
   ArrowRight,
+  BookOpenCheck,
   Cable,
   CheckCircle2,
   ClipboardList,
@@ -19,6 +20,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { HBV_HDV_MONITORING_INSIGHT } from "@/lib/hepa-clinical-evidence";
 import { HEPA_SERVICE_AREAS } from "@/lib/hepa-service-area";
 
 export const Route = createFileRoute("/integration")({
@@ -309,6 +311,38 @@ function IntegrationPage() {
               </tbody>
             </table>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card className="border-sky-200 bg-sky-50/70">
+        <CardHeader>
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2 text-base text-sky-950">
+                <BookOpenCheck className="h-5 w-5 text-teal" />
+                Evidence note: {HBV_HDV_MONITORING_INSIGHT.title}
+              </CardTitle>
+              <p className="mt-2 max-w-4xl text-sm leading-6 text-sky-900/80">
+                {HBV_HDV_MONITORING_INSIGHT.summary}
+              </p>
+            </div>
+            <a
+              href={HBV_HDV_MONITORING_INSIGHT.sourceUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex w-fit items-center gap-2 rounded-full border border-sky-200 bg-white/70 px-3 py-1 text-xs font-medium text-sky-900 hover:bg-white"
+            >
+              <BookOpenCheck className="h-3.5 w-3.5" />
+              เปิดงานวิจัย
+            </a>
+          </div>
+        </CardHeader>
+        <CardContent className="grid gap-3 lg:grid-cols-4">
+          {HBV_HDV_MONITORING_INSIGHT.findings.map((finding) => (
+            <div key={finding} className="rounded-lg border border-sky-200 bg-white/70 p-3 text-xs leading-5 text-sky-950">
+              {finding}
+            </div>
+          ))}
         </CardContent>
       </Card>
 

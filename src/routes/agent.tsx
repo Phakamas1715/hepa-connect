@@ -1,12 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { CheckCircle2, Copy, Link2, Loader2, PlayCircle, QrCode, Send, ShieldCheck } from "lucide-react";
+import { Activity, BookOpenCheck, CheckCircle2, Copy, Link2, Loader2, PlayCircle, QrCode, Send, ShieldCheck } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { HBV_HDV_MONITORING_INSIGHT } from "@/lib/hepa-clinical-evidence";
 
 export const Route = createFileRoute("/agent")({
   head: () => ({
@@ -182,6 +183,64 @@ function AgentPage() {
           </CardContent>
         </Card>
       </section>
+
+      <Card className="metric-card border-sky-200 bg-sky-50/70">
+        <CardHeader>
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2 text-base text-sky-950">
+                <BookOpenCheck className="h-5 w-5 text-teal" />
+                {HBV_HDV_MONITORING_INSIGHT.title}
+              </CardTitle>
+              <p className="mt-2 max-w-4xl text-sm leading-6 text-sky-900/80">
+                {HBV_HDV_MONITORING_INSIGHT.summary}
+              </p>
+            </div>
+            <a
+              href={HBV_HDV_MONITORING_INSIGHT.sourceUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex w-fit items-center gap-2 rounded-full border border-sky-200 bg-white/70 px-3 py-1 text-xs font-medium text-sky-900 hover:bg-white"
+            >
+              <BookOpenCheck className="h-3.5 w-3.5" />
+              {HBV_HDV_MONITORING_INSIGHT.evidenceDate}
+            </a>
+          </div>
+        </CardHeader>
+        <CardContent className="grid gap-4 lg:grid-cols-[1fr_.9fr]">
+          <div className="space-y-2">
+            <div className="text-xs font-semibold uppercase tracking-wide text-sky-900/70">
+              ใช้ในงานติดตาม
+            </div>
+            <div className="grid gap-2">
+              {HBV_HDV_MONITORING_INSIGHT.operationalUse.map((item) => (
+                <div key={item} className="flex items-start gap-2 rounded-lg border border-sky-200 bg-white/70 p-3 text-sm text-sky-950">
+                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-teal" />
+                  <span>{item}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="space-y-3">
+            <div>
+              <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-sky-900/70">
+                <Activity className="h-3.5 w-3.5" />
+                marker ที่ควรดูร่วมกัน
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {HBV_HDV_MONITORING_INSIGHT.markers.map((marker) => (
+                  <Badge key={marker} variant="outline" className="border-sky-200 bg-white/80 text-sky-900">
+                    {marker}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900">
+              {HBV_HDV_MONITORING_INSIGHT.disclaimer}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       <section className="grid gap-6 xl:grid-cols-3">
         <Card className="metric-card">
