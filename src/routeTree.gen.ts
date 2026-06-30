@@ -14,6 +14,7 @@ import { Route as IntegrationRouteImport } from './routes/integration'
 import { Route as IliReportRouteImport } from './routes/ili-report'
 import { Route as HealthRouteImport } from './routes/health'
 import { Route as ArchitectureRouteImport } from './routes/architecture'
+import { Route as AgentBenchRouteImport } from './routes/agent-bench'
 import { Route as AgentRouteImport } from './routes/agent'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as LineStaffRouteImport } from './routes/line.staff'
@@ -28,6 +29,7 @@ import { Route as ApiIliReportRouteImport } from './routes/api/ili-report'
 import { Route as ApiHosxpSyncRouteImport } from './routes/api/hosxp-sync'
 import { Route as ApiHosxpBridgeRouteImport } from './routes/api/hosxp-bridge'
 import { Route as ApiConnectionStatusRouteImport } from './routes/api/connection-status'
+import { Route as ApiAgentWorldBenchRouteImport } from './routes/api/agent-world-bench'
 import { Route as ApiAgentOrchestratorRouteImport } from './routes/api/agent-orchestrator'
 
 const PatientsRoute = PatientsRouteImport.update({
@@ -53,6 +55,11 @@ const HealthRoute = HealthRouteImport.update({
 const ArchitectureRoute = ArchitectureRouteImport.update({
   id: '/architecture',
   path: '/architecture',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AgentBenchRoute = AgentBenchRouteImport.update({
+  id: '/agent-bench',
+  path: '/agent-bench',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AgentRoute = AgentRouteImport.update({
@@ -125,6 +132,11 @@ const ApiConnectionStatusRoute = ApiConnectionStatusRouteImport.update({
   path: '/api/connection-status',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAgentWorldBenchRoute = ApiAgentWorldBenchRouteImport.update({
+  id: '/api/agent-world-bench',
+  path: '/api/agent-world-bench',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAgentOrchestratorRoute = ApiAgentOrchestratorRouteImport.update({
   id: '/api/agent-orchestrator',
   path: '/api/agent-orchestrator',
@@ -134,12 +146,14 @@ const ApiAgentOrchestratorRoute = ApiAgentOrchestratorRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/agent': typeof AgentRoute
+  '/agent-bench': typeof AgentBenchRoute
   '/architecture': typeof ArchitectureRoute
   '/health': typeof HealthRoute
   '/ili-report': typeof IliReportRoute
   '/integration': typeof IntegrationRoute
   '/patients': typeof PatientsRoute
   '/api/agent-orchestrator': typeof ApiAgentOrchestratorRoute
+  '/api/agent-world-bench': typeof ApiAgentWorldBenchRoute
   '/api/connection-status': typeof ApiConnectionStatusRoute
   '/api/hosxp-bridge': typeof ApiHosxpBridgeRoute
   '/api/hosxp-sync': typeof ApiHosxpSyncRoute
@@ -156,12 +170,14 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/agent': typeof AgentRoute
+  '/agent-bench': typeof AgentBenchRoute
   '/architecture': typeof ArchitectureRoute
   '/health': typeof HealthRoute
   '/ili-report': typeof IliReportRoute
   '/integration': typeof IntegrationRoute
   '/patients': typeof PatientsRoute
   '/api/agent-orchestrator': typeof ApiAgentOrchestratorRoute
+  '/api/agent-world-bench': typeof ApiAgentWorldBenchRoute
   '/api/connection-status': typeof ApiConnectionStatusRoute
   '/api/hosxp-bridge': typeof ApiHosxpBridgeRoute
   '/api/hosxp-sync': typeof ApiHosxpSyncRoute
@@ -179,12 +195,14 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/agent': typeof AgentRoute
+  '/agent-bench': typeof AgentBenchRoute
   '/architecture': typeof ArchitectureRoute
   '/health': typeof HealthRoute
   '/ili-report': typeof IliReportRoute
   '/integration': typeof IntegrationRoute
   '/patients': typeof PatientsRoute
   '/api/agent-orchestrator': typeof ApiAgentOrchestratorRoute
+  '/api/agent-world-bench': typeof ApiAgentWorldBenchRoute
   '/api/connection-status': typeof ApiConnectionStatusRoute
   '/api/hosxp-bridge': typeof ApiHosxpBridgeRoute
   '/api/hosxp-sync': typeof ApiHosxpSyncRoute
@@ -203,12 +221,14 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/agent'
+    | '/agent-bench'
     | '/architecture'
     | '/health'
     | '/ili-report'
     | '/integration'
     | '/patients'
     | '/api/agent-orchestrator'
+    | '/api/agent-world-bench'
     | '/api/connection-status'
     | '/api/hosxp-bridge'
     | '/api/hosxp-sync'
@@ -225,12 +245,14 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/agent'
+    | '/agent-bench'
     | '/architecture'
     | '/health'
     | '/ili-report'
     | '/integration'
     | '/patients'
     | '/api/agent-orchestrator'
+    | '/api/agent-world-bench'
     | '/api/connection-status'
     | '/api/hosxp-bridge'
     | '/api/hosxp-sync'
@@ -247,12 +269,14 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/agent'
+    | '/agent-bench'
     | '/architecture'
     | '/health'
     | '/ili-report'
     | '/integration'
     | '/patients'
     | '/api/agent-orchestrator'
+    | '/api/agent-world-bench'
     | '/api/connection-status'
     | '/api/hosxp-bridge'
     | '/api/hosxp-sync'
@@ -270,12 +294,14 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AgentRoute: typeof AgentRoute
+  AgentBenchRoute: typeof AgentBenchRoute
   ArchitectureRoute: typeof ArchitectureRoute
   HealthRoute: typeof HealthRoute
   IliReportRoute: typeof IliReportRoute
   IntegrationRoute: typeof IntegrationRoute
   PatientsRoute: typeof PatientsRoute
   ApiAgentOrchestratorRoute: typeof ApiAgentOrchestratorRoute
+  ApiAgentWorldBenchRoute: typeof ApiAgentWorldBenchRoute
   ApiConnectionStatusRoute: typeof ApiConnectionStatusRoute
   ApiHosxpBridgeRoute: typeof ApiHosxpBridgeRoute
   ApiHosxpSyncRoute: typeof ApiHosxpSyncRoute
@@ -325,6 +351,13 @@ declare module '@tanstack/react-router' {
       path: '/architecture'
       fullPath: '/architecture'
       preLoaderRoute: typeof ArchitectureRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/agent-bench': {
+      id: '/agent-bench'
+      path: '/agent-bench'
+      fullPath: '/agent-bench'
+      preLoaderRoute: typeof AgentBenchRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/agent': {
@@ -425,6 +458,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiConnectionStatusRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/agent-world-bench': {
+      id: '/api/agent-world-bench'
+      path: '/api/agent-world-bench'
+      fullPath: '/api/agent-world-bench'
+      preLoaderRoute: typeof ApiAgentWorldBenchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/agent-orchestrator': {
       id: '/api/agent-orchestrator'
       path: '/api/agent-orchestrator'
@@ -438,12 +478,14 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AgentRoute: AgentRoute,
+  AgentBenchRoute: AgentBenchRoute,
   ArchitectureRoute: ArchitectureRoute,
   HealthRoute: HealthRoute,
   IliReportRoute: IliReportRoute,
   IntegrationRoute: IntegrationRoute,
   PatientsRoute: PatientsRoute,
   ApiAgentOrchestratorRoute: ApiAgentOrchestratorRoute,
+  ApiAgentWorldBenchRoute: ApiAgentWorldBenchRoute,
   ApiConnectionStatusRoute: ApiConnectionStatusRoute,
   ApiHosxpBridgeRoute: ApiHosxpBridgeRoute,
   ApiHosxpSyncRoute: ApiHosxpSyncRoute,

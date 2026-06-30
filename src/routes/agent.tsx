@@ -12,10 +12,10 @@ import { HBV_HDV_MONITORING_INSIGHT } from "@/lib/hepa-clinical-evidence";
 export const Route = createFileRoute("/agent")({
   head: () => ({
     meta: [
-      { title: "HEPA Agent Orchestrator — HEPA-GLUE Engine" },
+      { title: "ตัวจัดการ Agent — HEPA-GLUE Engine" },
       {
         name: "description",
-        content: "ระบบจัดการ LINE invite, การผูกตัวตน และคิวติดตาม care gap",
+        content: "สร้าง QR ผูก LINE, จัดคิวติดตามผู้ป่วย และบันทึกการทำงานของ agent",
       },
     ],
   }),
@@ -63,16 +63,20 @@ function AgentPage() {
   });
 
   const queueNudge = useMutation({
-    mutationFn: () => postAgent("queue_nudge", { hn, persona: "The Engaged" }),
+    mutationFn: () => postAgent("queue_nudge", { hn, persona: "engaged" }),
     onSuccess: (result) => {
-      toast.success(result.task?.status === "blocked" ? "สร้าง task แล้ว แต่ยังไม่มี LINE identity" : "จัดคิวส่ง LINE แล้ว");
+      toast.success(
+        result.task?.status === "blocked"
+          ? "สร้างงานแล้ว แต่ยังไม่มีบัญชี LINE ที่ผูกกับ HN นี้"
+          : "จัดคิวส่ง LINE แล้ว",
+      );
       refetch();
     },
     onError: (error) => toast.error(error instanceof Error ? error.message : "จัดคิวไม่สำเร็จ"),
   });
 
   const sendNudge = useMutation({
-    mutationFn: () => postAgent("send_nudge", { hn, persona: "The Engaged", messageType: "LINE_NUDGE" }),
+    mutationFn: () => postAgent("send_nudge", { hn, persona: "engaged", messageType: "LINE_NUDGE" }),
     onSuccess: (result) => {
       toast.success(result.status === "sent" ? "ส่งข้อความ LINE แล้ว" : result.line?.message || "ยังไม่ได้ส่งข้อความ LINE");
       refetch();
@@ -90,11 +94,11 @@ function AgentPage() {
       <header className="page-header">
         <div className="page-eyebrow">
           <ShieldCheck className="h-3.5 w-3.5" />
-          HEPA Agent Orchestrator
+          ตัวจัดการ Agent
         </div>
-        <h1 className="page-title">ระบบติดตามผ่าน LINE</h1>
+        <h1 className="page-title">ติดตามผู้ป่วยผ่าน LINE</h1>
         <p className="page-description">
-          จัดการลิงก์/QR สำหรับผูก LINE กับ HN, จัดคิวติดตาม care gap และบันทึก audit log ก่อนส่งข้อความ
+          สร้าง QR ผูกบัญชี LINE กับ HN จัดคิวแจ้งเตือนผู้ป่วยที่ยังติดตามไม่ครบ และบันทึกทุกขั้นตอนก่อนส่งข้อความ
         </p>
       </header>
 
@@ -170,15 +174,15 @@ function AgentPage() {
           <CardContent className="grid gap-3 sm:grid-cols-3">
             <div className="rounded-2xl border bg-background/60 p-3">
               <div className="text-2xl font-bold">{data?.invites.length || 0}</div>
-              <div className="text-xs text-muted-foreground">invite ทั้งหมด</div>
+              <div className="text-xs text-muted-foreground">คำเชิญทั้งหมด</div>
             </div>
             <div className="rounded-2xl border bg-background/60 p-3">
               <div className="text-2xl font-bold">{data?.identities.length || 0}</div>
-              <div className="text-xs text-muted-foreground">LINE identity</div>
+              <div className="text-xs text-muted-foreground">บัญชี LINE ที่ผูกแล้ว</div>
             </div>
             <div className="rounded-2xl border bg-background/60 p-3">
               <div className="text-2xl font-bold">{data?.tasks.length || 0}</div>
-              <div className="text-xs text-muted-foreground">agent tasks</div>
+              <div className="text-xs text-muted-foreground">งานที่รอดำเนินการ</div>
             </div>
           </CardContent>
         </Card>
@@ -245,7 +249,7 @@ function AgentPage() {
       <section className="grid gap-6 xl:grid-cols-3">
         <Card className="metric-card">
           <CardHeader>
-            <CardTitle className="text-base">Invite ล่าสุด</CardTitle>
+            <CardTitle className="text-base">คำเชิญล่าสุด</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
             {data?.invites.slice(0, 8).map((item) => (
@@ -257,13 +261,13 @@ function AgentPage() {
                 <div className="mt-1 text-xs text-muted-foreground">หมดอายุ {new Date(item.expiresAt).toLocaleString("th-TH")}</div>
               </div>
             ))}
-            {!data?.invites.length && <EmptyLine text="ยังไม่มี invite" />}
+            {!data?.invites.length && <EmptyLine text="ยังไม่มีคำเชิญ" />}
           </CardContent>
         </Card>
 
         <Card className="metric-card">
           <CardHeader>
-            <CardTitle className="text-base">Identity map</CardTitle>
+            <CardTitle className="text-base">การผูกบัญชี LINE</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
             {data?.identities.slice(0, 8).map((item) => (
@@ -281,7 +285,7 @@ function AgentPage() {
 
         <Card className="metric-card">
           <CardHeader>
-            <CardTitle className="text-base">Agent tasks</CardTitle>
+            <CardTitle className="text-base">งานของ Agent</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
             {isFetching && <div className="text-xs text-muted-foreground">กำลังอัปเดต...</div>}
@@ -294,7 +298,7 @@ function AgentPage() {
                 <div className="mt-1 text-xs text-muted-foreground">{item.message}</div>
               </div>
             ))}
-            {!data?.tasks.length && <EmptyLine text="ยังไม่มี task" />}
+            {!data?.tasks.length && <EmptyLine text="ยังไม่มีงานค้าง" />}
           </CardContent>
         </Card>
       </section>
@@ -303,7 +307,7 @@ function AgentPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
             <PlayCircle className="h-5 w-5 text-teal" />
-            Audit log
+            บันทึกการทำงาน
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
@@ -314,7 +318,7 @@ function AgentPage() {
               <div className="text-xs text-muted-foreground">{item.detail}</div>
             </div>
           ))}
-          {!data?.audit.length && <EmptyLine text="ยังไม่มี audit log" />}
+          {!data?.audit.length && <EmptyLine text="ยังไม่มีบันทึกการทำงาน" />}
         </CardContent>
       </Card>
     </div>

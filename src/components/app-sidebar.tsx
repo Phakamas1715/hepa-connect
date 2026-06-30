@@ -4,6 +4,7 @@ import {
   Bot,
   Cable,
   ClipboardList,
+  FlaskConical,
   Database,
   LayoutDashboard,
   Moon,
@@ -33,7 +34,8 @@ import { TARGET_REGISTRY_SOURCE } from "@/lib/hepa-data";
 const items = [
   { title: "แดชบอร์ดผู้บริหาร", url: "/", icon: LayoutDashboard, desc: "KPI และ care cascade" },
   { title: "ทะเบียน Care Gap", url: "/patients", icon: Users, desc: "AI ติดตามผู้ป่วย" },
-  { title: "HEPA Agent", url: "/agent", icon: Bot, desc: "LINE invite และ closed loop" },
+  { title: "ตัวจัดการ Agent", url: "/agent", icon: Bot, desc: "ผูก LINE และติดตามผู้ป่วย" },
+  { title: "ทดสอบ Agent", url: "/agent-bench", icon: FlaskConical, desc: "AgentWorldBench บนระบบจริง" },
   { title: "รายงาน ILI", url: "/ili-report", icon: ClipboardList, desc: "D506 จันทร์-อังคาร" },
   {
     title: "สถาปัตยกรรมระบบ",
@@ -94,7 +96,7 @@ export function AppSidebar() {
       <SidebarContent className="px-2 py-3">
         <SidebarGroup className="p-0">
           <SidebarGroupLabel className="px-3 text-[10px] font-semibold uppercase tracking-wider text-sidebar-foreground/45">
-            Navigation
+            เมนูหลัก
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu className="gap-1.5">
@@ -138,7 +140,7 @@ export function AppSidebar() {
 
         <SidebarGroup className="mt-4 p-0 group-data-[collapsible=icon]:hidden">
           <SidebarGroupLabel className="px-3 text-[10px] font-semibold uppercase tracking-wider text-sidebar-foreground/45">
-            Data source
+            แหล่งข้อมูล
           </SidebarGroupLabel>
           <div className="mx-1 rounded-lg border border-sidebar-border bg-sidebar-accent/35 p-3">
             <div className="flex items-start gap-2.5">

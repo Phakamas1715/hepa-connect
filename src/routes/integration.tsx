@@ -124,7 +124,7 @@ const targetFlow = [
   },
   {
     title: "4. ติดตามอัตโนมัติ",
-    detail: "LINE Bot แจ้งผู้ป่วย/อสม. ตาม care gap และสถานะจริง",
+    detail: "LINE Bot แจ้งผู้ป่วย/อสม. ตามผู้ที่ยังติดตามไม่ครบและสถานะจริง",
     icon: MessageCircle,
   },
   {
@@ -137,7 +137,7 @@ const targetFlow = [
 const nextSteps = [
   "นำรายชื่อเป้าหมายที่จัดทำแล้วเข้า HEPA พร้อมรหัส รพ.สต./ตำบล/หมู่บ้าน",
   "สร้าง QR หรือหน้ารายชื่อเฉพาะหน่วย เพื่อให้ รพ.สต. สแกนและบันทึกผล rapid test",
-  "เปิด LINE LIFF/ผูกตัวตนผู้ป่วย เพื่อส่งนัดและติดตาม care gap โดยไม่ต้องพิมพ์ LINE ID",
+  "เปิด LINE LIFF/ผูกตัวตนผู้ป่วย เพื่อส่งนัดและติดตามผู้ป่วยที่ยังไม่ครบ โดยไม่ต้องพิมพ์ LINE ID",
   "ใช้ HOSxP/Lab เป็นข้อมูลยืนยันหลังคัดกรอง ไม่ใช่แหล่งเริ่มต้นของรายชื่อ",
 ];
 
@@ -207,7 +207,7 @@ function IntegrationPage() {
     <div className="mx-auto w-full max-w-7xl space-y-6 px-4 py-5 sm:px-6 lg:px-8">
       <header className="flex flex-col gap-3 border-b pb-5">
         <Badge variant="outline" className="w-fit border-teal/30 bg-teal/5 text-teal">
-          Target List + QR Scan Control
+          รายชื่อเป้าหมาย + สแกน QR
         </Badge>
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-3xl">
@@ -254,7 +254,7 @@ function IntegrationPage() {
           <CardContent className="p-4">
             <div className="flex items-center gap-2 text-sm font-bold text-teal-900">
               <Users className="h-4 w-4" />
-              รายชื่อกลางเป็น source หลัก
+              รายชื่อกลางเป็นแหล่งข้อมูลหลัก
             </div>
             <div className="mt-1 text-xs text-teal-800">
               {data?.checkedAt ? new Date(data.checkedAt).toLocaleString("th-TH") : "รอตรวจสอบ"}

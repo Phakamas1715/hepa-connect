@@ -20,7 +20,8 @@
     "line:mcp": "node scripts/line-bot-mcp.mjs",
     "line:mcp:doctor": "grok mcp doctor line-bot",
     "daily:hepbc": "bun scripts/daily-hepbc-runner.ts",
-    "daily:hepbc:real": "DRY_RUN=false bun scripts/daily-hepbc-runner.ts"
+    "daily:hepbc:real": "DRY_RUN=false bun scripts/daily-hepbc-runner.ts",
+    "bench:agent": "bun scripts/agent-world-bench.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
