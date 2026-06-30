@@ -18,7 +18,14 @@
     "hermes:ask": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/hermes-hepa-oneshot.ps1",
     "grok:version": "grok --version",
     "line:mcp": "node scripts/line-bot-mcp.mjs",
-    "line:mcp:doctor": "grok mcp doctor line-bot"
+    "line:mcp:doctor": "grok mcp doctor line-bot",
+    "daily:hepbc": "bun scripts/daily-hepbc-runner.ts",
+    "daily:hepbc:real": "DRY_RUN=false bun scripts/daily-hepbc-runner.ts",
+    "bench:agent": "bun scripts/agent-world-bench.ts",
+    "bench:download": "bash scripts/download-agent-world-bench.sh",
+    "bench:sync-hf-s3": "bash scripts/sync-agent-world-bench-to-hf-s3.sh",
+    "setup:run": "bash scripts/install-and-run.sh",
+    "deploy:vps": "bash deploy/deploy-vps-now.sh"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
@@ -73,7 +80,8 @@
     "tw-animate-css": "^1.3.4",
     "vaul": "^1.1.2",
     "vite-tsconfig-paths": "^6.0.2",
-    "zod": "^3.24.2"
+    "zod": "^3.24.2",
+    "puppeteer": "^22.15.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.32.0",

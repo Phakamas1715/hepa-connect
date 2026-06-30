@@ -626,3 +626,19 @@ export function hasCareGap(patient: Patient) {
     patient.care_status === "Pending"
   );
 }
+
+export function isHcvPositive(patient: Patient) {
+  return patient.hcvAb === "Positive" || patient.hcvVL === "Detected";
+}
+
+export function needsSofvelTreatment(patient: Patient) {
+  return (
+    isHcvPositive(patient) &&
+    patient.care_status !== "On Treatment" &&
+    patient.care_status !== "Cured"
+  );
+}
+
+export function getHcvTreatmentGapPatients(patients: Patient[] = PREPARED_PATIENTS) {
+  return patients.filter(needsSofvelTreatment);
+}

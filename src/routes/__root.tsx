@@ -12,7 +12,9 @@ import { useEffect, type ReactNode } from "react";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { AppSidebar } from "@/components/app-sidebar";
+import { OfficialFooter, OFFICIAL_META } from "@/components/official-layout";
 import { Toaster } from "@/components/ui/sonner";
+import { Badge } from "@/components/ui/badge";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 
 function NotFoundComponent() {
@@ -139,17 +141,26 @@ function AppLayout() {
     <SidebarProvider>
       <AppSidebar />
       <SidebarInset className="min-w-0">
-        <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-border bg-background/90 px-4 backdrop-blur-md">
-          <SidebarTrigger className="h-9 w-9 rounded-lg border border-border bg-card text-muted-foreground shadow-sm hover:bg-accent hover:text-foreground" />
-          <div className="flex min-w-0 items-baseline gap-2">
-            <span className="shrink-0 text-sm font-semibold text-foreground">HEPA-GLUE</span>
-            <span className="hidden truncate text-xs text-muted-foreground sm:inline">
-              / กำจัด HBV-HCV อำเภอน้ำพอง · ปีงบ 2569
-            </span>
+        <header className="official-app-header flex min-h-14 flex-wrap items-center gap-3 px-4 py-2">
+          <SidebarTrigger className="h-9 w-9 rounded-md border border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground" />
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-sm font-bold text-foreground">{OFFICIAL_META.system}</span>
+              <Badge variant="outline" className="hidden h-5 rounded-md text-[10px] sm:inline-flex">
+                {OFFICIAL_META.ministry}
+              </Badge>
+            </div>
+            <p className="truncate text-[11px] text-muted-foreground">
+              {OFFICIAL_META.hospital} · {OFFICIAL_META.program} · {OFFICIAL_META.fiscalYear}
+            </p>
           </div>
+          <Badge className="hidden rounded-md bg-primary/10 text-[10px] text-primary hover:bg-primary/10 md:inline-flex">
+            นวัตกรรมดิจิทัลสุขภาพ
+          </Badge>
         </header>
         <main className="min-w-0 flex-1">
           <Outlet />
+          <OfficialFooter />
         </main>
       </SidebarInset>
     </SidebarProvider>

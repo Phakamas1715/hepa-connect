@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
+import { resolveHosxpProxyUrl } from "@/lib/hosxp-proxy-url";
 import { serverEnv } from "@/lib/server-env";
 import { getKumhosHosxpProxyStatus } from "@/lib/kumhos-client";
 
@@ -164,11 +165,11 @@ async function getLineStatus(): Promise<{ state: CheckState; detail: string }> {
 }
 
 async function getHosxpBridgeStatus(): Promise<{ state: CheckState; detail: string }> {
-  const proxyUrl = serverEnv("HEPA_HOSXP_PROXY_URL");
+  const proxyUrl = resolveHosxpProxyUrl();
   if (!proxyUrl) {
     return {
       state: "not_configured",
-      detail: "ยังไม่ได้ตั้งค่า HEPA_HOSXP_PROXY_URL สำหรับผลยืนยันจาก HOSxP/Lab",
+      detail: "ยังไม่ได้ตั้งค่า HEPA_HOSXP_PROXY_URL / HEPA_HOSXP_PROXY_PUBLIC_URL",
     };
   }
 

@@ -1,4 +1,5 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useMutation } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import {
   Activity,
@@ -11,6 +12,7 @@ import {
   TrendingDown,
   Users,
 } from "lucide-react";
+import { InnovationShowcase, OfficialPageHeader } from "@/components/official-layout";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -24,6 +26,7 @@ import {
   TARGET_REGISTRY_SOURCE,
   buildSubdistrictDashboard,
   allocateKits,
+  getHcvTreatmentGapPatients,
 } from "@/lib/hepa-data";
 import { HEPA_PRIMARY_CARE_UNITS } from "@/lib/hepa-service-area";
 
@@ -81,7 +84,7 @@ function KpiCard({
   return (
     <Card className={`relative overflow-hidden ${ring}`}>
       <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
-        <CardTitle className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+        <CardTitle className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
           {title}
         </CardTitle>
         <div
@@ -152,7 +155,15 @@ function percentForDisplay(value: number, total: number) {
   return total > 0 ? Number(((value / total) * 100).toFixed(2)) : 0;
 }
 
+async function openHcvTreatmentQueue() {
+  const response = await fetch("/api/care-gap-queue", { method: "POST" });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data?.message || "เปิดคิวติดตามไม่สำเร็จ");
+  return data;
+}
+
 function Dashboard() {
+  const navigate = useNavigate();
   const [kitPool, setKitPool] = useState(2000);
   const [allocated, setAllocated] = useState<ReturnType<typeof allocateKits> | null>(null);
 
@@ -170,6 +181,19 @@ function Dashboard() {
   );
   const treatmentGap = Math.max(0, c.positive - c.onTreatment);
   const treatmentGapPct = c.positive > 0 ? Math.round((treatmentGap / c.positive) * 100) : 0;
+  const gapPatients = useMemo(() => getHcvTreatmentGapPatients(), []);
+
+  const openQueue = useMutation({
+    mutationFn: openHcvTreatmentQueue,
+    onSuccess: (result) => {
+      toast.success(
+        `เปิดคิวติดตามแล้ว ${result.total} ราย · จัดคิวส่งได้ ${result.queued} · รอผูก LINE ${result.blocked}`,
+      );
+      navigate({ to: "/patients", search: { filter: "hcv_sofvel" } });
+    },
+    onError: (error) =>
+      toast.error(error instanceof Error ? error.message : "เปิดคิวติดตามไม่สำเร็จ"),
+  });
 
   const handleAllocate = () => {
     const result = allocateKits(kitPool, subdistricts);
@@ -183,16 +207,30 @@ function Dashboard() {
   };
 
   return (
-    <div className="mx-auto w-full max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-          แดชบอร์ดผู้บริหาร
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          ผลการดำเนินงานกำจัดไวรัสตับอักเสบ B/C อำเภอน้ำพอง ปีงบประมาณ 2569 ·{" "}
-          {TARGET_REGISTRY_SOURCE.label}
-        </p>
-      </div>
+    <div className="page-shell">
+      <OfficialPageHeader
+        eyebrow="ศูนย์บัญชาการงานไวรัสตับอักเสบ อำเภอน้ำพอง"
+        title="แดชบอร์ดผู้บริหารและติดตามผลงาน"
+        description={`สรุปตัวชี้วัดการคัดกรอง การรักษา และการจัดสรรทรัพยากร จาก${TARGET_REGISTRY_SOURCE.label} เพื่อใช้ในการบริหารจัดการและรายงานผลต่อหน่วยงานกำกับ`}
+        badges={["รายชื่อเป้าหมายเป็นหลัก", "ติดตามอัตโนมัติผ่าน LINE", "รายงาน สธ. แบบปิดวงจร"]}
+      />
+
+      <InnovationShowcase
+        items={[
+          {
+            title: "รายชื่อเป้าหมายเชิงรุก",
+            detail: "ใช้ทะเบียนกลางที่จัดทำเองเป็นแหล่งข้อมูลหลัก ลดความคลาดเคลื่อนจากการดึงข้อมูลหลายระบบ",
+          },
+          {
+            title: "ติดตามผู้ป่วยอัจฉริยะ",
+            detail: "ระบบ Agent ผูกบัญชี LINE กับ HN และแจ้งเตือนผู้ป่วยที่ยังติดตามไม่ครบโดยอัตโนมัติ",
+          },
+          {
+            title: "รายงานและเชื่อมโยงข้อมูล",
+            detail: "เชื่อม HOSxP, นัดหมาย และรายงานกระทรวงสาธารณสุขในขั้นตอนเดียว พร้อมตรวจสอบความพร้อม",
+          },
+        ]}
+      />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <KpiCard
@@ -341,10 +379,18 @@ function Dashboard() {
           </div>
           <Button
             size="lg"
+            disabled={treatmentGap === 0 || openQueue.isPending}
+            onClick={() => openQueue.mutate()}
             className="shrink-0 bg-destructive text-destructive-foreground hover:bg-destructive/90"
           >
-            เปิดคิวติดตาม <ArrowRight className="ml-2 h-4 w-4" />
+            {openQueue.isPending ? "กำลังเปิดคิว..." : "เปิดคิวติดตาม"}
+            <ArrowRight className="ml-2 h-4 w-4" />
           </Button>
+          {gapPatients.length > 0 && (
+            <p className="w-full text-xs text-muted-foreground sm:w-auto">
+              รายการ: {gapPatients.map((patient) => patient.hn).join(", ")}
+            </p>
+          )}
         </CardContent>
       </Card>
 
@@ -430,7 +476,7 @@ function Dashboard() {
                 />
               </div>
               <Button onClick={handleAllocate} className="gap-2 gradient-medical text-white">
-                <Sparkles className="h-4 w-4" /> ให้ AI แนะนำการจัดสรร
+                <Sparkles className="h-4 w-4" /> คำนวณการจัดสรรอัจฉริยะ
               </Button>
             </div>
           </div>

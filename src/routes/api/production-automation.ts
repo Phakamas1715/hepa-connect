@@ -1,5 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { getKumhosHosxpProxyStatus } from "@/lib/kumhos-client";
+import {
+  isProbeFresh,
+  probeToGate,
+  readAutomationHealthCache,
+  refreshAutomationHealthCache,
+  scheduleAutomationHealthRefresh,
+  type AutomationHealthCache,
+  type HealthProbe,
+} from "@/lib/automation-health";
 import { getAgentStorePath, readAgentStore } from "@/lib/hepa-agent-store";
 import { serverEnv } from "@/lib/server-env";
 import { PREPARED_PATIENTS } from "@/lib/hepa-data";
@@ -26,30 +34,6 @@ function partial(id: string, name: string, detail: string, required = true, acti
 function blocked(id: string, name: string, detail: string, required = true, action?: string): Gate {
   return { id, name, state: "blocked", detail, required, action };
 }
-
-async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string): Promise<T> {
-  let timeout: ReturnType<typeof setTimeout> | undefined;
-  try {
-    return await Promise.race([
-      promise,
-      new Promise<T>((_, reject) => {
-        timeout = setTimeout(() => reject(new Error(message)), timeoutMs);
-      }),
-    ]);
-  } finally {
-    if (timeout) clearTimeout(timeout);
-  }
-}
-
-async function getKumhosStatusFast() {
-  return withTimeout(
-    getKumhosHosxpProxyStatus(),
-    8_000,
-    "KUMHOS/HOSxP proxy health check timed out after 8 seconds",
-  );
-}
-
-type KumhosStatus = Awaited<ReturnType<typeof getKumhosHosxpProxyStatus>>;
 
 function lineGate(): Gate {
   const token = serverEnv("LINE_CHANNEL_ACCESS_TOKEN");
@@ -294,91 +278,55 @@ async function awsGatewayGate(): Promise<Gate> {
   }
 }
 
-async function bridgeGate(kumhosStatus?: KumhosStatus): Promise<Gate> {
-  const proxyUrl = serverEnv("HEPA_HOSXP_PROXY_URL");
-  const token = serverEnv("HEPA_HOSXP_PROXY_TOKEN");
-
-  if (proxyUrl) {
-    const url = new URL(proxyUrl);
-    url.searchParams.set("action", "hepatitis_labs");
-    url.searchParams.set("limit", "1");
-
-    try {
-      const response = await fetch(url, {
-        headers: {
-          Accept: "application/json",
-          ...(token ? { "X-HEPAGLUE-TOKEN": token } : {}),
-        },
-        signal: AbortSignal.timeout(12_000),
-      });
-      const payload = (await response.json().catch(() => null)) as null | {
-        ok?: boolean;
-        count?: number;
-        error?: string;
-      };
-      if (response.ok && payload?.ok) {
-        return ready(
-          "hepatitis_feed",
-          "Hepatitis lab feed",
-          `ดึง HBsAg / Anti-HCV / HCV RNA ผ่าน bridge ได้แล้ว (${payload.count ?? 0} records preview)`,
-        );
-      }
-    } catch {
-      // Fall back to the no-IT path below.
-    }
-  }
-
-  try {
-    const kumhos = kumhosStatus || (await getKumhosStatusFast());
-    return ready(
-      "hepatitis_feed",
-      "Hepatitis lab feed",
-      `KUMHOS ดึงข้อมูล HOSxP แบบ HN/date pull ได้แล้ว; lab code ที่พบ ${Object.values(kumhos.codes).join(", ") || "-"}`,
-    );
-  } catch (error) {
-    return blocked(
-      "hepatitis_feed",
-      "Hepatitis lab feed",
-      `ยังดึง lab hepatitis ไม่สำเร็จ: ${error instanceof Error ? error.message : "unknown error"}`,
-      true,
-      "ตั้ง HEPA_HOSXP_PROXY_URL หรือ KUMHOS credential ให้ดึง HBsAg / Anti-HCV / HCV RNA ได้",
-    );
-  }
+function fallbackProbe(detail: string): HealthProbe {
+  return {
+    checkedAt: new Date(0).toISOString(),
+    state: "blocked",
+    ok: false,
+    detail,
+    latencyMs: 0,
+  };
 }
 
-async function automationStatus() {
-  const gates: Gate[] = [];
-  let kumhosStatus: KumhosStatus | undefined;
+function gateFromProbe(
+  id: string,
+  name: string,
+  probe: HealthProbe | undefined,
+  fallbackDetail: string,
+  required = true,
+  action?: string,
+): Gate {
+  const resolved = probe || fallbackProbe(fallbackDetail);
+  const gate = probeToGate(id, name, resolved, required);
+  return { ...gate, action };
+}
 
-  gates.push(targetRegistryGate());
-
-  try {
-    const kumhos = await getKumhosStatusFast();
-    kumhosStatus = kumhos;
-    gates.push(
-      ready(
-        "hosxp_proxy",
-        "HOSxP proxy",
-        `KUMHOS proxy login/query สำเร็จ; test lab codes ${Object.values(kumhos.codes).join(", ") || "-"}`,
-      ),
-    );
-  } catch (error) {
-    gates.push(
-      blocked(
-        "hosxp_proxy",
-        "HOSxP proxy",
-        error instanceof Error ? error.message : "KUMHOS proxy ไม่พร้อม",
-      ),
-    );
-  }
-
-  gates.push(await bridgeGate(kumhosStatus));
-  gates.push(lineGate());
-  gates.push(workerGate());
-  gates.push(mophGate());
-  gates.push(await awsGatewayGate());
-  gates.push(await appointmentGate());
-  gates.push(agentStoreGate());
+async function automationStatusFromCache(cache: AutomationHealthCache | null, stale: boolean) {
+  const gates: Gate[] = [
+    targetRegistryGate(),
+    gateFromProbe(
+      "hosxp_proxy",
+      "HOSxP proxy",
+      cache?.hosxpBridge,
+      "ยังไม่มีผลตรวจ HOSxP bridge — รอ background health probe",
+      true,
+      "ตั้ง HEPA_HOSXP_PROXY_PUBLIC_URL ผ่าน tunnel หรือตรวจ HEPA_HOSXP_PROXY_URL",
+    ),
+    gateFromProbe(
+      "hepatitis_feed",
+      "Hepatitis lab feed",
+      cache?.hepatitisFeed,
+      "ยังไม่มีผลตรวจ hepatitis feed — รอ background health probe",
+      true,
+      "เปิด tunnel จากโรงพยาบาล (deploy/hospital-reverse-tunnel.sh) แล้วตั้ง HEPA_HOSXP_PROXY_PUBLIC_URL",
+    ),
+    lineGate(),
+    workerGate(),
+    mophGate(),
+    await awsGatewayGate(),
+    await appointmentGate(),
+    agentStoreGate(),
+  ];
 
   const store = readAgentStore();
   gates.push(
@@ -415,85 +363,44 @@ async function automationStatus() {
 
   return {
     checkedAt: new Date().toISOString(),
+    cacheUpdatedAt: cache?.updatedAt || null,
+    cacheStale: stale,
     readiness,
     canRunProduction,
     mode: canRunProduction ? "production-no-it" : "guarded",
     gates,
     gaps,
     nextAction: canRunProduction
-      ? "ผ่านเงื่อนไขการใช้งาน: ใช้ KUMHOS เป็น HOSxP proxy, LINE เป็นช่องทางติดตาม และบันทึก audit log"
-      : "ยังไม่ผ่านเงื่อนไขการใช้งาน เนื่องจาก gate สำคัญยังไม่ครบ",
+      ? "ผ่านเงื่อนไขการใช้งาน: HOSxP bridge + LINE + worker พร้อมแล้ว"
+      : stale
+        ? "กำลัง refresh health cache — ถ้า HOSxP ยัง blocked ให้เปิด tunnel จากโรงพยาบาล (deploy/hospital-reverse-tunnel.sh)"
+        : "ยังไม่ผ่านเงื่อนไขการใช้งาน เนื่องจาก gate สำคัญยังไม่ครบ",
   };
 }
 
-function automationTimeoutStatus(error: unknown) {
-  const detail =
-    error instanceof Error ? error.message : "production automation health check timed out";
-  return {
-    checkedAt: new Date().toISOString(),
-    readiness: 0,
-    canRunProduction: false,
-    mode: "guarded",
-    gates: [
-      blocked("hosxp_proxy", "HOSxP proxy", detail),
-      blocked(
-        "hepatitis_feed",
-        "Hepatitis lab feed",
-        "Health check did not finish fast enough; automation remains guarded.",
-      ),
-      lineGate(),
-      targetRegistryGate(),
-      workerGate(),
-      mophGate(),
-      partial(
-        "aws_api_gateway",
-        "AWS API Gateway",
-        "Skipped because the main production health check timed out",
-        false,
-      ),
-      agentStoreGate(),
-      partial(
-        "audit_closed_loop",
-        "Audit / closed loop",
-        "Audit store is available; endpoint returned guarded timeout status",
-        false,
-      ),
-    ],
-    gaps: [
-      {
-        id: "health_check_timeout",
-        name: "Production health check",
-        state: "blocked",
-        required: true,
-        detail,
-        action: "ตรวจ network ไป KUMHOS/HOSxP และลด timeout/ทำ background health cache",
-        priority: "critical",
-      },
-    ],
-    nextAction:
-      "HOSxP/KUMHOS bridge is slow or unreachable from the VPS; keep the app online and run automation in guarded mode.",
-  };
-}
-
-async function automationStatusFast() {
-  try {
-    return await withTimeout(
-      automationStatus(),
-      9_000,
-      "production automation health check timed out after 9 seconds",
-    );
-  } catch (error) {
-    return automationTimeoutStatus(error);
+async function automationStatusFast(deep = false) {
+  if (deep) {
+    const cache = await refreshAutomationHealthCache();
+    return automationStatusFromCache(cache, false);
   }
+
+  const cache = readAutomationHealthCache();
+  const stale = !cache || !isProbeFresh({ checkedAt: cache.updatedAt, state: "ready", ok: true, detail: "", latencyMs: 0 });
+  scheduleAutomationHealthRefresh(stale);
+  return automationStatusFromCache(cache, stale);
 }
 
 export const Route = createFileRoute("/api/production-automation")({
   server: {
     handlers: {
-      GET: async () => Response.json(await automationStatusFast()),
+      GET: async ({ request }) => {
+        const url = new URL(request.url);
+        const deep = url.searchParams.get("probe") === "deep";
+        return Response.json(await automationStatusFast(deep));
+      },
       POST: async ({ request }) => {
         const body = (await request.json().catch(() => ({}))) as { force?: boolean };
-        const status = await automationStatusFast();
+        const status = await automationStatusFast(false);
         if (!status.canRunProduction && !body.force) {
           return Response.json(
             {

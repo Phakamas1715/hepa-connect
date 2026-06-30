@@ -1,3 +1,5 @@
+import { getSyncedPositiveResults } from "@/lib/hosxp-sync-store";
+import { resolveHosxpProxyUrl } from "@/lib/hosxp-proxy-url";
 import { serverEnv } from "@/lib/server-env";
 
 type KumhosRequestOptions = {
@@ -119,4 +121,78 @@ export async function getKumhosHosxpProxyStatus() {
     codes: payload.codes || {},
     error: payload.error || "",
   };
+}
+
+export type ScreenedTestResult = {
+  hn?: string;
+  patient_hn?: string;
+  id?: string | number;
+  date?: string;
+  hbsag?: string;
+  rapid_hbv_result?: string;
+  hcvAb?: string;
+  rapid_hcv_result?: string;
+  hcvVL?: string;
+};
+
+function mapHepatitisLabRecords(records: Array<Record<string, unknown>>): ScreenedTestResult[] {
+  const byHn = new Map<string, ScreenedTestResult>();
+
+  for (const row of records) {
+    const hn = String(row.hn ?? row.patient_hn ?? "");
+    if (!hn) continue;
+    const existing = byHn.get(hn) || { hn, date: String(row.test_date ?? row.report_date ?? row.order_date ?? "") };
+    const labName = String(row.lab_name ?? row.lab_items_name_ref ?? "").toLowerCase();
+    const result = String(row.lab_result ?? row.lab_order_result ?? "");
+    const positive = ["positive", "reactive", "detected", "pos", "+", "พบ", "บวก"].some((n) =>
+      result.toLowerCase().includes(n),
+    );
+
+    if (labName.includes("hbsag") || String(row.lab_code ?? "").toUpperCase().includes("HB")) {
+      existing.hbsag = positive ? "Positive" : "Negative";
+      existing.rapid_hbv_result = existing.hbsag;
+    }
+    if (labName.includes("hcv") || labName.includes("anti-hcv")) {
+      existing.hcvAb = positive ? "Positive" : "Negative";
+      existing.rapid_hcv_result = existing.hcvAb;
+    }
+    if (labName.includes("rna") || labName.includes("viral load")) {
+      existing.hcvVL = positive ? "Detected" : "Not Detected";
+    }
+
+    byHn.set(hn, existing);
+  }
+
+  return Array.from(byHn.values());
+}
+
+export async function getScreenedPassedResults(date: string): Promise<ScreenedTestResult[]> {
+  const proxyUrl = resolveHosxpProxyUrl();
+  const token = serverEnv("HEPA_HOSXP_PROXY_TOKEN");
+
+  if (proxyUrl) {
+    try {
+      const url = new URL(proxyUrl);
+      url.searchParams.set("action", "hepatitis_labs");
+      url.searchParams.set("date_from", date);
+      url.searchParams.set("date_to", date);
+      url.searchParams.set("limit", "500");
+
+      const res = await fetch(url, {
+        headers: token ? { "X-HEPAGLUE-TOKEN": token } : {},
+        signal: AbortSignal.timeout(8_000),
+      });
+      const data = (await res.json().catch(() => ({}))) as { ok?: boolean; records?: Array<Record<string, unknown>> };
+      if (res.ok && data.ok && Array.isArray(data.records)) {
+        return mapHepatitisLabRecords(data.records);
+      }
+    } catch {
+      // Fall back to hospital push cache below.
+    }
+  }
+
+  const synced = getSyncedPositiveResults(date);
+  if (synced.length > 0) return synced;
+
+  return [];
 }

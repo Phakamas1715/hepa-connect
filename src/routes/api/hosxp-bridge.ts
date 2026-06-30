@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { resolveHosxpProxyUrl } from "@/lib/hosxp-proxy-url";
 import { serverEnv } from "@/lib/server-env";
 
 type BridgePayload = {
@@ -13,7 +14,7 @@ type BridgePayload = {
 };
 
 async function callBridge(request: Request) {
-  const proxyUrl = serverEnv("HEPA_HOSXP_PROXY_URL");
+  const proxyUrl = resolveHosxpProxyUrl();
   if (!proxyUrl) {
     return Response.json(
       {

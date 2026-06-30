@@ -9,10 +9,39 @@ import {
   writeAgentStore,
   audit,
 } from "@/lib/hepa-agent-store";
+import { getScreenedPassedResults } from "@/lib/kumhos-client";
+import { serverEnv } from "@/lib/server-env";
 
 function requestBaseUrl(request: Request) {
   const url = new URL(request.url);
   return `${url.protocol}//${url.host}`;
+}
+
+async function pushDailyHepbcLineSummary(date: string, positives: number, reported: number, note: string) {
+  const token = serverEnv("LINE_CHANNEL_ACCESS_TOKEN");
+  const recipient = serverEnv("LINE_DAILY_RECIPIENT_ID") || serverEnv("LINE_TEST_RECIPIENT_ID");
+  if (!token || serverEnv("LINE_PUSH_ENABLED") !== "true" || !recipient) return;
+
+  try {
+    await fetch("https://api.line.me/v2/bot/message/push", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        to: recipient,
+        messages: [
+          {
+            type: "text",
+            text: `Daily Hep-BC (auto)\nวันที่: ${date}\nพบ positive: ${positives} ราย\nรายงาน MOPH: ${reported} ราย\n${note}\n(น้ำพองรักตับ - HEPA-Connect)`,
+          },
+        ],
+      }),
+    });
+  } catch (e) {
+    console.error("Daily Hep-BC LINE push failed", e);
+  }
 }
 
 export const Route = createFileRoute("/api/agent-orchestrator")({
@@ -142,6 +171,70 @@ export const Route = createFileRoute("/api/agent-orchestrator")({
             });
             writeAgentStore(store);
             return Response.json({ status: linePayload.status, task, line: linePayload }, { status: lineResponse.ok ? 200 : 502 });
+          }
+
+          if (action === "run_daily_hepbc" || action === "daily_hepbc_report") {
+            const store = readAgentStore();
+            const date = body.date || new Date(Date.now() - 86400000).toISOString().split("T")[0];
+            audit(store, { actor: "system", action: "run_daily_hepbc", detail: `Daily Hep-BC for ${date}` });
+
+            let screened: any[] = [];
+            try {
+              screened = await getScreenedPassedResults(date);
+            } catch (e) {
+              console.error("HOSxP pull failed", e);
+              screened = [];
+            }
+
+            const positives = screened.filter(
+              (r: any) =>
+                r.hbsag === "Positive" ||
+                r.rapid_hbv_result === "Positive" ||
+                r.hcvAb === "Positive" ||
+                r.hcvVL === "Detected" ||
+                r.rapid_hcv_result === "Positive",
+            );
+
+            const cases = positives.map((r: any) => ({
+              hn: r.hn || r.patient_hn || `HOSxP-${r.id || Date.now()}`,
+              testDate: r.test_date || r.date || date,
+              hbsag: r.hbsag || r.rapid_hbv_result,
+              hcvAb: r.hcvAb || r.rapid_hcv_result,
+              hcvVL: r.hcvVL,
+            }));
+
+            let reportResult = null;
+            if (cases.length > 0) {
+              try {
+                const { autoFillHepBCReport } = await import("@/lib/moph-hepbc-reporter");
+                reportResult = await autoFillHepBCReport(cases as any);
+              } catch (e: any) {
+                console.error("Daily Hep-BC report failed", e);
+                reportResult = { success: false, error: e.message };
+              }
+            }
+
+            const reported = reportResult?.reported || 0;
+            const mophNote =
+              reportResult && "error" in reportResult && reportResult.error
+                ? `MOPH: รอ puppeteer/โรงพยาบาล (${String(reportResult.error).slice(0, 80)})`
+                : "MOPH: ส่งแล้ว";
+            await pushDailyHepbcLineSummary(date, positives.length, reported, mophNote);
+
+            audit(store, {
+              actor: "system",
+              action: "daily_hepbc_run",
+              detail: `date=${date} positives=${positives.length} reported=${reported}`,
+            });
+            writeAgentStore(store);
+            return Response.json({
+              status: "success",
+              date,
+              pulled: screened.length,
+              positives: positives.length,
+              reported,
+              result: reportResult,
+            });
           }
 
           if (action === "close_task") {
