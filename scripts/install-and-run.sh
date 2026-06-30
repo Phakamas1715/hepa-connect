@@ -22,11 +22,7 @@ if [[ ! -d data/agent-world-bench ]] || ! compgen -G "data/agent-world-bench/*_t
 fi
 
 echo "→ build..."
-if command -v pnpm >/dev/null 2>&1; then
-  pnpm build 2>/dev/null || npx vite build
-else
-  npx vite build
-fi
+npx vite build
 
 if lsof -ti:"$PORT" >/dev/null 2>&1; then
   echo "→ ปิด process เดิมบนพอร์ต $PORT"
