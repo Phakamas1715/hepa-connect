@@ -96,7 +96,20 @@ echo "== Service status =="
 systemctl --no-pager --full status hepa-connect || true
 
 echo "== Local health =="
+curl -fsS "http://127.0.0.1:$PORT/health" || true
+echo
+curl -fsS "http://127.0.0.1:$PORT/api/ops-monitoring" | head -c 400 || true
+echo
 curl -fsS "http://127.0.0.1:$PORT/api/production-automation" || true
 echo
+
+echo "== Daily Hep-BC scheduler =="
+if [[ -f "$APP_DIR/deploy/setup-daily-hepbc-cron.sh" ]]; then
+  APP_DIR="$APP_DIR" APP_USER="$APP_USER" bash "$APP_DIR/deploy/setup-daily-hepbc-cron.sh" || true
+else
+  echo "setup-daily-hepbc-cron.sh not found — skip timer install"
+fi
+
 echo "Deploy finished. Point DNS to this server, then enable SSL with certbot or your reverse proxy."
 echo "Temporary DNS option: DOMAIN=hepa-namphong.<PUBLIC_IP>.sslip.io"
+echo "Ops monitoring: GET /api/ops-monitoring (set OPS_MONITORING_TOKEN in .env to require auth)"

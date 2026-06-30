@@ -18,7 +18,9 @@
     "hermes:ask": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/hermes-hepa-oneshot.ps1",
     "grok:version": "grok --version",
     "line:mcp": "node scripts/line-bot-mcp.mjs",
-    "line:mcp:doctor": "grok mcp doctor line-bot"
+    "line:mcp:doctor": "grok mcp doctor line-bot",
+    "daily:hepbc": "bun scripts/daily-hepbc-runner.ts",
+    "daily:hepbc:real": "DRY_RUN=false bun scripts/daily-hepbc-runner.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

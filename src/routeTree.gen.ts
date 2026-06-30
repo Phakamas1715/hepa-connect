@@ -21,6 +21,7 @@ import { Route as LineLinkRouteImport } from './routes/line.link'
 import { Route as ApiSubmitMophReportRouteImport } from './routes/api/submit-moph-report'
 import { Route as ApiSendNudgeRouteImport } from './routes/api/send-nudge'
 import { Route as ApiProductionAutomationRouteImport } from './routes/api/production-automation'
+import { Route as ApiOpsMonitoringRouteImport } from './routes/api/ops-monitoring'
 import { Route as ApiLineWebhookRouteImport } from './routes/api/line-webhook'
 import { Route as ApiKumhosProxyRouteImport } from './routes/api/kumhos-proxy'
 import { Route as ApiIliReportRouteImport } from './routes/api/ili-report'
@@ -88,6 +89,11 @@ const ApiProductionAutomationRoute = ApiProductionAutomationRouteImport.update({
   path: '/api/production-automation',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiOpsMonitoringRoute = ApiOpsMonitoringRouteImport.update({
+  id: '/api/ops-monitoring',
+  path: '/api/ops-monitoring',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiLineWebhookRoute = ApiLineWebhookRouteImport.update({
   id: '/api/line-webhook',
   path: '/api/line-webhook',
@@ -133,6 +139,7 @@ export interface FileRoutesByFullPath {
   '/api/ili-report': typeof ApiIliReportRoute
   '/api/kumhos-proxy': typeof ApiKumhosProxyRoute
   '/api/line-webhook': typeof ApiLineWebhookRoute
+  '/api/ops-monitoring': typeof ApiOpsMonitoringRoute
   '/api/production-automation': typeof ApiProductionAutomationRoute
   '/api/send-nudge': typeof ApiSendNudgeRoute
   '/api/submit-moph-report': typeof ApiSubmitMophReportRoute
@@ -153,6 +160,7 @@ export interface FileRoutesByTo {
   '/api/ili-report': typeof ApiIliReportRoute
   '/api/kumhos-proxy': typeof ApiKumhosProxyRoute
   '/api/line-webhook': typeof ApiLineWebhookRoute
+  '/api/ops-monitoring': typeof ApiOpsMonitoringRoute
   '/api/production-automation': typeof ApiProductionAutomationRoute
   '/api/send-nudge': typeof ApiSendNudgeRoute
   '/api/submit-moph-report': typeof ApiSubmitMophReportRoute
@@ -174,6 +182,7 @@ export interface FileRoutesById {
   '/api/ili-report': typeof ApiIliReportRoute
   '/api/kumhos-proxy': typeof ApiKumhosProxyRoute
   '/api/line-webhook': typeof ApiLineWebhookRoute
+  '/api/ops-monitoring': typeof ApiOpsMonitoringRoute
   '/api/production-automation': typeof ApiProductionAutomationRoute
   '/api/send-nudge': typeof ApiSendNudgeRoute
   '/api/submit-moph-report': typeof ApiSubmitMophReportRoute
@@ -196,6 +205,7 @@ export interface FileRouteTypes {
     | '/api/ili-report'
     | '/api/kumhos-proxy'
     | '/api/line-webhook'
+    | '/api/ops-monitoring'
     | '/api/production-automation'
     | '/api/send-nudge'
     | '/api/submit-moph-report'
@@ -216,6 +226,7 @@ export interface FileRouteTypes {
     | '/api/ili-report'
     | '/api/kumhos-proxy'
     | '/api/line-webhook'
+    | '/api/ops-monitoring'
     | '/api/production-automation'
     | '/api/send-nudge'
     | '/api/submit-moph-report'
@@ -236,6 +247,7 @@ export interface FileRouteTypes {
     | '/api/ili-report'
     | '/api/kumhos-proxy'
     | '/api/line-webhook'
+    | '/api/ops-monitoring'
     | '/api/production-automation'
     | '/api/send-nudge'
     | '/api/submit-moph-report'
@@ -257,6 +269,7 @@ export interface RootRouteChildren {
   ApiIliReportRoute: typeof ApiIliReportRoute
   ApiKumhosProxyRoute: typeof ApiKumhosProxyRoute
   ApiLineWebhookRoute: typeof ApiLineWebhookRoute
+  ApiOpsMonitoringRoute: typeof ApiOpsMonitoringRoute
   ApiProductionAutomationRoute: typeof ApiProductionAutomationRoute
   ApiSendNudgeRoute: typeof ApiSendNudgeRoute
   ApiSubmitMophReportRoute: typeof ApiSubmitMophReportRoute
@@ -350,6 +363,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiProductionAutomationRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/ops-monitoring': {
+      id: '/api/ops-monitoring'
+      path: '/api/ops-monitoring'
+      fullPath: '/api/ops-monitoring'
+      preLoaderRoute: typeof ApiOpsMonitoringRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/line-webhook': {
       id: '/api/line-webhook'
       path: '/api/line-webhook'
@@ -409,6 +429,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiIliReportRoute: ApiIliReportRoute,
   ApiKumhosProxyRoute: ApiKumhosProxyRoute,
   ApiLineWebhookRoute: ApiLineWebhookRoute,
+  ApiOpsMonitoringRoute: ApiOpsMonitoringRoute,
   ApiProductionAutomationRoute: ApiProductionAutomationRoute,
   ApiSendNudgeRoute: ApiSendNudgeRoute,
   ApiSubmitMophReportRoute: ApiSubmitMophReportRoute,
