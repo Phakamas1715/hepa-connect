@@ -3,6 +3,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import {
   Activity,
   CheckCircle2,
+  Database,
   FlaskConical,
   Loader2,
   PlayCircle,
@@ -33,12 +34,23 @@ type ScenarioMeta = {
   instruction: string;
 };
 
+type HfDatasetMeta = {
+  repo: string;
+  loaded: boolean;
+  totalSamples: number;
+  hepaFocus: string[];
+  domains: Array<{ domain: string; samples: number }>;
+  previews: Array<{ domain: string; id: string | number; turn: string; instruction: string }>;
+  s3: { configured: boolean; endpoint: string | null; bucket: string | null };
+};
+
 type BenchMeta = {
   source: string;
   adapter: string;
   description: string;
   dimensions: string[];
   scenarios: ScenarioMeta[];
+  dataset?: HfDatasetMeta;
 };
 
 type BenchResult = {
@@ -65,6 +77,10 @@ const domainLabels: Record<string, string> = {
   mcp: "API / MCP",
   web: "เว็บ / Automation",
   terminal: "เทอร์มินัล",
+  search: "ค้นหา",
+  swe: "แก้โค้ด",
+  android: "Android",
+  os: "ระบบปฏิบัติการ",
 };
 
 const dimensionLabels: Record<string, string> = {
@@ -212,6 +228,70 @@ function AgentBenchPage() {
           </CardContent>
         </Card>
       </section>
+
+      <Card className="metric-card border-violet-200 bg-violet-50/50">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base text-violet-950">
+            <Database className="h-5 w-5 text-teal" />
+            ชุดข้อมูล Qwen บนเครื่อง
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {meta.data?.dataset?.loaded ? (
+            <>
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge className="bg-emerald-700 text-white hover:bg-emerald-700">
+                  โหลดแล้ว {meta.data.dataset.totalSamples.toLocaleString("th-TH")} ตัวอย่าง
+                </Badge>
+                {meta.data.dataset.s3.configured && (
+                  <Badge variant="outline" className="border-violet-200 bg-white text-violet-900">
+                    S3: {meta.data.dataset.s3.bucket}
+                  </Badge>
+                )}
+              </div>
+              <p className="text-sm leading-6 text-violet-950/80">
+                โฟกัสโดเมนที่เกี่ยวกับ HEPA:{" "}
+                {meta.data.dataset.hepaFocus.map((d) => domainLabels[d] || d).join(", ")}
+              </p>
+              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                {meta.data.dataset.domains.slice(0, 7).map((item) => (
+                  <div key={item.domain} className="rounded-lg border border-violet-200 bg-white/80 p-3">
+                    <div className="text-xs text-muted-foreground">
+                      {domainLabels[item.domain] || item.domain}
+                    </div>
+                    <div className="text-lg font-bold text-violet-950">
+                      {item.samples.toLocaleString("th-TH")}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="space-y-2">
+                <div className="text-xs font-semibold uppercase tracking-wide text-violet-900/70">
+                  ตัวอย่างคำสั่งจากชุดข้อมูล
+                </div>
+                {meta.data.dataset.previews.map((preview) => (
+                  <div
+                    key={`${preview.domain}-${preview.id}`}
+                    className="rounded-lg border border-violet-200 bg-white/80 p-3 text-sm text-violet-950"
+                  >
+                    <div className="mb-1 flex items-center gap-2 text-xs text-muted-foreground">
+                      <Badge variant="outline">{domainLabels[preview.domain] || preview.domain}</Badge>
+                      <span>เทิร์น {preview.turn}</span>
+                    </div>
+                    {preview.instruction}
+                  </div>
+                ))}
+              </div>
+            </>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              ยังไม่พบไฟล์ชุดข้อมูล — รัน{" "}
+              <code className="rounded bg-muted px-1.5 py-0.5 text-xs">pnpm bench:download</code>{" "}
+              เพื่อดาวน์โหลดจาก Hugging Face
+            </p>
+          )}
+        </CardContent>
+      </Card>
 
       {summary && (
         <Card className="metric-card">

@@ -21,7 +21,9 @@
     "line:mcp:doctor": "grok mcp doctor line-bot",
     "daily:hepbc": "bun scripts/daily-hepbc-runner.ts",
     "daily:hepbc:real": "DRY_RUN=false bun scripts/daily-hepbc-runner.ts",
-    "bench:agent": "bun scripts/agent-world-bench.ts"
+    "bench:agent": "bun scripts/agent-world-bench.ts",
+    "bench:download": "bash scripts/download-agent-world-bench.sh",
+    "bench:sync-hf-s3": "bash scripts/sync-agent-world-bench-to-hf-s3.sh"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

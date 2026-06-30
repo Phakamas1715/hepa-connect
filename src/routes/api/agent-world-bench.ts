@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { getAgentWorldBenchDatasetInfo } from "@/lib/agent-world-bench/hf-dataset";
 import {
   listAgentWorldBenchScenarios,
   runAgentWorldBench,
@@ -20,6 +21,7 @@ export const Route = createFileRoute("/api/agent-world-bench")({
             "ชุดทดสอบจำลองสภาพแวดล้อม agent สำหรับ endpoint จริงของ HEPA — อ้างอิงรูปแบบ AgentWorldBench",
           dimensions: ["format", "factuality", "consistency", "realism", "quality"],
           scenarios: listAgentWorldBenchScenarios(),
+          dataset: getAgentWorldBenchDatasetInfo(),
         });
       },
       POST: async ({ request }) => {

@@ -22,6 +22,10 @@ dist-ssr
 .env.*
 !.env.example
 
+# Hugging Face AgentWorldBench (large JSONL downloads)
+data/agent-world-bench/
+data/agent-world-bench/**
+
 # Wrangler / Cloudflare
 .wrangler/
 .dev.vars
