@@ -1,5 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
+import { isHosxpSyncFresh, readHosxpSync } from "@/lib/hosxp-sync-store";
 import { resolveHosxpProxyUrl } from "@/lib/hosxp-proxy-url";
 import { serverEnv } from "@/lib/server-env";
 import { getKumhosHosxpProxyStatus } from "@/lib/kumhos-client";
@@ -122,13 +123,23 @@ export async function probeHosxpBridge(): Promise<HealthProbe> {
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : "fetch failed";
+    if (isHosxpSyncFresh()) {
+      const sync = readHosxpSync();
+      return {
+        checkedAt: new Date().toISOString(),
+        state: "ready",
+        ok: true,
+        detail: `ใช้ hospital push cache แทน (${sync?.records?.length || 0} records, synced ${sync?.syncedAt})`,
+        latencyMs: Date.now() - started,
+      };
+    }
     const isPrivateLan = /172\.|192\.168\.|10\./.test(proxyUrl);
     return {
       checkedAt: new Date().toISOString(),
       state: "blocked",
       ok: false,
       detail: isPrivateLan
-        ? `${message} — VPS บน cloud เข้า LAN โรงพยาบาลโดยตรงไม่ได้ ต้องใช้ tunnel (ดู deploy/hospital-reverse-tunnel.sh)`
+        ? `${message} — ใช้ deploy/hospital-push-to-vps.php บน Laragon (push ออกมา VPS) หรือ tunnel`
         : message,
       latencyMs: Date.now() - started,
     };
@@ -198,6 +209,17 @@ export async function probeHepatitisFeed(): Promise<HealthProbe> {
       latencyMs: Date.now() - started,
     };
   } catch (error) {
+    if (isHosxpSyncFresh()) {
+      const sync = readHosxpSync();
+      const positives = (sync?.records || []).filter((r) => r.needs_followup).length;
+      return {
+        checkedAt: new Date().toISOString(),
+        state: "ready",
+        ok: true,
+        detail: `ใช้ข้อมูล push จากโรงพยาบาล (${sync?.records?.length || 0} records, ${positives} follow-up)`,
+        latencyMs: Date.now() - started,
+      };
+    }
     return {
       checkedAt: new Date().toISOString(),
       state: "blocked",

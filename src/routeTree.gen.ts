@@ -25,6 +25,7 @@ import { Route as ApiOpsMonitoringRouteImport } from './routes/api/ops-monitorin
 import { Route as ApiLineWebhookRouteImport } from './routes/api/line-webhook'
 import { Route as ApiKumhosProxyRouteImport } from './routes/api/kumhos-proxy'
 import { Route as ApiIliReportRouteImport } from './routes/api/ili-report'
+import { Route as ApiHosxpSyncRouteImport } from './routes/api/hosxp-sync'
 import { Route as ApiHosxpBridgeRouteImport } from './routes/api/hosxp-bridge'
 import { Route as ApiConnectionStatusRouteImport } from './routes/api/connection-status'
 import { Route as ApiAgentOrchestratorRouteImport } from './routes/api/agent-orchestrator'
@@ -109,6 +110,11 @@ const ApiIliReportRoute = ApiIliReportRouteImport.update({
   path: '/api/ili-report',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiHosxpSyncRoute = ApiHosxpSyncRouteImport.update({
+  id: '/api/hosxp-sync',
+  path: '/api/hosxp-sync',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiHosxpBridgeRoute = ApiHosxpBridgeRouteImport.update({
   id: '/api/hosxp-bridge',
   path: '/api/hosxp-bridge',
@@ -136,6 +142,7 @@ export interface FileRoutesByFullPath {
   '/api/agent-orchestrator': typeof ApiAgentOrchestratorRoute
   '/api/connection-status': typeof ApiConnectionStatusRoute
   '/api/hosxp-bridge': typeof ApiHosxpBridgeRoute
+  '/api/hosxp-sync': typeof ApiHosxpSyncRoute
   '/api/ili-report': typeof ApiIliReportRoute
   '/api/kumhos-proxy': typeof ApiKumhosProxyRoute
   '/api/line-webhook': typeof ApiLineWebhookRoute
@@ -157,6 +164,7 @@ export interface FileRoutesByTo {
   '/api/agent-orchestrator': typeof ApiAgentOrchestratorRoute
   '/api/connection-status': typeof ApiConnectionStatusRoute
   '/api/hosxp-bridge': typeof ApiHosxpBridgeRoute
+  '/api/hosxp-sync': typeof ApiHosxpSyncRoute
   '/api/ili-report': typeof ApiIliReportRoute
   '/api/kumhos-proxy': typeof ApiKumhosProxyRoute
   '/api/line-webhook': typeof ApiLineWebhookRoute
@@ -179,6 +187,7 @@ export interface FileRoutesById {
   '/api/agent-orchestrator': typeof ApiAgentOrchestratorRoute
   '/api/connection-status': typeof ApiConnectionStatusRoute
   '/api/hosxp-bridge': typeof ApiHosxpBridgeRoute
+  '/api/hosxp-sync': typeof ApiHosxpSyncRoute
   '/api/ili-report': typeof ApiIliReportRoute
   '/api/kumhos-proxy': typeof ApiKumhosProxyRoute
   '/api/line-webhook': typeof ApiLineWebhookRoute
@@ -202,6 +211,7 @@ export interface FileRouteTypes {
     | '/api/agent-orchestrator'
     | '/api/connection-status'
     | '/api/hosxp-bridge'
+    | '/api/hosxp-sync'
     | '/api/ili-report'
     | '/api/kumhos-proxy'
     | '/api/line-webhook'
@@ -223,6 +233,7 @@ export interface FileRouteTypes {
     | '/api/agent-orchestrator'
     | '/api/connection-status'
     | '/api/hosxp-bridge'
+    | '/api/hosxp-sync'
     | '/api/ili-report'
     | '/api/kumhos-proxy'
     | '/api/line-webhook'
@@ -244,6 +255,7 @@ export interface FileRouteTypes {
     | '/api/agent-orchestrator'
     | '/api/connection-status'
     | '/api/hosxp-bridge'
+    | '/api/hosxp-sync'
     | '/api/ili-report'
     | '/api/kumhos-proxy'
     | '/api/line-webhook'
@@ -266,6 +278,7 @@ export interface RootRouteChildren {
   ApiAgentOrchestratorRoute: typeof ApiAgentOrchestratorRoute
   ApiConnectionStatusRoute: typeof ApiConnectionStatusRoute
   ApiHosxpBridgeRoute: typeof ApiHosxpBridgeRoute
+  ApiHosxpSyncRoute: typeof ApiHosxpSyncRoute
   ApiIliReportRoute: typeof ApiIliReportRoute
   ApiKumhosProxyRoute: typeof ApiKumhosProxyRoute
   ApiLineWebhookRoute: typeof ApiLineWebhookRoute
@@ -391,6 +404,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiIliReportRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/hosxp-sync': {
+      id: '/api/hosxp-sync'
+      path: '/api/hosxp-sync'
+      fullPath: '/api/hosxp-sync'
+      preLoaderRoute: typeof ApiHosxpSyncRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/hosxp-bridge': {
       id: '/api/hosxp-bridge'
       path: '/api/hosxp-bridge'
@@ -426,6 +446,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAgentOrchestratorRoute: ApiAgentOrchestratorRoute,
   ApiConnectionStatusRoute: ApiConnectionStatusRoute,
   ApiHosxpBridgeRoute: ApiHosxpBridgeRoute,
+  ApiHosxpSyncRoute: ApiHosxpSyncRoute,
   ApiIliReportRoute: ApiIliReportRoute,
   ApiKumhosProxyRoute: ApiKumhosProxyRoute,
   ApiLineWebhookRoute: ApiLineWebhookRoute,
