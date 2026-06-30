@@ -24,7 +24,8 @@
     "bench:agent": "bun scripts/agent-world-bench.ts",
     "bench:download": "bash scripts/download-agent-world-bench.sh",
     "bench:sync-hf-s3": "bash scripts/sync-agent-world-bench-to-hf-s3.sh",
-    "setup:run": "bash scripts/install-and-run.sh"
+    "setup:run": "bash scripts/install-and-run.sh",
+    "deploy:vps": "bash deploy/deploy-vps-now.sh"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
