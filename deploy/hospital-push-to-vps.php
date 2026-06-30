@@ -14,6 +14,16 @@
  */
 declare(strict_types=1);
 
+$envFile = __DIR__ . '/hepa-push.env';
+if (is_file($envFile)) {
+    foreach (file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
+        $line = trim($line);
+        if ($line === '' || str_starts_with($line, '#') || !str_contains($line, '=')) continue;
+        [$k, $v] = explode('=', $line, 2);
+        putenv(trim($k) . '=' . trim($v));
+    }
+}
+
 $vpsUrl = getenv('HEPA_VPS_SYNC_URL') ?: 'https://hepa-namphong.54.254.201.52.sslip.io/api/hosxp-sync';
 $vpsToken = getenv('HEPA_VPS_SYNC_TOKEN') ?: getenv('HEPAGLUE_PROXY_TOKEN') ?: '';
 $localBridge = getenv('HEPA_LOCAL_BRIDGE_URL') ?: 'http://127.0.0.1/kumhos/kumhos_lab_api/hepa_glue_hepatitis_proxy.php';

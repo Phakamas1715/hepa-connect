@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { bootstrapFromPreparedPatients } from "@/lib/bootstrap-hosxp-sync";
 import {
   isHosxpSyncFresh,
   mergeHosxpSyncRecords,
@@ -45,12 +46,24 @@ export const Route = createFileRoute("/api/hosxp-sync")({
         }
 
         const body = (await request.json().catch(() => ({}))) as {
+          action?: string;
           source?: string;
           date_from?: string;
           date_to?: string;
           records?: Array<Record<string, unknown>>;
           bridge?: { records?: Array<Record<string, unknown>> };
         };
+
+        if (body.action === "bootstrap_prepared") {
+          const saved = bootstrapFromPreparedPatients();
+          return Response.json({
+            ok: true,
+            bootstrapped: true,
+            syncedAt: saved.syncedAt,
+            count: saved.records.length,
+            message: "Seeded HOSxP sync cache from prepared target registry",
+          });
+        }
 
         const records = body.records || body.bridge?.records || [];
         if (!Array.isArray(records) || records.length === 0) {
