@@ -9,7 +9,6 @@ import {
   writeAgentStore,
   audit,
 } from "@/lib/hepa-agent-store";
-import { autoFillHepBCReport } from "@/lib/moph-hepbc-reporter";
 import { getScreenedPassedResults } from "@/lib/kumhos-client";
 
 function requestBaseUrl(request: Request) {
@@ -179,6 +178,7 @@ export const Route = createFileRoute("/api/agent-orchestrator")({
             let reportResult = null;
             if (cases.length > 0) {
               try {
+                const { autoFillHepBCReport } = await import("@/lib/moph-hepbc-reporter");
                 reportResult = await autoFillHepBCReport(cases as any);
               } catch (e: any) {
                 console.error("Daily Hep-BC report failed", e);
