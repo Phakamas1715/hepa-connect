@@ -1,20 +1,11 @@
 import { createFileRoute, useSearch } from "@tanstack/react-router";
-import { useMutation, useQuery } from "@tanstack/react-query";
-import { CheckCircle2, Loader2, ScanLine, ShieldCheck, Smartphone } from "lucide-react";
+import { useMutation } from "@tanstack/react-query";
+import { CheckCircle2, Loader2, ShieldCheck, Smartphone } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-
-type InvitePreview = {
-  id: string;
-  hn: string;
-  patientName?: string;
-  status: string;
-  expiresAt: string;
-  usedAt?: string;
-};
 
 type LineProfile = {
   userId: string;
@@ -32,8 +23,8 @@ declare global {
   }
 }
 
-export const Route = createFileRoute("/line/link")({
-  component: LineLinkPage,
+export const Route = createFileRoute("/line/staff")({
+  component: LineStaffPage,
 });
 
 async function postAgent(action: string, payload: Record<string, unknown>) {
@@ -45,12 +36,6 @@ async function postAgent(action: string, payload: Record<string, unknown>) {
   const data = await response.json();
   if (!response.ok) throw new Error(data?.message || "ดำเนินการไม่สำเร็จ");
   return data;
-}
-
-async function inspectInvite(token?: string): Promise<InvitePreview> {
-  if (!token) throw new Error("ลิงก์นี้ไม่มี token");
-  const data = await postAgent("inspect_invite", { token });
-  return data.invite;
 }
 
 async function loadLiffSdk() {
@@ -82,28 +67,12 @@ async function getLiffProfile(liffId: string): Promise<LineProfile> {
   return window.liff.getProfile();
 }
 
-function maskHn(hn?: string) {
-  if (!hn) return "-";
-  if (hn.length <= 4) return hn;
-  return `${hn.slice(0, 2)}${"*".repeat(Math.max(2, hn.length - 5))}${hn.slice(-3)}`;
-}
-
-function LineLinkPage() {
-  const search = useSearch({ from: "/line/link" }) as {
-    token?: string;
-    lineUserId?: string;
-    displayName?: string;
-  };
-  const liffId = (import.meta.env.VITE_PATIENT_LIFF_ID || import.meta.env.VITE_LIFF_ID) as string | undefined;
+function LineStaffPage() {
+  const search = useSearch({ from: "/line/staff" }) as { lineUserId?: string; displayName?: string };
+  const liffId = (import.meta.env.VITE_STAFF_LIFF_ID || import.meta.env.VITE_LIFF_ID) as string | undefined;
   const [profile, setProfile] = useState<LineProfile | null>(null);
   const [manualLineUserId, setManualLineUserId] = useState(search.lineUserId || "");
   const [manualDisplayName, setManualDisplayName] = useState(search.displayName || "");
-
-  const invite = useQuery({
-    queryKey: ["line-invite", search.token],
-    queryFn: () => inspectInvite(search.token),
-    retry: false,
-  });
 
   useEffect(() => {
     if (!liffId) return;
@@ -126,19 +95,16 @@ function LineLinkPage() {
 
   const mutation = useMutation({
     mutationFn: () =>
-      postAgent("verify_invite", {
-        token: search.token,
-        hn: invite.data?.hn,
+      postAgent("verify_staff", {
         lineUserId: resolvedLine.lineUserId,
         displayName: resolvedLine.displayName,
-        role: "patient",
       }),
-    onSuccess: () => toast.success("ผูก LINE กับ HN สำเร็จ"),
+    onSuccess: () => toast.success("บันทึก LINE เจ้าหน้าที่สำเร็จ"),
     onError: (error) => toast.error(error instanceof Error ? error.message : "ยืนยันไม่สำเร็จ"),
   });
 
   const done = mutation.isSuccess;
-  const canConfirm = Boolean(search.token && invite.data?.hn && resolvedLine.lineUserId && !mutation.isPending);
+  const canConfirm = Boolean(resolvedLine.lineUserId && !mutation.isPending);
 
   return (
     <div className="mx-auto grid min-h-screen max-w-xl place-items-center px-4 py-8">
@@ -146,7 +112,7 @@ function LineLinkPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <ShieldCheck className="h-5 w-5 text-teal" />
-            ยืนยัน LINE สำหรับน้ำพองรักตับ
+            ยืนยัน LINE เจ้าหน้าที่
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -154,56 +120,23 @@ function LineLinkPage() {
             <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-emerald-900">
               <div className="flex items-center gap-2 font-semibold">
                 <CheckCircle2 className="h-5 w-5" />
-                ผูกตัวตนสำเร็จ
+                บันทึกเจ้าหน้าที่สำเร็จ
               </div>
-              <p className="mt-2 text-sm leading-6">
-                ระบบบันทึก LINE สำหรับการติดตามผู้ป่วยเรียบร้อยแล้ว
-              </p>
+              <p className="mt-2 text-sm leading-6">ระบบบันทึก LINE นี้เป็นบัญชีเจ้าหน้าที่เรียบร้อยแล้ว</p>
             </div>
           ) : (
             <>
               <div className="rounded-lg border border-teal/20 bg-teal/5 p-4">
                 <div className="flex items-start gap-3">
-                  <ScanLine className="mt-1 h-5 w-5 text-teal" />
+                  <Smartphone className="mt-1 h-5 w-5 text-teal" />
                   <div>
-                    <div className="font-semibold">ขั้นตอนผู้ป่วย: สแกน QR แล้วกดยืนยัน</div>
+                    <div className="font-semibold">ขั้นตอนเจ้าหน้าที่: เปิด LIFF แล้วกดยืนยัน</div>
                     <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                      HN มาจากลิงก์ invite ส่วน LINE userId จะมาจาก LIFF หลังยืนยันสิทธิ์ใน LINE
+                      ระบบจะอ่าน LINE userId จาก LIFF และบันทึกเป็นบัญชีเจ้าหน้าที่ โดยไม่ผูกกับ HN ผู้ป่วย
                     </p>
                   </div>
                 </div>
               </div>
-
-              {invite.isLoading && (
-                <div className="flex items-center gap-2 rounded-lg border bg-muted/20 p-3 text-sm text-muted-foreground">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  กำลังตรวจลิงก์เชิญ
-                </div>
-              )}
-              {invite.error && (
-                <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
-                  {invite.error instanceof Error ? invite.error.message : "ลิงก์เชิญไม่ถูกต้อง"}
-                </div>
-              )}
-
-              {invite.data && (
-                <div className="grid gap-2 rounded-lg border bg-card p-3 text-sm">
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="text-muted-foreground">HN จาก invite</span>
-                    <span className="font-mono font-semibold">{maskHn(invite.data.hn)}</span>
-                  </div>
-                  {invite.data.patientName && (
-                    <div className="flex items-center justify-between gap-3">
-                      <span className="text-muted-foreground">ชื่อ</span>
-                      <span className="font-semibold">{invite.data.patientName}</span>
-                    </div>
-                  )}
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="text-muted-foreground">หมดอายุ</span>
-                    <span>{new Date(invite.data.expiresAt).toLocaleString("th-TH")}</span>
-                  </div>
-                </div>
-              )}
 
               <div className="rounded-lg border bg-muted/20 p-3">
                 <div className="flex items-start gap-2">
@@ -239,7 +172,7 @@ function LineLinkPage() {
 
               <Button className="w-full gap-2" disabled={!canConfirm} onClick={() => mutation.mutate()}>
                 {mutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-                ยืนยันและผูก LINE
+                ยืนยันเจ้าหน้าที่
               </Button>
             </>
           )}

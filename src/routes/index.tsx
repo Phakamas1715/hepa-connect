@@ -17,7 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
-import { KPI, SUBDISTRICTS, allocateKits } from "@/lib/hepa-data";
+import { HEPA_PROJECT_CONFIG, KPI, SUBDISTRICTS, allocateKits } from "@/lib/hepa-data";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -25,7 +25,7 @@ export const Route = createFileRoute("/")({
       { title: "แดชบอร์ดผู้บริหาร — HEPA-GLUE Engine" },
       {
         name: "description",
-        content: "KPI ปีงบ 2569, HCV care cascade และการจัดสรรชุดตรวจด้วย AI สำหรับ 18 รพ.สต. อำเภอน้ำพอง",
+        content: `KPI ปีงบ ${HEPA_PROJECT_CONFIG.fiscalYear}, HCV care cascade และการจัดสรรชุดตรวจสำหรับ ${HEPA_PROJECT_CONFIG.primaryCareUnitCount} รพ.สต. ${HEPA_PROJECT_CONFIG.districtName}`,
       },
     ],
   }),
@@ -67,7 +67,7 @@ function KpiCard({
         : "ring-1 ring-border";
 
   return (
-    <Card className={`relative overflow-hidden ${ring}`}>
+    <Card className={`metric-card relative overflow-hidden ${ring}`}>
       <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
         <CardTitle className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{title}</CardTitle>
         <div
@@ -134,22 +134,49 @@ function Dashboard() {
   const handleAllocate = () => {
     const result = allocateKits(kitPool, SUBDISTRICTS);
     setAllocated(result);
-    toast.success(`AI จัดสรรชุดตรวจ ${kitPool.toLocaleString()} ชุดให้ 18 รพ.สต. แล้ว`, {
+    toast.success(`จัดสรรชุดตรวจ ${kitPool.toLocaleString()} ชุดให้ ${HEPA_PROJECT_CONFIG.primaryCareUnitCount} รพ.สต. แล้ว`, {
       description: "คำนวณจากกลุ่มเป้าหมาย 60% และดัชนีความเสี่ยง 40%",
     });
   };
 
   return (
-    <div className="mx-auto w-full max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">แดชบอร์ดผู้บริหาร</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          ผลการดำเนินงานกำจัดไวรัสตับอักเสบ B/C อำเภอน้ำพอง ปีงบประมาณ 2569 · กลุ่มเป้าหมายเกิดก่อนปี 2535
-        </p>
-      </div>
+    <div className="page-shell">
+      <header className="page-header">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <div className="page-eyebrow">
+              <Activity className="h-3.5 w-3.5" />
+              Dashboard
+            </div>
+            <h1 className="page-title">แดชบอร์ดผู้บริหาร</h1>
+            <p className="page-description">
+              ภาพรวมงานกำจัดไวรัสตับอักเสบ B/C {HEPA_PROJECT_CONFIG.districtName} ปีงบประมาณ {HEPA_PROJECT_CONFIG.fiscalYear} · กลุ่มเป้าหมายเกิดก่อนปี {HEPA_PROJECT_CONFIG.targetBirthBeforeYear}
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-2 text-xs sm:grid-cols-3">
+            <div className="rounded-2xl border bg-background/70 p-3">
+              <div className="text-muted-foreground">เป้าหมาย</div>
+              <div className="mt-1 font-bold tabular-nums">{HEPA_PROJECT_CONFIG.targetPopulation.toLocaleString()}</div>
+            </div>
+            <div className="rounded-2xl border bg-background/70 p-3">
+              <div className="text-muted-foreground">{HEPA_PROJECT_CONFIG.primaryCareUnitCount} รพ.สต.</div>
+              <div className="mt-1 font-bold tabular-nums">{HEPA_PROJECT_CONFIG.primaryCareTargetPopulation.toLocaleString()}</div>
+            </div>
+            <div className="col-span-2 rounded-2xl border bg-background/70 p-3 sm:col-span-1">
+              <div className="text-muted-foreground">สถานะ</div>
+              <div className="mt-1 font-bold text-amber-700 dark:text-amber-300">ติดตามเร่งด่วน</div>
+            </div>
+          </div>
+        </div>
+      </header>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <KpiCard title="ประชากรเป้าหมาย" value="6,556" sub="เกิดก่อนปี 2535 ครอบคลุมทั้งอำเภอ" icon={Users} />
+        <KpiCard
+          title="ประชากรเป้าหมาย"
+          value={HEPA_PROJECT_CONFIG.targetPopulation.toLocaleString()}
+          sub={`เกิดก่อนปี ${HEPA_PROJECT_CONFIG.targetBirthBeforeYear} ครอบคลุมทั้งอำเภอ`}
+          icon={Users}
+        />
         <KpiCard
           title="คัดกรอง HBV"
           value={KPI.hbv.screened.toLocaleString()}
@@ -177,7 +204,7 @@ function Dashboard() {
         />
       </div>
 
-      <Card className="border-destructive/40 bg-gradient-to-r from-destructive/10 to-warning/10">
+      <Card className="metric-card border-destructive/35 bg-gradient-to-r from-destructive/10 via-card to-warning/10">
         <CardContent className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center">
           <div className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-destructive text-destructive-foreground shadow-lg">
             <AlertTriangle className="h-6 w-6" />
@@ -185,29 +212,29 @@ function Dashboard() {
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-sm font-bold uppercase tracking-wider text-destructive">ประเด็นเร่งด่วน</span>
-              <Badge variant="destructive" className="text-[10px]">สัญญาณเหลือง/แดง</Badge>
+              <Badge variant="destructive" className="text-[10px]">Priority</Badge>
             </div>
             <h3 className="mt-1 text-base font-bold text-foreground sm:text-lg">
               ผู้ป่วย HCV ผลบวก 54 รายยังไม่เข้าสู่การรักษาด้วย Sofvel
             </h3>
             <p className="mt-1 text-sm text-muted-foreground">
-              การปิดช่องว่างนี้เป็นงานที่มีผลสูงสุดต่อเป้าหมายปีงบ 2569 ให้ใช้ AI nudge จากโมดูลทะเบียน Care Gap เพื่อติดตามผู้ป่วย
+              ควรติดตามผู้ป่วยกลุ่มนี้เป็นลำดับแรก เพื่อเพิ่มอัตราเข้าสู่การรักษาในปีงบ {HEPA_PROJECT_CONFIG.fiscalYear}
             </p>
           </div>
           <Button size="lg" className="shrink-0 bg-destructive text-destructive-foreground hover:bg-destructive/90">
-            เปิดคิวติดตาม <ArrowRight className="ml-2 h-4 w-4" />
+            ดูคิวติดตาม <ArrowRight className="ml-2 h-4 w-4" />
           </Button>
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="metric-card">
         <CardHeader>
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
               <CardTitle className="text-base">HCV Care Cascade</CardTitle>
               <p className="mt-1 text-xs text-muted-foreground">ลำดับการดูแลตั้งแต่คัดกรองจนถึงหายขาดทางไวรัส (SVR12)</p>
             </div>
-            <Badge variant="outline" className="border-teal text-teal">ปีงบ 2569</Badge>
+            <Badge variant="outline" className="border-teal text-teal">ปีงบ {HEPA_PROJECT_CONFIG.fiscalYear}</Badge>
           </div>
         </CardHeader>
         <CardContent>
@@ -227,12 +254,12 @@ function Dashboard() {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="metric-card">
         <CardHeader>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <CardTitle className="text-base">18 หน่วยบริการปฐมภูมิ (รพ.สต.)</CardTitle>
-              <p className="mt-1 text-xs text-muted-foreground">ทุกหน่วยยังอยู่ที่ 0% screening · รอจัดสรรชุดตรวจ rapid test</p>
+              <CardTitle className="text-base">{HEPA_PROJECT_CONFIG.primaryCareUnitCount} หน่วยบริการปฐมภูมิ (รพ.สต.)</CardTitle>
+              <p className="mt-1 text-xs text-muted-foreground">สถานะคัดกรองรายหน่วยและแผนจัดสรรชุดตรวจ</p>
             </div>
             <div className="flex flex-wrap items-end gap-2">
               <div className="min-w-0">
@@ -240,16 +267,16 @@ function Dashboard() {
                 <Input type="number" value={kitPool} onChange={(event) => setKitPool(Number(event.target.value) || 0)} className="h-9 w-32" />
               </div>
               <Button onClick={handleAllocate} className="gap-2 gradient-medical text-white">
-                <Sparkles className="h-4 w-4" /> ให้ AI แนะนำการจัดสรร
+                <Sparkles className="h-4 w-4" /> คำนวณการจัดสรร
               </Button>
             </div>
           </div>
         </CardHeader>
         <CardContent>
-          <div className="overflow-hidden rounded-lg border">
-            <table className="w-full text-sm">
-              <thead className="bg-muted/50">
-                <tr className="text-left text-[11px] uppercase tracking-wider text-muted-foreground">
+          <div className="overflow-hidden rounded-2xl border bg-card">
+            <table className="clinical-table">
+              <thead>
+                <tr>
                   <th className="px-3 py-2">รพ.สต.</th>
                   <th className="px-3 py-2 text-right">เป้าหมาย</th>
                   <th className="px-3 py-2 text-right">ดัชนีเสี่ยง</th>
@@ -288,7 +315,7 @@ function Dashboard() {
               {allocated && (
                 <tfoot>
                   <tr className="border-t bg-muted/30 text-xs font-semibold">
-                    <td className="px-3 py-2">รวม 18 หน่วย</td>
+                    <td className="px-3 py-2">รวม {HEPA_PROJECT_CONFIG.primaryCareUnitCount} หน่วย</td>
                     <td className="px-3 py-2 text-right tabular-nums">{totalTarget}</td>
                     <td className="px-3 py-2 text-right tabular-nums">{totalRisk.toFixed(2)}</td>
                     <td />

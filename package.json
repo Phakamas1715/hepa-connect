@@ -11,6 +11,7 @@
     "preview": "vite preview",
     "lint": "eslint .",
     "format": "prettier --write .",
+    "hepa:check": "bun scripts/validate-hepa-consistency.ts",
     "hermes:status": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/hermes-status.ps1",
     "hermes:ask": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/hermes-hepa-oneshot.ps1"
   },

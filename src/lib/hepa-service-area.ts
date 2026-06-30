@@ -1,4 +1,4 @@
-﻿import type { Patient } from "@/lib/hepa-data";
+import type { Patient } from "@/lib/hepa-data";
 
 export type HepaServiceUnitType = "primary_care" | "hospital";
 
@@ -35,11 +35,15 @@ export const HEPA_PRIMARY_CARE_UNITS: HepaServiceUnit[] = [
   { code: "PT", unitName: "โรงพยาบาลส่งเสริมสุขภาพตำบลพังทุย", unitType: "primary_care" },
 ];
 
-const HOSPITAL_NAMPHONG: HepaServiceUnit = {
+export const HEPA_DISTRICT_HOSPITAL: HepaServiceUnit = {
   code: "NPH",
   unitName: "โรงพยาบาลน้ำพอง",
   unitType: "hospital",
 };
+
+export function formatHepaServiceUnitShortName(unitName: string) {
+  return unitName.replace("โรงพยาบาลส่งเสริมสุขภาพตำบล", "รพ.สต.");
+}
 
 function unit(code: string) {
   const found = HEPA_PRIMARY_CARE_UNITS.find((item) => item.code === code);
@@ -48,7 +52,7 @@ function unit(code: string) {
 }
 
 export const HEPA_SERVICE_AREAS: HepaServiceArea[] = [
-  { ...HOSPITAL_NAMPHONG, subdistrict: "น้ำพอง", villages: [1, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 15, 16, 17], coverageNote: "พื้นที่โรงพยาบาลน้ำพอง ไม่รวมใน 18 รพ.สต." },
+  { ...HEPA_DISTRICT_HOSPITAL, subdistrict: "น้ำพอง", villages: [1, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 15, 16, 17], coverageNote: "พื้นที่โรงพยาบาลน้ำพอง ไม่รวมใน 18 รพ.สต." },
   { ...unit("SM"), subdistrict: "ทรายมูล", villages: [1, 2, 3, 7, 8, 9, 11] },
   { ...unit("BY"), subdistrict: "บัวใหญ่", villages: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17] },
   { ...unit("BL"), subdistrict: "บ้านขาม", villages: [8, 11, 12, 13] },

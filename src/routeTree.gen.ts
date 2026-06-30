@@ -16,6 +16,7 @@ import { Route as HealthRouteImport } from './routes/health'
 import { Route as ArchitectureRouteImport } from './routes/architecture'
 import { Route as AgentRouteImport } from './routes/agent'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as LineStaffRouteImport } from './routes/line.staff'
 import { Route as LineLinkRouteImport } from './routes/line.link'
 import { Route as ApiSubmitMophReportRouteImport } from './routes/api/submit-moph-report'
 import { Route as ApiSendNudgeRouteImport } from './routes/api/send-nudge'
@@ -60,6 +61,11 @@ const AgentRoute = AgentRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LineStaffRoute = LineStaffRouteImport.update({
+  id: '/line/staff',
+  path: '/line/staff',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LineLinkRoute = LineLinkRouteImport.update({
@@ -131,6 +137,7 @@ export interface FileRoutesByFullPath {
   '/api/send-nudge': typeof ApiSendNudgeRoute
   '/api/submit-moph-report': typeof ApiSubmitMophReportRoute
   '/line/link': typeof LineLinkRoute
+  '/line/staff': typeof LineStaffRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -150,6 +157,7 @@ export interface FileRoutesByTo {
   '/api/send-nudge': typeof ApiSendNudgeRoute
   '/api/submit-moph-report': typeof ApiSubmitMophReportRoute
   '/line/link': typeof LineLinkRoute
+  '/line/staff': typeof LineStaffRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -170,6 +178,7 @@ export interface FileRoutesById {
   '/api/send-nudge': typeof ApiSendNudgeRoute
   '/api/submit-moph-report': typeof ApiSubmitMophReportRoute
   '/line/link': typeof LineLinkRoute
+  '/line/staff': typeof LineStaffRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -191,6 +200,7 @@ export interface FileRouteTypes {
     | '/api/send-nudge'
     | '/api/submit-moph-report'
     | '/line/link'
+    | '/line/staff'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -210,6 +220,7 @@ export interface FileRouteTypes {
     | '/api/send-nudge'
     | '/api/submit-moph-report'
     | '/line/link'
+    | '/line/staff'
   id:
     | '__root__'
     | '/'
@@ -229,6 +240,7 @@ export interface FileRouteTypes {
     | '/api/send-nudge'
     | '/api/submit-moph-report'
     | '/line/link'
+    | '/line/staff'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -249,6 +261,7 @@ export interface RootRouteChildren {
   ApiSendNudgeRoute: typeof ApiSendNudgeRoute
   ApiSubmitMophReportRoute: typeof ApiSubmitMophReportRoute
   LineLinkRoute: typeof LineLinkRoute
+  LineStaffRoute: typeof LineStaffRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -300,6 +313,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/line/staff': {
+      id: '/line/staff'
+      path: '/line/staff'
+      fullPath: '/line/staff'
+      preLoaderRoute: typeof LineStaffRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/line/link': {
@@ -393,6 +413,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiSendNudgeRoute: ApiSendNudgeRoute,
   ApiSubmitMophReportRoute: ApiSubmitMophReportRoute,
   LineLinkRoute: LineLinkRoute,
+  LineStaffRoute: LineStaffRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

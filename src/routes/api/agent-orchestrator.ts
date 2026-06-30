@@ -5,6 +5,7 @@ import {
   queueNudge,
   readAgentStore,
   verifyInvite,
+  verifyStaffIdentity,
   writeAgentStore,
   audit,
 } from "@/lib/hepa-agent-store";
@@ -47,6 +48,12 @@ export const Route = createFileRoute("/api/agent-orchestrator")({
 
           if (action === "verify_invite") {
             const { token, hn, lineUserId, displayName, role } = body;
+            if (role === "staff") {
+              return Response.json(
+                { status: "error", message: "staff ต้องยืนยันผ่าน /line/staff เท่านั้น" },
+                { status: 400 },
+              );
+            }
             if (!token || !hn || !lineUserId) {
               return Response.json(
                 { status: "error", message: "ต้องระบุ token, HN และ LINE userId" },
@@ -58,7 +65,18 @@ export const Route = createFileRoute("/api/agent-orchestrator")({
               hn: String(hn),
               lineUserId: String(lineUserId),
               displayName: displayName ? String(displayName) : undefined,
-              role: role || "patient",
+            });
+            return Response.json({ status: "success", ...result });
+          }
+
+          if (action === "verify_staff") {
+            const { lineUserId, displayName } = body;
+            if (!lineUserId) {
+              return Response.json({ status: "error", message: "ต้องระบุ LINE userId" }, { status: 400 });
+            }
+            const result = verifyStaffIdentity({
+              lineUserId: String(lineUserId),
+              displayName: displayName ? String(displayName) : undefined,
             });
             return Response.json({ status: "success", ...result });
           }
@@ -81,7 +99,7 @@ export const Route = createFileRoute("/api/agent-orchestrator")({
             }
             const store = readAgentStore();
             const identity = store.identities.find(
-              (item) => item.hn === String(body.hn) && item.status === "verified",
+              (item) => item.hn === String(body.hn) && item.role === "patient" && item.status === "verified",
             );
             if (!identity) {
               return Response.json(

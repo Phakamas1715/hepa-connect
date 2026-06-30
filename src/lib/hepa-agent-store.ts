@@ -155,7 +155,6 @@ export function verifyInvite(input: {
   hn: string;
   lineUserId: string;
   displayName?: string;
-  role?: "patient" | "vhv" | "staff";
 }) {
   const store = readAgentStore();
   const tokenHash = hashToken(input.token);
@@ -177,7 +176,7 @@ export function verifyInvite(input: {
   store.identities.unshift({
     lineUserId: input.lineUserId,
     hn: input.hn,
-    role: input.role || "patient",
+    role: "patient",
     displayName: input.displayName,
     verifiedAt,
     consentAt: verifiedAt,
@@ -205,9 +204,32 @@ export function verifyInvite(input: {
   return { invite, identity: store.identities[0] };
 }
 
+export function verifyStaffIdentity(input: { lineUserId: string; displayName?: string }) {
+  const store = readAgentStore();
+  const verifiedAt = nowIso();
+
+  store.identities = store.identities.filter((item) => item.lineUserId !== input.lineUserId);
+  store.identities.unshift({
+    lineUserId: input.lineUserId,
+    role: "staff",
+    displayName: input.displayName,
+    verifiedAt,
+    consentAt: verifiedAt,
+    status: "verified",
+  });
+
+  audit(store, {
+    actor: "system",
+    action: "verify_staff_identity",
+    detail: `ผูก LINE เจ้าหน้าที่ ${input.lineUserId.slice(0, 8)}... สำเร็จ`,
+  });
+  writeAgentStore(store);
+  return { identity: store.identities[0] };
+}
+
 export function queueNudge(input: { hn: string; persona?: string; message?: string }) {
   const store = readAgentStore();
-  const identity = store.identities.find((item) => item.hn === input.hn && item.status === "verified");
+  const identity = store.identities.find((item) => item.hn === input.hn && item.role === "patient" && item.status === "verified");
   const createdAt = nowIso();
   const task: AgentTask = {
     id: id("task"),

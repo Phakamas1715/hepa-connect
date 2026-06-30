@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { HEPA_PROJECT_CONFIG } from "@/lib/hepa-data";
 
 export const Route = createFileRoute("/architecture")({
   head: () => ({
@@ -68,7 +69,7 @@ const sources = [
     subtitle: "คัดกรอง Rapid Test ในชุมชน",
     icon: ScanLine,
     tone: "bg-emerald-50 text-emerald-700 border-emerald-200",
-    points: ["HBsAg / Anti-HCV", "กลุ่มเป้าหมายเกิดก่อนปี 2535", "ส่งผลเข้าระบบกลางแบบ zero-typing"],
+    points: ["HBsAg / Anti-HCV", `กลุ่มเป้าหมายเกิดก่อนปี ${HEPA_PROJECT_CONFIG.targetBirthBeforeYear}`, "ส่งผลเข้าระบบกลาง"],
   },
   {
     title: "HOSxP โรงพยาบาล",
@@ -82,12 +83,16 @@ const sources = [
 const cloudNodes = [
   { title: "Local Agent", desc: "อ่านข้อมูลจาก JHCIS/HOSxP แล้วส่งขึ้น cloud ผ่าน HTTPS", icon: Network },
   { title: "HEPA-GLUE Cloud", desc: "รวม care gap, persona, cascade และสถานะ linkage to care", icon: Cloud },
-  { title: "AI Decision Layer", desc: "ประเมินผลบวก ค้างนัด และเลือก behavioral nudge ตามบริบท", icon: Bot },
+  { title: "Decision Layer", desc: "ประเมินผลบวก ค้างนัด และระดับความเร่งด่วนตามเกณฑ์", icon: Bot },
 ];
 
 const outputs = [
   { title: "LINE น้ำพองรักตับ", desc: "แจ้ง อสม. และผู้ป่วย พร้อม QR/ใบนัด เมื่อเชื่อม LINE channel แล้ว", icon: MessageCircle },
-  { title: "MOPH Auto Reporting", desc: "เตรียมข้อมูล Hep-BC-DDC, D506 และ DOE ด้วยรหัสหน่วย 11000", icon: FileCheck2 },
+  {
+    title: "MOPH Auto Reporting",
+    desc: `เตรียมข้อมูล Hep-BC-DDC, D506 และ DOE ด้วยรหัสหน่วย ${HEPA_PROJECT_CONFIG.hospitalCode}`,
+    icon: FileCheck2,
+  },
 ];
 
 const sequence = [
@@ -103,39 +108,39 @@ const sequence = [
 
 const pillars = [
   {
-    title: "Zero-Typing Screening",
-    desc: "ลดงานกรอกซ้ำของคนหน้างาน โดยให้ข้อมูลวิ่งจาก workflow เดิมหรือ LINE quick action",
+    title: "Screening Data Entry",
+    desc: "ลดการกรอกซ้ำโดยรับข้อมูลจาก workflow เดิมหรือช่องทางบันทึกที่กำหนด",
     icon: ScanLine,
   },
   {
-    title: "Smart Data Agent",
+    title: "Data Agent",
     desc: "ทำงานเบื้องหลังเพื่อรวมข้อมูลจาก JHCIS, HOSxP และ server API อย่างเป็นรอบ",
     icon: Database,
   },
   {
-    title: "Automated Follow-up",
-    desc: "AI จัดกลุ่ม persona แล้วช่วยสั่ง nudge เพื่อพาผู้ป่วยกลับเข้าสู่การตรวจยืนยันและรักษา",
+    title: "Follow-up Workflow",
+    desc: "จัดลำดับการติดตามเพื่อพาผู้ป่วยกลับเข้าสู่การตรวจยืนยันและรักษา",
     icon: BellRing,
   },
   {
     title: "National Reporting",
-    desc: "ลดภาระคีย์รายงานซ้ำ โดยเตรียม payload สำหรับส่งเข้าระบบกระทรวง",
+    desc: "เตรียมข้อมูลรายงานสำหรับระบบกระทรวงตามรูปแบบที่กำหนด",
     icon: ShieldCheck,
   },
 ];
 
 function ArchitecturePage() {
   return (
-    <div className="mx-auto w-full max-w-7xl space-y-6 px-4 py-5 sm:px-6 lg:px-8">
-      <header className="flex flex-col gap-3 border-b pb-5">
-        <Badge variant="outline" className="w-fit border-teal/30 bg-teal/5 text-teal">
+    <div className="page-shell">
+      <header className="page-header flex flex-col gap-3">
+        <Badge variant="outline" className="page-eyebrow">
           HEPA-GLUE × hepa-connect
         </Badge>
         <div className="max-w-3xl">
-          <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+          <h1 className="page-title">
             สถาปัตยกรรมระบบและการไหลของข้อมูล
           </h1>
-          <p className="mt-2 text-sm leading-6 text-muted-foreground">
+          <p className="page-description">
             ภาพรวมระบบปิดลูปสำหรับงานไวรัสตับอักเสบ B/C ตั้งแต่คัดกรองในชุมชน,
             ยืนยันผลในโรงพยาบาล, แจ้งเตือนผ่าน LINE และส่งรายงานเข้าสู่ระบบกระทรวง
           </p>

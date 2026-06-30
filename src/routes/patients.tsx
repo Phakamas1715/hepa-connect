@@ -19,7 +19,7 @@ export const Route = createFileRoute("/patients")({
       { title: "ทะเบียน Care Gap — HEPA-GLUE Engine" },
       {
         name: "description",
-        content: "ทะเบียนผู้ป่วยไวรัสตับอักเสบ B/C พร้อม HEPA-RAAIA scoring และ QR ผูก LINE",
+        content: "ทะเบียนผู้ป่วยไวรัสตับอักเสบ B/C พร้อมการประเมิน HEPA-RAAIA และ QR ผูก LINE",
       },
     ],
   }),
@@ -122,19 +122,19 @@ function PatientsPage() {
     [scored],
   );
 
-  if (isLoading) return <div className="p-8 text-center text-sm text-muted-foreground">กำลังโหลดทะเบียนผู้ป่วย...</div>;
-  if (error) return <div className="p-8 text-center text-sm text-destructive">โหลดทะเบียนไม่สำเร็จ: {error.message}</div>;
+  if (isLoading) return <div className="page-shell"><div className="page-header text-center text-sm text-muted-foreground">กำลังโหลดทะเบียนผู้ป่วย...</div></div>;
+  if (error) return <div className="page-shell"><div className="page-header text-center text-sm text-destructive">โหลดทะเบียนไม่สำเร็จ: {error.message}</div></div>;
 
   return (
-    <div className="mx-auto w-full max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
-      <header className="flex flex-col gap-3 border-b pb-5 lg:flex-row lg:items-end lg:justify-between">
+    <div className="page-shell">
+      <header className="page-header flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <Badge variant="outline" className="w-fit border-teal/30 bg-teal/5 text-teal">
+          <Badge variant="outline" className="page-eyebrow">
             HEPA-RAAIA
           </Badge>
-          <h1 className="mt-3 text-2xl font-bold tracking-tight sm:text-3xl">ทะเบียน Care Gap และลดการพิมพ์</h1>
-          <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
-            ใช้สูตร RAAIA ที่แปลงเป็นงานไวรัสตับอักเสบ เพื่อจัดลำดับผู้ป่วย เลือก action ถัดไป และสร้าง QR ผูก LINE จากรายชื่อเดิมโดยไม่ต้องพิมพ์ HN ซ้ำ
+          <h1 className="page-title">ทะเบียน Care Gap</h1>
+          <p className="page-description">
+            จัดลำดับผู้ป่วยตามความเสี่ยง เลือกการติดตามที่เหมาะสม และสร้าง QR ผูก LINE จาก HN ในทะเบียน
           </p>
         </div>
         <Button variant="outline" onClick={() => refetch()} className="w-fit gap-2">
@@ -152,7 +152,7 @@ function PatientsPage() {
           { label: "Mapped Area", value: stats.mapped },
           { label: "รพ.สต.ปัจจุบัน", value: stats.units },
         ].map((item) => (
-          <Card key={item.label}>
+          <Card key={item.label} className="metric-card">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
@@ -183,7 +183,7 @@ function PatientsPage() {
             <div className="min-w-0">
               <div className="font-semibold">QR พร้อมให้ผู้ป่วยสแกน</div>
               <p className="mt-1 text-sm leading-6">
-                ผู้ป่วยสแกนแล้วกดยืนยัน ระบบรู้ HN จาก token และดึง LINE userId ผ่าน LIFF เมื่อขึ้นใช้งานจริง
+                ใช้ QR นี้สำหรับยืนยันตัวตนและผูก LINE กับ HN ผ่าน LIFF
               </p>
               <div className="mt-2 break-all text-xs">{latestLink}</div>
             </div>
@@ -191,7 +191,7 @@ function PatientsPage() {
         </Card>
       )}
 
-      <Card>
+      <Card className="metric-card">
         <CardHeader>
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <CardTitle className="text-base">รายชื่อผู้ป่วย</CardTitle>
@@ -215,9 +215,9 @@ function PatientsPage() {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto rounded-lg border">
-            <table className="w-full min-w-[1340px] text-sm">
-              <thead className="bg-muted/50 text-left text-[11px] uppercase tracking-wider text-muted-foreground">
+          <div className="overflow-x-auto rounded-2xl border bg-card">
+            <table className="clinical-table min-w-[1340px]">
+              <thead>
                 <tr>
                   <th className="px-3 py-2">HN</th>
                   <th className="px-3 py-2">ผู้ป่วย</th>

@@ -14,7 +14,7 @@ export const Route = createFileRoute("/agent")({
       { title: "HEPA Agent Orchestrator — HEPA-GLUE Engine" },
       {
         name: "description",
-        content: "ตัวดำเนินงานอัตโนมัติสำหรับสร้าง LINE invite, ผูกตัวตน และจัดคิวติดตาม care gap",
+        content: "ระบบจัดการ LINE invite, การผูกตัวตน และคิวติดตาม care gap",
       },
     ],
   }),
@@ -73,7 +73,7 @@ function AgentPage() {
   const sendNudge = useMutation({
     mutationFn: () => postAgent("send_nudge", { hn, persona: "The Engaged", messageType: "LINE_NUDGE" }),
     onSuccess: (result) => {
-      toast.success(result.status === "sent" ? "ส่ง LINE จริงแล้ว" : result.line?.message || "ยังไม่ได้ส่ง LINE");
+      toast.success(result.status === "sent" ? "ส่งข้อความ LINE แล้ว" : result.line?.message || "ยังไม่ได้ส่งข้อความ LINE");
       refetch();
     },
     onError: (error) => toast.error(error instanceof Error ? error.message : "ส่ง LINE ไม่สำเร็จ"),
@@ -85,23 +85,24 @@ function AgentPage() {
   };
 
   return (
-    <div className="mx-auto w-full max-w-7xl space-y-6 px-4 py-5 sm:px-6 lg:px-8">
-      <header className="border-b pb-5">
-        <Badge variant="outline" className="w-fit border-teal/30 bg-teal/5 text-teal">
+    <div className="page-shell">
+      <header className="page-header">
+        <div className="page-eyebrow">
+          <ShieldCheck className="h-3.5 w-3.5" />
           HEPA Agent Orchestrator
-        </Badge>
-        <h1 className="mt-3 text-2xl font-bold tracking-tight sm:text-3xl">ตัวดำเนินงาน LINE closed loop</h1>
-        <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
-          ใช้สำหรับสร้างลิงก์/QR ผูก LINE กับ HN, จัดคิวติดตาม care gap และเก็บ audit log ทุก action ก่อนส่ง production จริง
+        </div>
+        <h1 className="page-title">ระบบติดตามผ่าน LINE</h1>
+        <p className="page-description">
+          จัดการลิงก์/QR สำหรับผูก LINE กับ HN, จัดคิวติดตาม care gap และบันทึก audit log ก่อนส่งข้อความ
         </p>
       </header>
 
       <section className="grid gap-6 lg:grid-cols-[.9fr_1.1fr]">
-        <Card>
+        <Card className="metric-card">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
               <QrCode className="h-5 w-5 text-teal" />
-              สร้างลิงก์ให้ผู้ป่วยสแกน
+              สร้าง QR ผูก LINE
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -111,14 +112,14 @@ function AgentPage() {
                 <Input value={hn} onChange={(event) => setHn(event.target.value)} placeholder="เช่น 0001234" />
               </div>
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-muted-foreground">ชื่อผู้ป่วย (ไม่บังคับ)</label>
-                <Input value={patientName} onChange={(event) => setPatientName(event.target.value)} placeholder="ใช้เฉพาะแสดงในงาน" />
+                <label className="text-xs font-medium text-muted-foreground">ชื่อผู้ป่วย</label>
+                <Input value={patientName} onChange={(event) => setPatientName(event.target.value)} placeholder="ระบุเพื่อแสดงในรายการ" />
               </div>
             </div>
             <div className="flex flex-wrap gap-2">
               <Button disabled={!hn || createInvite.isPending} onClick={() => createInvite.mutate()} className="gap-2">
                 {createInvite.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Link2 className="h-4 w-4" />}
-                สร้าง invite
+                สร้าง QR
               </Button>
               <Button disabled={!hn || queueNudge.isPending} onClick={() => queueNudge.mutate()} variant="outline" className="gap-2">
                 <Send className="h-4 w-4" />
@@ -126,7 +127,7 @@ function AgentPage() {
               </Button>
               <Button disabled={!hn || sendNudge.isPending} onClick={() => sendNudge.mutate()} variant="outline" className="gap-2">
                 {sendNudge.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                ส่ง LINE จริง
+                ส่งข้อความ LINE
               </Button>
             </div>
             {latestLink && (
@@ -139,9 +140,9 @@ function AgentPage() {
                   />
                   <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
                   <div className="min-w-0 flex-1">
-                    <div className="text-sm font-semibold">ลิงก์พร้อมให้สแกน</div>
+                    <div className="text-sm font-semibold">สร้างลิงก์สำเร็จ</div>
                     <div className="mt-1 text-xs leading-5 text-emerald-800">
-                      ให้ผู้ป่วยสแกน QR หรือกดลิงก์ใน LINE แล้วกดยืนยัน ระบบจะดึง HN จาก invite และดึง LINE userId จาก LIFF อัตโนมัติ
+                      ใช้ QR นี้สำหรับผูก LINE กับ HN ตามสิทธิ์ที่ผู้ป่วยยืนยันใน LIFF
                     </div>
                     <div className="mt-2 break-all text-xs">{latestLink}</div>
                     <Button size="sm" variant="outline" onClick={copyLink} className="mt-3 gap-2 bg-white/70">
@@ -153,12 +154,12 @@ function AgentPage() {
               </div>
             )}
             <div className="rounded-lg border bg-muted/20 p-3 text-xs leading-5 text-muted-foreground">
-              ลดการพิมพ์จริง: เจ้าหน้าที่เลือก HN ครั้งเดียวจากทะเบียน, ระบบสร้าง QR เฉพาะคนไข้, ผู้ป่วยกดอนุญาตใน LINE, จากนั้น agent ใช้ mapping HN + LINE userId เพื่อติดตามอัตโนมัติ
+              ขั้นตอนมาตรฐาน: เลือก HN → สร้าง QR → ผู้ป่วยยืนยันใน LINE → ระบบบันทึก mapping สำหรับการติดตาม
             </div>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="metric-card">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
               <ShieldCheck className="h-5 w-5 text-teal" />
@@ -166,15 +167,15 @@ function AgentPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="grid gap-3 sm:grid-cols-3">
-            <div className="rounded-lg border bg-card p-3">
+            <div className="rounded-2xl border bg-background/60 p-3">
               <div className="text-2xl font-bold">{data?.invites.length || 0}</div>
               <div className="text-xs text-muted-foreground">invite ทั้งหมด</div>
             </div>
-            <div className="rounded-lg border bg-card p-3">
+            <div className="rounded-2xl border bg-background/60 p-3">
               <div className="text-2xl font-bold">{data?.identities.length || 0}</div>
               <div className="text-xs text-muted-foreground">LINE identity</div>
             </div>
-            <div className="rounded-lg border bg-card p-3">
+            <div className="rounded-2xl border bg-background/60 p-3">
               <div className="text-2xl font-bold">{data?.tasks.length || 0}</div>
               <div className="text-xs text-muted-foreground">agent tasks</div>
             </div>
@@ -183,7 +184,7 @@ function AgentPage() {
       </section>
 
       <section className="grid gap-6 xl:grid-cols-3">
-        <Card>
+        <Card className="metric-card">
           <CardHeader>
             <CardTitle className="text-base">Invite ล่าสุด</CardTitle>
           </CardHeader>
@@ -201,7 +202,7 @@ function AgentPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="metric-card">
           <CardHeader>
             <CardTitle className="text-base">Identity map</CardTitle>
           </CardHeader>
@@ -219,7 +220,7 @@ function AgentPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="metric-card">
           <CardHeader>
             <CardTitle className="text-base">Agent tasks</CardTitle>
           </CardHeader>
@@ -239,7 +240,7 @@ function AgentPage() {
         </Card>
       </section>
 
-      <Card>
+      <Card className="metric-card">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
             <PlayCircle className="h-5 w-5 text-teal" />

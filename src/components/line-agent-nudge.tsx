@@ -11,7 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import type { Patient, Persona } from "@/lib/hepa-data";
+import { HEPA_PROJECT_CONFIG, type Patient, type Persona } from "@/lib/hepa-data";
 
 type Nudge = {
   headline: string;
@@ -23,25 +23,25 @@ type Nudge = {
 const NUDGE_LIBRARY: Record<Persona, Nudge> = {
   "The Forgetful": {
     headline: "อย่าลืมนัดตรวจยืนยันผล",
-    body: "{name} มีนัดเจาะเลือดยืนยัน viral load ที่โรงพยาบาลน้ำพอง กรุณายืนยันนัดหรือแจ้งทีมดูแลหากต้องการเลื่อน",
+    body: `{name} มีนัดเจาะเลือดยืนยัน viral load ที่${HEPA_PROJECT_CONFIG.hospitalName} กรุณายืนยันนัดหรือแจ้งทีมดูแลหากต้องการเลื่อน`,
     cta: "ยืนยันนัดตรวจ",
     accent: "from-blue-500 to-teal-500",
   },
   "The Fearful": {
-    headline: "ไม่ต้องกังวล ทีมดูแลพร้อมช่วย",
+    headline: "ทีมดูแลพร้อมให้คำปรึกษา",
     body: "{name} การรักษาไวรัสตับอักเสบเป็นความลับ มีทีมดูแลอธิบายทุกขั้นตอน และยารักษาอยู่ในสิทธิประโยชน์ตามนโยบายรัฐ",
     cta: "คุยกับทีมดูแล",
     accent: "from-teal-500 to-emerald-500",
   },
   "The Denier": {
-    headline: "ตรวจยืนยันเร็ว ลดความเสี่ยงระยะยาว",
+    headline: "ตรวจยืนยันเพื่อลดความเสี่ยงระยะยาว",
     body: "{name} ผลคัดกรองต้องติดตามต่อ การตรวจยืนยันช่วยป้องกันภาวะตับแข็งและมะเร็งตับได้ตั้งแต่ระยะต้น",
     cta: "ดูขั้นตอนถัดไป",
     accent: "from-red-500 to-rose-500",
   },
   "The Engaged": {
-    headline: "ขอบคุณที่มาตามแผนดูแล",
-    body: "ขอบคุณ {name} ที่ให้ความร่วมมือ การมาตามนัดช่วยให้แผนดูแลไวรัสตับอักเสบต่อเนื่องและปลอดภัย",
+    headline: "ติดตามตามแผนการดูแล",
+    body: "{name} มีนัดติดตามตามแผนการดูแลไวรัสตับอักเสบ กรุณามาตามวันและเวลาที่กำหนด",
     cta: "รับทราบ",
     accent: "from-emerald-500 to-teal-500",
   },
@@ -131,7 +131,7 @@ function LineAgentDialog({ patient, onClose }: { patient: Patient; onClose: () =
             <div className="grid h-8 w-8 place-items-center rounded-md bg-success text-success-foreground">
               <Bot className="h-4 w-4" />
             </div>
-            LINE Bot MCP · จำลองการส่งข้อความติดตาม
+            ตัวอย่างข้อความติดตามผ่าน LINE
           </DialogTitle>
           <DialogDescription className="flex flex-wrap items-center gap-2">
             <span>เป้าหมาย:</span>
@@ -147,7 +147,7 @@ function LineAgentDialog({ patient, onClose }: { patient: Patient; onClose: () =
 
         <div className="grid gap-4 md:grid-cols-2">
           <div className="space-y-3">
-            <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">MCP Tool Invocation</div>
+            <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">รายละเอียดการส่งข้อความ</div>
             <div className="rounded-lg border border-border bg-slate-950 p-3 font-mono text-[11px] leading-relaxed text-slate-100 shadow-inner">
               <div className="mb-1.5 flex items-center gap-2 text-[10px] text-slate-400">
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
@@ -172,7 +172,7 @@ function LineAgentDialog({ patient, onClose }: { patient: Patient; onClose: () =
             </div>
 
             <div className="rounded-md border border-teal/30 bg-teal/5 p-2.5 text-[11px] text-muted-foreground">
-              <strong className="text-teal">AI reasoning:</strong> สถานะ viral load คือ{" "}
+              <strong className="text-teal">เกณฑ์ประเมิน:</strong> สถานะ viral load คือ{" "}
               <code className="rounded bg-muted px-1">{patient.hcvVL}</code> ระบบเลือก persona{" "}
               <strong>{persona}</strong> และเตรียมส่งข้อความให้ทั้ง อสม. และผู้ป่วย
             </div>
@@ -185,7 +185,7 @@ function LineAgentDialog({ patient, onClose }: { patient: Patient; onClose: () =
                 <div className={`h-20 bg-gradient-to-br ${nudge.accent} relative`}>
                   <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.4),transparent_60%)]" />
                   <div className="absolute bottom-2 left-3 text-[10px] font-semibold uppercase tracking-wider text-white/90">
-                    HEPA-GLUE · รพ.น้ำพอง
+                    HEPA-GLUE · {HEPA_PROJECT_CONFIG.hospitalName.replace("โรงพยาบาล", "รพ.")}
                   </div>
                 </div>
                 <div className="space-y-2 p-4">
@@ -214,7 +214,7 @@ function LineAgentDialog({ patient, onClose }: { patient: Patient; onClose: () =
                 <div className="space-y-1.5 p-3 text-[12px] leading-relaxed text-foreground">
                   <strong>{patient.name}</strong> ({patient.village})<br />
                   สถานะ: <span className="text-warning-foreground">รอติดตาม viral load</span> · Persona: <em>{persona}</em><br />
-                  ขอความกรุณาประสานผู้ป่วยมาตรวจหรือยืนยันนัดที่โรงพยาบาลน้ำพอง
+                  ขอความกรุณาประสานผู้ป่วยมาตรวจหรือยืนยันนัดที่{HEPA_PROJECT_CONFIG.hospitalName}
                 </div>
               </div>
             </div>

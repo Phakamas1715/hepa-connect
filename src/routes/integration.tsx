@@ -21,7 +21,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 export const Route = createFileRoute("/integration")({
   head: () => ({
     meta: [
-      { title: "การเชื่อมต่ออัตโนมัติ — HEPA-GLUE Engine" },
+      { title: "สถานะการเชื่อมต่อ — HEPA-GLUE Engine" },
       {
         name: "description",
         content: "สถานะการเชื่อมต่อ HEPA-GLUE กับ HOSxP, Smart Query, LINE และ MOPH",
@@ -87,10 +87,10 @@ const stateMap: Record<CheckState, { label: string; className: string; icon: typ
 };
 
 const targetFlow = [
-  { title: "1. รับข้อมูลคัดกรอง", detail: "JHCIS / LINE quick action ส่ง rapid result เข้า HEPA-GLUE", icon: MessageCircle },
+  { title: "1. รับข้อมูลคัดกรอง", detail: "รับผล rapid test จาก JHCIS หรือช่องทางบันทึกที่กำหนด", icon: MessageCircle },
   { title: "2. รับผลยืนยัน", detail: "HOSxP หรือ lab API ส่ง HBsAg, Anti-HCV, HCV RNA", icon: Database },
-  { title: "3. วิเคราะห์ care gap", detail: "AI ตรวจเคสผลบวก ค้างนัด และเลือก persona", icon: PlayCircle },
-  { title: "4. ติดตามอัตโนมัติ", detail: "LINE Bot แจ้ง อสม. และผู้ป่วยตามสถานะจริง", icon: MessageCircle },
+  { title: "3. วิเคราะห์ care gap", detail: "ประเมินผลบวก ค้างนัด และระดับความเร่งด่วน", icon: PlayCircle },
+  { title: "4. ติดตามผู้ป่วย", detail: "ส่งข้อความถึง อสม. หรือผู้ป่วยตามสถานะในระบบ", icon: MessageCircle },
   { title: "5. รายงาน MOPH", detail: "ส่งข้อมูลเข้า Hep-BC-DDC, D506 และ DOE เมื่อ credential พร้อม", icon: FileCheck2 },
 ];
 
@@ -98,7 +98,7 @@ const nextSteps = [
   "เปิด endpoint หรือ dataset สำหรับ lab_order ที่มี HBsAg / Anti-HCV / HCV RNA บน server 172.16.213.55",
   "วาง HEPA-GLUE Agent บน server ฝั่งเดียวกับ MariaDB หรือ whitelist host เครื่องนี้ใน MariaDB",
   "ตั้งค่า LINE channel token และ MOPH credential แบบ production ใน env ของ server",
-  "เปลี่ยนปุ่ม Sync จาก simulation เป็น POST ไปยัง agent/reporter จริงหลัง credential พร้อม",
+  "เชื่อมปุ่ม Sync กับ agent/reporter หลัง credential พร้อมใช้งาน",
 ];
 
 async function fetchConnectionStatus(): Promise<StatusResponse> {
@@ -109,7 +109,7 @@ async function fetchConnectionStatus(): Promise<StatusResponse> {
 
 async function fetchProductionStatus(): Promise<ProductionResponse> {
   const response = await fetch("/api/production-automation");
-  if (!response.ok) throw new Error("ตรวจ production automation ไม่สำเร็จ");
+  if (!response.ok) throw new Error("ตรวจเงื่อนไขการใช้งานไม่สำเร็จ");
   return response.json();
 }
 
@@ -120,7 +120,7 @@ async function armProductionAutomation(): Promise<ProductionResponse> {
     body: JSON.stringify({}),
   });
   const payload = await response.json();
-  if (!response.ok) throw new Error(payload?.message || "ยังเปิด production automation ไม่ได้");
+  if (!response.ok) throw new Error(payload?.message || "ยังเปิดใช้งานไม่ได้");
   return payload;
 }
 
@@ -146,19 +146,19 @@ function IntegrationPage() {
   const productionReady = production.data?.canRunProduction === true;
 
   return (
-    <div className="mx-auto w-full max-w-7xl space-y-6 px-4 py-5 sm:px-6 lg:px-8">
-      <header className="flex flex-col gap-3 border-b pb-5">
-        <Badge variant="outline" className="w-fit border-teal/30 bg-teal/5 text-teal">
-          Automatic Integration Control
+    <div className="page-shell">
+      <header className="page-header flex flex-col gap-3">
+        <Badge variant="outline" className="page-eyebrow">
+          Integration Status
         </Badge>
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-3xl">
-            <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-              การเชื่อมต่อระบบอัตโนมัติ
+            <h1 className="page-title">
+              สถานะการเชื่อมต่อระบบ
             </h1>
-            <p className="mt-2 text-sm leading-6 text-muted-foreground">
-              หน้านี้แสดงสถานะจริงของการเชื่อม HEPA-GLUE กับ server โรงพยาบาล, HOSxP, LINE และ MOPH
-              เพื่อแยกให้ชัดว่าอะไรทำงานแล้ว และอะไรยังต้องตั้งค่าเพิ่มก่อนใช้งาน production
+            <p className="page-description">
+              ตรวจสถานะการเชื่อมต่อ HEPA-GLUE กับ server โรงพยาบาล, HOSxP, LINE และ MOPH
+              เพื่อระบุรายการที่พร้อมใช้งานและรายการที่ต้องตั้งค่าเพิ่มเติม
             </p>
           </div>
           <Button onClick={() => refetch()} disabled={isFetching} className="w-fit gap-2">
@@ -184,13 +184,13 @@ function IntegrationPage() {
         <Card className="border-amber-200 bg-amber-50">
           <CardContent className="p-4">
             <div className="text-2xl font-bold text-amber-900">{blockedCount}</div>
-            <div className="text-xs text-amber-800">ยังต้องแก้ก่อนอัตโนมัติเต็มระบบ</div>
+            <div className="text-xs text-amber-800">ต้องดำเนินการเพิ่มเติม</div>
           </CardContent>
         </Card>
         <Card className={productionReady || canRunFullyAutomatic ? "border-emerald-200 bg-emerald-50" : "border-slate-200 bg-slate-50"}>
           <CardContent className="p-4">
             <div className="text-sm font-bold text-foreground">
-              {productionReady ? "Production no-IT Ready" : canRunFullyAutomatic ? "Automatic Ready" : "ยังไม่พร้อม 100%"}
+              {productionReady ? "พร้อมใช้งาน" : canRunFullyAutomatic ? "พร้อมเชื่อมต่อ" : "อยู่ระหว่างตั้งค่า"}
             </div>
             <div className="mt-1 text-xs text-muted-foreground">
               {data?.checkedAt ? new Date(data.checkedAt).toLocaleString("th-TH") : "รอตรวจสอบ"}
@@ -199,11 +199,11 @@ function IntegrationPage() {
         </Card>
       </section>
 
-      <Card className={production.data?.canRunProduction ? "border-emerald-200 bg-emerald-50" : "border-amber-200 bg-amber-50"}>
+      <Card className={`metric-card ${production.data?.canRunProduction ? "border-emerald-200 bg-emerald-50" : "border-amber-200 bg-amber-50"}`}>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
             <PlayCircle className="h-5 w-5 text-teal" />
-            Production Automation Gate
+            Production Gate
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -211,7 +211,7 @@ function IntegrationPage() {
             <div>
               <div className="text-3xl font-bold text-foreground">{production.data?.readiness ?? 0}%</div>
               <div className="text-sm text-muted-foreground">
-                {production.data?.canRunProduction ? "พร้อมเปิด production automation" : production.data?.nextAction || "กำลังตรวจ gate"}
+                {production.data?.canRunProduction ? "ผ่านเงื่อนไขการใช้งาน" : production.data?.nextAction || "กำลังตรวจสอบเงื่อนไข"}
               </div>
             </div>
             <div className="flex gap-2">
@@ -221,13 +221,13 @@ function IntegrationPage() {
               </Button>
               <Button onClick={() => armProduction.mutate()} disabled={armProduction.isPending || !production.data?.canRunProduction} className="gap-2">
                 {armProduction.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
-                เปิด production
+                เปิดใช้งาน
               </Button>
             </div>
           </div>
           {armProduction.error && (
             <div className="rounded-lg border border-amber-300 bg-white/70 p-3 text-sm text-amber-900">
-              {armProduction.error instanceof Error ? armProduction.error.message : "ยังเปิด production automation ไม่ได้"}
+              {armProduction.error instanceof Error ? armProduction.error.message : "ยังเปิดใช้งานไม่ได้"}
             </div>
           )}
           <div className="grid gap-2 md:grid-cols-2">
@@ -256,7 +256,7 @@ function IntegrationPage() {
       </Card>
 
       <section className="grid gap-6 xl:grid-cols-[1.1fr_.9fr]">
-        <Card>
+        <Card className="metric-card">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
               <Server className="h-5 w-5 text-teal" />
@@ -298,31 +298,31 @@ function IntegrationPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="metric-card">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
               <ShieldCheck className="h-5 w-5 text-teal" />
-              คำตอบสั้น ๆ
+              สถานะสรุป
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             {productionReady ? (
               <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-emerald-900">
-                <div className="font-semibold">ตอนนี้เปิด production แบบไม่ง้อ IT ได้แล้ว</div>
+                <div className="font-semibold">ผ่านเงื่อนไขการใช้งาน</div>
                 <p className="mt-2 text-sm leading-6">
-                  ระบบใช้ KUMHOS เป็น proxy ฝั่ง server เพื่อดึง HOSxP แบบ HN/date pull, ส่ง LINE closed loop ได้จริง และเก็บ audit log ทุกครั้ง ส่วน MOPH เป็นรายงานเสริมที่ยังตรวจสอบก่อนส่งภายหลังได้
+                  ระบบสามารถใช้ KUMHOS เป็น proxy ฝั่ง server, ส่งข้อความผ่าน LINE และบันทึก audit log ตามเงื่อนไขที่กำหนด
                 </p>
               </div>
             ) : (
               <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-amber-900">
-                <div className="font-semibold">ตอนนี้ยังอัตโนมัติครบลูปไม่ได้</div>
+                <div className="font-semibold">ยังไม่ผ่านทุกเงื่อนไข</div>
                 <p className="mt-2 text-sm leading-6">
-                  ระบบ local และ Smart Query ต่อได้แล้วบางส่วน แต่ยังมี gate สำคัญที่ต้องแก้ก่อนส่งรายงานจริงแบบอัตโนมัติ
+                  บางบริการเชื่อมต่อได้แล้ว แต่ยังมีรายการที่ต้องตั้งค่าก่อนเปิดใช้งานครบกระบวนการ
                 </p>
               </div>
             )}
             <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-emerald-900">
-              <div className="font-semibold">แนวทางให้ใช้งานจริง</div>
+              <div className="font-semibold">แนวทางดำเนินการ</div>
               <p className="mt-2 text-sm leading-6">
                 วาง Agent บน server 172.16.213.55 หรือเพิ่ม API lab hepatitis บน server นั้น แล้วให้ HEPA-Connect
                 เรียกผ่าน HTTPS แทนการต่อ MariaDB ตรงจากเครื่องนี้
@@ -332,17 +332,17 @@ function IntegrationPage() {
         </Card>
       </section>
 
-      <Card>
+      <Card className="metric-card">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
             <PlayCircle className="h-5 w-5 text-teal" />
-            เป้าหมาย workflow อัตโนมัติเมื่อเชื่อมครบ
+            ขั้นตอนการทำงานเมื่อเชื่อมต่อครบ
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid gap-3 lg:grid-cols-5">
             {targetFlow.map((step, index) => (
-              <div key={step.title} className="rounded-lg border bg-card p-3">
+              <div key={step.title} className="rounded-2xl border bg-card/85 p-3 shadow-sm">
                 <div className="flex items-center justify-between gap-2">
                   <step.icon className="h-5 w-5 text-teal" />
                   {index < targetFlow.length - 1 && <ArrowRight className="hidden h-4 w-4 text-muted-foreground lg:block" />}
@@ -355,9 +355,9 @@ function IntegrationPage() {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="metric-card">
         <CardHeader>
-          <CardTitle className="text-base">งานที่ต้องทำเพื่อเปิด production automation</CardTitle>
+          <CardTitle className="text-base">รายการที่ต้องดำเนินการ</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-2 md:grid-cols-2">
           {nextSteps.map((step) => (

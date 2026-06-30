@@ -145,7 +145,7 @@ async function bridgeGate(kumhosStatus?: KumhosStatus): Promise<Gate> {
     return ready(
       "hepatitis_feed",
       "Hepatitis lab feed",
-      `ใช้โหมดไม่ง้อ IT: KUMHOS ดึง HOSxP แบบ HN/date pull ได้แล้ว; lab code ที่พบ ${Object.values(kumhos.codes).join(", ") || "-"}`,
+      `KUMHOS ดึงข้อมูล HOSxP แบบ HN/date pull ได้แล้ว; lab code ที่พบ ${Object.values(kumhos.codes).join(", ") || "-"}`,
     );
   } catch (error) {
     return blocked(
@@ -198,8 +198,8 @@ async function automationStatus() {
     mode: canRunProduction ? "production-no-it" : "guarded",
     gates,
     nextAction: canRunProduction
-      ? "พร้อมเปิด production automation แบบไม่ง้อ IT: ใช้ KUMHOS เป็น HOSxP proxy, LINE เป็น closed loop, และ audit ทุกครั้ง"
-      : "ยังไม่เปิดส่ง production อัตโนมัติ เพราะ gate สำคัญยังไม่ครบ",
+      ? "ผ่านเงื่อนไขการใช้งาน: ใช้ KUMHOS เป็น HOSxP proxy, LINE เป็นช่องทางติดตาม และบันทึก audit log"
+      : "ยังไม่ผ่านเงื่อนไขการใช้งาน เนื่องจาก gate สำคัญยังไม่ครบ",
   };
 }
 
@@ -241,7 +241,7 @@ export const Route = createFileRoute("/api/production-automation")({
           return Response.json(
             {
               status: "blocked",
-              message: "ยังไม่เปิด production automation เพราะ gate สำคัญยังไม่ครบ",
+              message: "ยังไม่เปิดใช้งาน เนื่องจาก gate สำคัญยังไม่ครบ",
               ...status,
             },
             { status: 409 },
@@ -251,7 +251,7 @@ export const Route = createFileRoute("/api/production-automation")({
           status: "armed",
           message: body.force
             ? "เปิดแบบ force guard แล้ว: ระบบจะ audit และไม่ส่งออกปลายทางที่ยังไม่พร้อม"
-            : "production automation armed",
+            : "เปิดใช้งานแล้ว",
           ...status,
         });
       },

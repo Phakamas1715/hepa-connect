@@ -94,15 +94,15 @@ function IliReportPage() {
   const ready = data?.state === "ready";
 
   return (
-    <div className="mx-auto w-full max-w-7xl space-y-6 px-4 py-5 sm:px-6 lg:px-8">
-      <header className="flex flex-col gap-3 border-b pb-5">
-        <Badge variant="outline" className="w-fit border-teal/30 bg-teal/5 text-teal">
+    <div className="page-shell">
+      <header className="page-header flex flex-col gap-3">
+        <Badge variant="outline" className="page-eyebrow">
           D506 Syndromic ILI
         </Badge>
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-3xl">
-            <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">รายงาน ILI อัตโนมัติ</h1>
-            <p className="mt-2 text-sm leading-6 text-muted-foreground">
+            <h1 className="page-title">รายงาน ILI อัตโนมัติ</h1>
+            <p className="page-description">
               ดึงยอดผู้ป่วยกลุ่มอาการคล้ายไข้หวัดใหญ่จาก HOSxP ด้วยรหัส ICD-10 ที่กำหนด และเตรียมยอดของเมื่อวานสำหรับกรอก D506 Syndromic ทุกวันจันทร์และอังคาร
             </p>
           </div>
@@ -150,7 +150,7 @@ function IliReportPage() {
         </Card>
       </section>
 
-      <Card className={statusTone(data?.state)}>
+      <Card className={`metric-card ${statusTone(data?.state)}`}>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
             {ready ? <CheckCircle2 className="h-5 w-5" /> : <AlertTriangle className="h-5 w-5" />}
@@ -196,7 +196,7 @@ function IliReportPage() {
       </Card>
 
       <section className="grid gap-6 xl:grid-cols-[1fr_.9fr]">
-        <Card>
+        <Card className="metric-card">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
               <ClipboardList className="h-5 w-5 text-teal" />
@@ -216,7 +216,7 @@ function IliReportPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="metric-card">
           <CardHeader>
             <CardTitle className="text-base">ICD-10 ที่ใช้คัดกรอง</CardTitle>
           </CardHeader>
