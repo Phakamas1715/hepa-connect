@@ -29,6 +29,7 @@ import { Route as ApiIliReportRouteImport } from './routes/api/ili-report'
 import { Route as ApiHosxpSyncRouteImport } from './routes/api/hosxp-sync'
 import { Route as ApiHosxpBridgeRouteImport } from './routes/api/hosxp-bridge'
 import { Route as ApiConnectionStatusRouteImport } from './routes/api/connection-status'
+import { Route as ApiCareGapQueueRouteImport } from './routes/api/care-gap-queue'
 import { Route as ApiAgentWorldBenchRouteImport } from './routes/api/agent-world-bench'
 import { Route as ApiAgentOrchestratorRouteImport } from './routes/api/agent-orchestrator'
 
@@ -132,6 +133,11 @@ const ApiConnectionStatusRoute = ApiConnectionStatusRouteImport.update({
   path: '/api/connection-status',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiCareGapQueueRoute = ApiCareGapQueueRouteImport.update({
+  id: '/api/care-gap-queue',
+  path: '/api/care-gap-queue',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAgentWorldBenchRoute = ApiAgentWorldBenchRouteImport.update({
   id: '/api/agent-world-bench',
   path: '/api/agent-world-bench',
@@ -154,6 +160,7 @@ export interface FileRoutesByFullPath {
   '/patients': typeof PatientsRoute
   '/api/agent-orchestrator': typeof ApiAgentOrchestratorRoute
   '/api/agent-world-bench': typeof ApiAgentWorldBenchRoute
+  '/api/care-gap-queue': typeof ApiCareGapQueueRoute
   '/api/connection-status': typeof ApiConnectionStatusRoute
   '/api/hosxp-bridge': typeof ApiHosxpBridgeRoute
   '/api/hosxp-sync': typeof ApiHosxpSyncRoute
@@ -178,6 +185,7 @@ export interface FileRoutesByTo {
   '/patients': typeof PatientsRoute
   '/api/agent-orchestrator': typeof ApiAgentOrchestratorRoute
   '/api/agent-world-bench': typeof ApiAgentWorldBenchRoute
+  '/api/care-gap-queue': typeof ApiCareGapQueueRoute
   '/api/connection-status': typeof ApiConnectionStatusRoute
   '/api/hosxp-bridge': typeof ApiHosxpBridgeRoute
   '/api/hosxp-sync': typeof ApiHosxpSyncRoute
@@ -203,6 +211,7 @@ export interface FileRoutesById {
   '/patients': typeof PatientsRoute
   '/api/agent-orchestrator': typeof ApiAgentOrchestratorRoute
   '/api/agent-world-bench': typeof ApiAgentWorldBenchRoute
+  '/api/care-gap-queue': typeof ApiCareGapQueueRoute
   '/api/connection-status': typeof ApiConnectionStatusRoute
   '/api/hosxp-bridge': typeof ApiHosxpBridgeRoute
   '/api/hosxp-sync': typeof ApiHosxpSyncRoute
@@ -229,6 +238,7 @@ export interface FileRouteTypes {
     | '/patients'
     | '/api/agent-orchestrator'
     | '/api/agent-world-bench'
+    | '/api/care-gap-queue'
     | '/api/connection-status'
     | '/api/hosxp-bridge'
     | '/api/hosxp-sync'
@@ -253,6 +263,7 @@ export interface FileRouteTypes {
     | '/patients'
     | '/api/agent-orchestrator'
     | '/api/agent-world-bench'
+    | '/api/care-gap-queue'
     | '/api/connection-status'
     | '/api/hosxp-bridge'
     | '/api/hosxp-sync'
@@ -277,6 +288,7 @@ export interface FileRouteTypes {
     | '/patients'
     | '/api/agent-orchestrator'
     | '/api/agent-world-bench'
+    | '/api/care-gap-queue'
     | '/api/connection-status'
     | '/api/hosxp-bridge'
     | '/api/hosxp-sync'
@@ -302,6 +314,7 @@ export interface RootRouteChildren {
   PatientsRoute: typeof PatientsRoute
   ApiAgentOrchestratorRoute: typeof ApiAgentOrchestratorRoute
   ApiAgentWorldBenchRoute: typeof ApiAgentWorldBenchRoute
+  ApiCareGapQueueRoute: typeof ApiCareGapQueueRoute
   ApiConnectionStatusRoute: typeof ApiConnectionStatusRoute
   ApiHosxpBridgeRoute: typeof ApiHosxpBridgeRoute
   ApiHosxpSyncRoute: typeof ApiHosxpSyncRoute
@@ -458,6 +471,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiConnectionStatusRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/care-gap-queue': {
+      id: '/api/care-gap-queue'
+      path: '/api/care-gap-queue'
+      fullPath: '/api/care-gap-queue'
+      preLoaderRoute: typeof ApiCareGapQueueRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/agent-world-bench': {
       id: '/api/agent-world-bench'
       path: '/api/agent-world-bench'
@@ -486,6 +506,7 @@ const rootRouteChildren: RootRouteChildren = {
   PatientsRoute: PatientsRoute,
   ApiAgentOrchestratorRoute: ApiAgentOrchestratorRoute,
   ApiAgentWorldBenchRoute: ApiAgentWorldBenchRoute,
+  ApiCareGapQueueRoute: ApiCareGapQueueRoute,
   ApiConnectionStatusRoute: ApiConnectionStatusRoute,
   ApiHosxpBridgeRoute: ApiHosxpBridgeRoute,
   ApiHosxpSyncRoute: ApiHosxpSyncRoute,

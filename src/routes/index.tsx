@@ -1,4 +1,5 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useMutation } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import {
   Activity,
@@ -25,6 +26,7 @@ import {
   TARGET_REGISTRY_SOURCE,
   buildSubdistrictDashboard,
   allocateKits,
+  getHcvTreatmentGapPatients,
 } from "@/lib/hepa-data";
 import { HEPA_PRIMARY_CARE_UNITS } from "@/lib/hepa-service-area";
 
@@ -153,7 +155,15 @@ function percentForDisplay(value: number, total: number) {
   return total > 0 ? Number(((value / total) * 100).toFixed(2)) : 0;
 }
 
+async function openHcvTreatmentQueue() {
+  const response = await fetch("/api/care-gap-queue", { method: "POST" });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data?.message || "เปิดคิวติดตามไม่สำเร็จ");
+  return data;
+}
+
 function Dashboard() {
+  const navigate = useNavigate();
   const [kitPool, setKitPool] = useState(2000);
   const [allocated, setAllocated] = useState<ReturnType<typeof allocateKits> | null>(null);
 
@@ -171,6 +181,19 @@ function Dashboard() {
   );
   const treatmentGap = Math.max(0, c.positive - c.onTreatment);
   const treatmentGapPct = c.positive > 0 ? Math.round((treatmentGap / c.positive) * 100) : 0;
+  const gapPatients = useMemo(() => getHcvTreatmentGapPatients(), []);
+
+  const openQueue = useMutation({
+    mutationFn: openHcvTreatmentQueue,
+    onSuccess: (result) => {
+      toast.success(
+        `เปิดคิวติดตามแล้ว ${result.total} ราย · จัดคิวส่งได้ ${result.queued} · รอผูก LINE ${result.blocked}`,
+      );
+      navigate({ to: "/patients", search: { filter: "hcv_sofvel" } });
+    },
+    onError: (error) =>
+      toast.error(error instanceof Error ? error.message : "เปิดคิวติดตามไม่สำเร็จ"),
+  });
 
   const handleAllocate = () => {
     const result = allocateKits(kitPool, subdistricts);
@@ -356,10 +379,18 @@ function Dashboard() {
           </div>
           <Button
             size="lg"
+            disabled={treatmentGap === 0 || openQueue.isPending}
+            onClick={() => openQueue.mutate()}
             className="shrink-0 bg-destructive text-destructive-foreground hover:bg-destructive/90"
           >
-            เปิดคิวติดตาม <ArrowRight className="ml-2 h-4 w-4" />
+            {openQueue.isPending ? "กำลังเปิดคิว..." : "เปิดคิวติดตาม"}
+            <ArrowRight className="ml-2 h-4 w-4" />
           </Button>
+          {gapPatients.length > 0 && (
+            <p className="w-full text-xs text-muted-foreground sm:w-auto">
+              รายการ: {gapPatients.map((patient) => patient.hn).join(", ")}
+            </p>
+          )}
         </CardContent>
       </Card>
 

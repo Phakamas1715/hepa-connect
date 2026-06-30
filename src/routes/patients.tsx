@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import {
+  AlertTriangle,
   Building2,
   BookOpenCheck,
   CheckCircle2,
@@ -11,7 +12,7 @@ import {
   Send,
   Users,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -28,12 +29,20 @@ import {
   getHbvHdvMonitoringStatus,
   HBV_HDV_MONITORING_INSIGHT,
 } from "@/lib/hepa-clinical-evidence";
-import { hasCareGap, type Patient } from "@/lib/hepa-data";
+import { OfficialPageHeader } from "@/components/official-layout";
+import { hasCareGap, needsSofvelTreatment, type Patient } from "@/lib/hepa-data";
 import { calculateHepaRaaia, type HepaRaaiaScore } from "@/lib/hepa-raaia";
 import { HEPA_SERVICE_AREAS, resolveHepaServiceArea } from "@/lib/hepa-service-area";
 import { fetchPatients } from "@/lib/supabase";
 
+type PatientsSearch = {
+  filter?: "hcv_sofvel" | "gap" | "high" | "need_qr" | "hbv_hdv";
+};
+
 export const Route = createFileRoute("/patients")({
+  validateSearch: (search: Record<string, unknown>): PatientsSearch => ({
+    filter: typeof search.filter === "string" ? (search.filter as PatientsSearch["filter"]) : undefined,
+  }),
   head: () => ({
     meta: [
       { title: "ทะเบียน Care Gap — HEPA-GLUE Engine" },
@@ -85,10 +94,30 @@ async function postAgent(action: string, payload: Record<string, unknown>) {
   return data;
 }
 
+async function fetchCareGapStatus() {
+  const response = await fetch("/api/care-gap-queue");
+  if (!response.ok) throw new Error("ตรวจสอบโมดูลไม่สำเร็จ");
+  return response.json();
+}
+
+async function openHcvQueue() {
+  const response = await fetch("/api/care-gap-queue", { method: "POST" });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data?.message || "เปิดคิวไม่สำเร็จ");
+  return data;
+}
+
 function PatientsPage() {
+  const { filter: searchFilter } = Route.useSearch();
   const [query, setQuery] = useState("");
-  const [filter, setFilter] = useState<"all" | "gap" | "high" | "need_qr" | "hbv_hdv">("all");
+  const [filter, setFilter] = useState<"all" | "gap" | "high" | "need_qr" | "hbv_hdv" | "hcv_sofvel">(
+    searchFilter || "all",
+  );
   const [latestLink, setLatestLink] = useState("");
+  useEffect(() => {
+    if (searchFilter) setFilter(searchFilter);
+  }, [searchFilter]);
+
   const {
     data: patients,
     isLoading,
@@ -104,6 +133,22 @@ function PatientsPage() {
       toast.success("สร้าง QR ผูก LINE แล้ว");
     },
     onError: (err) => toast.error(err instanceof Error ? err.message : "สร้าง QR ไม่สำเร็จ"),
+  });
+
+  const moduleStatus = useQuery({
+    queryKey: ["care-gap-modules"],
+    queryFn: fetchCareGapStatus,
+  });
+
+  const openQueue = useMutation({
+    mutationFn: openHcvQueue,
+    onSuccess: (result) => {
+      moduleStatus.refetch();
+      toast.success(
+        `จัดคิวแล้ว ${result.queued} ราย · รอผูก LINE ${result.blocked} ราย`,
+      );
+    },
+    onError: (err) => toast.error(err instanceof Error ? err.message : "เปิดคิวไม่สำเร็จ"),
   });
 
   const queueNudge = useMutation({
@@ -142,6 +187,7 @@ function PatientsPage() {
       const matchesFilter =
         filter === "all" ||
         (filter === "gap" && hasCareGap(patient)) ||
+        (filter === "hcv_sofvel" && needsSofvelTreatment(patient)) ||
         (filter === "high" && (raaia.band === "critical" || raaia.band === "high")) ||
         (filter === "need_qr" && raaia.nextAction === "create_line_qr") ||
         (filter === "hbv_hdv" && hbvHdv.flagged);
@@ -175,26 +221,74 @@ function PatientsPage() {
       </div>
     );
 
+  const sofvelGapCount = scored.filter(({ patient }) => needsSofvelTreatment(patient)).length;
+
   return (
-    <div className="mx-auto w-full max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
-      <header className="flex flex-col gap-3 border-b pb-5 lg:flex-row lg:items-end lg:justify-between">
-        <div>
-          <Badge variant="outline" className="w-fit border-teal/30 bg-teal/5 text-teal">
-            HEPA-RAAIA
-          </Badge>
-          <h1 className="mt-3 text-2xl font-bold tracking-tight sm:text-3xl">
-            ทะเบียน Care Gap และลดการพิมพ์
-          </h1>
-          <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
-            ใช้สูตร RAAIA ที่แปลงเป็นงานไวรัสตับอักเสบ เพื่อจัดลำดับผู้ป่วย เลือก action ถัดไป
-            และสร้าง QR ผูก LINE จากรายชื่อเดิมโดยไม่ต้องพิมพ์ HN ซ้ำ
-          </p>
-        </div>
+    <div className="page-shell">
+      <OfficialPageHeader
+        eyebrow="ทะเบียนผู้ป่วยค้างติดตาม · HEPA-RAAIA"
+        title="จัดลำดับผู้ป่วยและเปิดคิว AI nudge"
+        description="อ่านจากรายชื่อกลางเดียวกับแดชบอร์ด จัดลำดับความเร่งด่วนด้วย HEPA-RAAIA สร้าง QR ผูก LINE และจัดคิวข้อความติดตามอัตโนมัติ"
+        badges={["รายชื่อกลาง", "AI nudge", "QR ผูก LINE"]}
+      >
         <Button variant="outline" onClick={() => refetch()} className="w-fit gap-2">
           <CheckCircle2 className="h-4 w-4" />
           รีเฟรช
         </Button>
-      </header>
+      </OfficialPageHeader>
+
+      {filter === "hcv_sofvel" && (
+        <Card className="border-destructive/40 bg-destructive/5">
+          <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <div className="flex items-center gap-2 text-sm font-semibold text-destructive">
+                <AlertTriangle className="h-4 w-4" />
+                คิวเร่งด่วน: HCV รอ Sofvel {sofvelGapCount} ราย
+              </div>
+              <p className="mt-1 text-sm text-muted-foreground">
+                กดจัดคิวทั้งหมดเพื่อสร้างงาน AI nudge — รายที่ยังไม่ผูก LINE ต้องสร้าง QR ก่อนจึงส่งได้
+              </p>
+            </div>
+            <Button
+              disabled={openQueue.isPending || sofvelGapCount === 0}
+              onClick={() => openQueue.mutate()}
+              className="gap-2"
+            >
+              {openQueue.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Send className="h-4 w-4" />
+              )}
+              จัดคิว AI nudge ทั้งหมด
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {moduleStatus.data?.modules && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">สถานะโมดูลที่เกี่ยวข้อง</CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+            {moduleStatus.data.modules.map(
+              (module: { id: string; name: string; state: string; detail: string }) => (
+                <div key={module.id} className="rounded-lg border p-3 text-sm">
+                  <div className="font-medium">{module.name}</div>
+                  <Badge variant="outline" className="mt-2">
+                    {module.state === "ready"
+                      ? "พร้อม"
+                      : module.state === "partial"
+                        ? "บางส่วน"
+                        : "ติดเงื่อนไข"}
+                  </Badge>
+                  <p className="mt-2 text-xs leading-5 text-muted-foreground">{module.detail}</p>
+                </div>
+              ),
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-7">
         {[
@@ -309,7 +403,8 @@ function PatientsPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">ทั้งหมด</SelectItem>
-                  <SelectItem value="gap">Care Gap</SelectItem>
+                  <SelectItem value="gap">ผู้ป่วยค้างติดตาม</SelectItem>
+                  <SelectItem value="hcv_sofvel">HCV รอ Sofvel (เร่งด่วน)</SelectItem>
                   <SelectItem value="high">เสี่ยงสูง</SelectItem>
                   <SelectItem value="need_qr">ควรสร้าง QR</SelectItem>
                   <SelectItem value="hbv_hdv">HBV/HDV review</SelectItem>
