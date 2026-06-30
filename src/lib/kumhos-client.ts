@@ -120,3 +120,31 @@ export async function getKumhosHosxpProxyStatus() {
     error: payload.error || "",
   };
 }
+
+export type ScreenedTestResult = {
+  hn?: string;
+  patient_hn?: string;
+  id?: string | number;
+  date?: string;
+  hbsag?: string;
+  rapid_hbv_result?: string;
+  hcvAb?: string;
+  rapid_hcv_result?: string;
+  hcvVL?: string;
+};
+
+export async function getScreenedPassedResults(date: string): Promise<ScreenedTestResult[]> {
+  const proxyUrl = serverEnv("HEPA_HOSXP_PROXY_URL");
+  if (!proxyUrl) return [];
+
+  const url = new URL(proxyUrl);
+  url.searchParams.set("action", "screened_passed_lab");
+  url.searchParams.set("date", date);
+
+  const token = serverEnv("HEPA_HOSXP_PROXY_TOKEN");
+  const res = await fetch(url, {
+    headers: token ? { "X-HEPAGLUE-TOKEN": token } : {},
+  });
+  const data = await res.json().catch(() => ({}));
+  return Array.isArray(data?.results) ? data.results : [];
+}

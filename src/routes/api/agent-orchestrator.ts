@@ -9,6 +9,8 @@ import {
   writeAgentStore,
   audit,
 } from "@/lib/hepa-agent-store";
+import { autoFillHepBCReport } from "@/lib/moph-hepbc-reporter";
+import { getScreenedPassedResults } from "@/lib/kumhos-client";
 
 function requestBaseUrl(request: Request) {
   const url = new URL(request.url);
@@ -142,6 +144,57 @@ export const Route = createFileRoute("/api/agent-orchestrator")({
             });
             writeAgentStore(store);
             return Response.json({ status: linePayload.status, task, line: linePayload }, { status: lineResponse.ok ? 200 : 502 });
+          }
+
+          if (action === "run_daily_hepbc" || action === "daily_hepbc_report") {
+            const store = readAgentStore();
+            const date = body.date || new Date(Date.now() - 86400000).toISOString().split("T")[0];
+            audit(store, { actor: "system", action: "run_daily_hepbc", detail: `Daily Hep-BC for ${date}` });
+
+            let screened: any[] = [];
+            try {
+              screened = await getScreenedPassedResults(date);
+            } catch (e) {
+              console.error("HOSxP pull failed", e);
+              screened = [];
+            }
+
+            const positives = screened.filter(
+              (r: any) =>
+                r.hbsag === "Positive" ||
+                r.rapid_hbv_result === "Positive" ||
+                r.hcvAb === "Positive" ||
+                r.hcvVL === "Detected" ||
+                r.rapid_hcv_result === "Positive",
+            );
+
+            const cases = positives.map((r: any) => ({
+              hn: r.hn || r.patient_hn || `HOSxP-${r.id || Date.now()}`,
+              testDate: r.date || date,
+              hbsag: r.hbsag || r.rapid_hbv_result,
+              hcvAb: r.hcvAb || r.rapid_hcv_result,
+              hcvVL: r.hcvVL,
+            }));
+
+            let reportResult = null;
+            if (cases.length > 0) {
+              try {
+                reportResult = await autoFillHepBCReport(cases as any);
+              } catch (e: any) {
+                console.error("Daily Hep-BC report failed", e);
+                reportResult = { success: false, error: e.message };
+              }
+            }
+
+            writeAgentStore(store);
+            return Response.json({
+              status: "success",
+              date,
+              pulled: screened.length,
+              positives: positives.length,
+              reported: reportResult?.reported || 0,
+              result: reportResult,
+            });
           }
 
           if (action === "close_task") {
