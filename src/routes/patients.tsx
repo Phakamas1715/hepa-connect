@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import {
   Building2,
+  BookOpenCheck,
   CheckCircle2,
   Loader2,
   MapPin,
@@ -23,6 +24,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  getHbvHdvMonitoringStatus,
+  HBV_HDV_MONITORING_INSIGHT,
+} from "@/lib/hepa-clinical-evidence";
 import { hasCareGap, type Patient } from "@/lib/hepa-data";
 import { calculateHepaRaaia, type HepaRaaiaScore } from "@/lib/hepa-raaia";
 import { HEPA_SERVICE_AREAS, resolveHepaServiceArea } from "@/lib/hepa-service-area";
@@ -82,7 +87,7 @@ async function postAgent(action: string, payload: Record<string, unknown>) {
 
 function PatientsPage() {
   const [query, setQuery] = useState("");
-  const [filter, setFilter] = useState<"all" | "gap" | "high" | "need_qr">("all");
+  const [filter, setFilter] = useState<"all" | "gap" | "high" | "need_qr" | "hbv_hdv">("all");
   const [latestLink, setLatestLink] = useState("");
   const {
     data: patients,
@@ -114,12 +119,16 @@ function PatientsPage() {
   });
 
   const scored = useMemo(() => {
-    return (patients || []).map((patient) => ({ patient, raaia: calculateHepaRaaia(patient) }));
+    return (patients || []).map((patient) => ({
+      patient,
+      raaia: calculateHepaRaaia(patient),
+      hbvHdv: getHbvHdvMonitoringStatus(patient),
+    }));
   }, [patients]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return scored.filter(({ patient, raaia }) => {
+    return scored.filter(({ patient, raaia, hbvHdv }) => {
       const serviceArea = resolveHepaServiceArea(patient);
       const matchesText =
         !q ||
@@ -134,7 +143,8 @@ function PatientsPage() {
         filter === "all" ||
         (filter === "gap" && hasCareGap(patient)) ||
         (filter === "high" && (raaia.band === "critical" || raaia.band === "high")) ||
-        (filter === "need_qr" && raaia.nextAction === "create_line_qr");
+        (filter === "need_qr" && raaia.nextAction === "create_line_qr") ||
+        (filter === "hbv_hdv" && hbvHdv.flagged);
       return matchesText && matchesFilter;
     });
   }, [filter, query, scored]);
@@ -145,6 +155,7 @@ function PatientsPage() {
       gaps: scored.filter(({ patient }) => hasCareGap(patient)).length,
       high: scored.filter(({ raaia }) => raaia.band === "critical" || raaia.band === "high").length,
       needQr: scored.filter(({ raaia }) => raaia.nextAction === "create_line_qr").length,
+      hbvHdvReview: scored.filter(({ hbvHdv }) => hbvHdv.flagged).length,
       mapped: scored.filter(({ patient }) => resolveHepaServiceArea(patient)).length,
       areas: HEPA_SERVICE_AREAS.length,
     }),
@@ -185,12 +196,13 @@ function PatientsPage() {
         </Button>
       </header>
 
-      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
+      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-7">
         {[
           { label: "รายชื่อทั้งหมด", value: stats.total },
           { label: "Care Gap", value: stats.gaps },
           { label: "เสี่ยงสูง", value: stats.high },
           { label: "ควรสร้าง QR", value: stats.needQr },
+          { label: "HBV/HDV review", value: stats.hbvHdvReview },
           { label: "Mapped Area", value: stats.mapped },
           { label: "เขตรับผิดชอบ", value: stats.areas },
         ].map((item) => (
@@ -203,6 +215,8 @@ function PatientsPage() {
                 </div>
                 {item.label === "Mapped Area" ? (
                   <MapPin className="h-5 w-5 text-teal" />
+                ) : item.label === "HBV/HDV review" ? (
+                  <BookOpenCheck className="h-5 w-5 text-teal" />
                 ) : item.label === "เขตรับผิดชอบ" ? (
                   <Building2 className="h-5 w-5 text-teal" />
                 ) : (
@@ -234,6 +248,47 @@ function PatientsPage() {
         </Card>
       )}
 
+      <Card className="border-sky-200 bg-sky-50/70">
+        <CardHeader>
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2 text-base text-sky-950">
+                <BookOpenCheck className="h-5 w-5 text-teal" />
+                ใช้งาน HBV/HDV monitoring ในทะเบียน
+              </CardTitle>
+              <p className="mt-2 max-w-4xl text-sm leading-6 text-sky-900/80">
+                ระบบจะติด tag ให้ผู้ป่วยที่มี HBV positive เพื่อให้เจ้าหน้าที่พิจารณาติดตาม marker
+                ร่วมกัน ไม่ใช่การสั่งตรวจหรือรักษาอัตโนมัติ
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              className="w-fit gap-2 border-sky-200 bg-white/70 text-sky-900 hover:bg-white"
+              onClick={() => setFilter("hbv_hdv")}
+            >
+              <BookOpenCheck className="h-4 w-4" />
+              ดู HBV/HDV review
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent className="grid gap-3 lg:grid-cols-[.8fr_1.2fr]">
+          <div className="rounded-lg border border-sky-200 bg-white/70 p-3 text-sm leading-6 text-sky-950">
+            {HBV_HDV_MONITORING_INSIGHT.summary}
+            <div className="mt-2 text-xs text-sky-900/70">
+              ที่มา: {HBV_HDV_MONITORING_INSIGHT.evidenceDate}
+            </div>
+          </div>
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+            {HBV_HDV_MONITORING_INSIGHT.markers.map((marker) => (
+              <div key={marker} className="rounded-lg border border-sky-200 bg-white/70 p-3 text-xs">
+                <div className="font-semibold text-sky-950">{marker}</div>
+                <div className="mt-1 leading-5 text-sky-900/70">ดูร่วมกับ clinical context และแนวโน้มตามเวลา</div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
@@ -257,6 +312,7 @@ function PatientsPage() {
                   <SelectItem value="gap">Care Gap</SelectItem>
                   <SelectItem value="high">เสี่ยงสูง</SelectItem>
                   <SelectItem value="need_qr">ควรสร้าง QR</SelectItem>
+                  <SelectItem value="hbv_hdv">HBV/HDV review</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -264,7 +320,7 @@ function PatientsPage() {
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto rounded-lg border">
-            <table className="w-full min-w-[1340px] text-sm">
+            <table className="w-full min-w-[1480px] text-sm">
               <thead className="bg-muted/50 text-left text-[11px] uppercase tracking-wider text-muted-foreground">
                 <tr>
                   <th className="px-3 py-2">HN</th>
@@ -276,12 +332,13 @@ function PatientsPage() {
                   <th className="px-3 py-2">HCV RNA</th>
                   <th className="px-3 py-2">Persona</th>
                   <th className="px-3 py-2">HEPA-RAAIA</th>
+                  <th className="px-3 py-2">HBV/HDV</th>
                   <th className="px-3 py-2">Action</th>
                   <th className="px-3 py-2 text-right">ทำงาน</th>
                 </tr>
               </thead>
               <tbody>
-                {filtered.map(({ patient, raaia }) => {
+                {filtered.map(({ patient, raaia, hbvHdv }) => {
                   const serviceArea = resolveHepaServiceArea(patient);
                   return (
                     <tr key={patient.hn} className="border-t hover:bg-muted/30">
@@ -346,6 +403,27 @@ function PatientsPage() {
                           {raaia.explanation}
                         </div>
                       </td>
+                      <td className="px-3 py-2">
+                        {hbvHdv.flagged ? (
+                          <div className="space-y-1">
+                            <Badge
+                              variant="outline"
+                              className={
+                                hbvHdv.priority === "high"
+                                  ? "border-sky-300 bg-sky-50 text-sky-900"
+                                  : "border-slate-200 bg-slate-50 text-slate-700"
+                              }
+                            >
+                              {hbvHdv.label}
+                            </Badge>
+                            <div className="max-w-56 text-[10px] leading-4 text-muted-foreground">
+                              {hbvHdv.detail}
+                            </div>
+                          </div>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">routine</span>
+                        )}
+                      </td>
                       <td className="px-3 py-2 text-xs text-muted-foreground">
                         {actionLabel[raaia.nextAction]}
                       </td>
@@ -381,7 +459,7 @@ function PatientsPage() {
                 {!filtered.length && (
                   <tr>
                     <td
-                      colSpan={11}
+                      colSpan={12}
                       className="px-3 py-8 text-center text-sm text-muted-foreground"
                     >
                       ไม่พบผู้ป่วยตามตัวกรองนี้

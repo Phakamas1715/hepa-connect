@@ -22,3 +22,36 @@ export const HBV_HDV_MONITORING_INSIGHT = {
   disclaimer:
     "หมายเหตุ: Lonafarnib ยังเป็นบริบทการศึกษา/การรักษาเชิงทดลองในบทความนี้ ระบบจึงใช้เป็น clinical intelligence เท่านั้น ไม่ใช่คำสั่งรักษา",
 } as const;
+
+type HbvHdvPatientLike = {
+  hbsag?: string;
+  rapid_hbv_result?: string;
+  care_status?: string;
+};
+
+export function getHbvHdvMonitoringStatus(patient: HbvHdvPatientLike) {
+  const hbvPositive = patient.hbsag === "Positive" || patient.rapid_hbv_result === "Positive";
+  const unresolvedCare =
+    !patient.care_status ||
+    patient.care_status === "Pending" ||
+    patient.care_status === "Awaiting Result" ||
+    patient.care_status === "Follow-up";
+
+  if (!hbvPositive) {
+    return {
+      flagged: false,
+      label: "ไม่เข้าเกณฑ์ HBV/HDV review",
+      detail: "ยังไม่พบ HBsAg/HBV positive ในข้อมูลคัดกรองชุดนี้",
+      priority: "routine" as const,
+    };
+  }
+
+  return {
+    flagged: true,
+    label: unresolvedCare ? "HBV+HDV review" : "HBV history review",
+    detail: unresolvedCare
+      ? "HBV positive และยังมี care gap: พิจารณา anti-HDV/HDV RNA หากมีข้อบ่งชี้ทางคลินิก"
+      : "HBV positive ที่ปิด loop แล้ว: เก็บเป็น history/risk tag สำหรับติดตาม longitudinal marker",
+    priority: unresolvedCare ? ("high" as const) : ("watch" as const),
+  };
+}
