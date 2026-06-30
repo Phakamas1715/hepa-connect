@@ -9,6 +9,25 @@ This is the fully integrated **HEPA-GLUE Engine** system combining:
 3. **Database (Supabase):** PostgreSQL-based cloud database for real-time data sync
 4. **Local Agent:** Python proxy for secure HOSxP/JHCIS data extraction
 
+## HBV CUP Nam Phong Screening Snapshot
+
+ระบบแยกตัวเลข "รายชื่อกลางสำหรับทำงานหน้างาน" ออกจาก "ผลงาน HDC/สปสช. สำหรับ reconcile รายงาน" เพื่อไม่ให้สรุปรายงานอำเภอผิดจากการกระจุกข้อมูลที่โรงพยาบาล
+
+- เป้าหมายรวม CUP: 6,556 ราย
+- ผลงาน Dashboard สปสช.: 392 ราย
+- ผลงานรวมจาก HDC ตามเอกสาร: 13,465 ราย
+- ผลรวมรายแถว HDC ในชุดข้อมูลนี้: 13,466 ราย
+- ผลงาน HDC ที่โรงพยาบาลน้ำพอง: 13,463 ราย
+- ผลงาน HDC รวม รพ.สต.: 3 ราย
+
+ข้อสังเกต: HDC กระจุกเกือบทั้งหมดที่โรงพยาบาลน้ำพอง ขณะที่ รพ.สต. มีผลงานเข้า HDC เพียง 3 แห่ง ได้แก่ รพ.สต.น้ำพอง, รพ.สต.บ้านคำบง และ รพ.สต.กุดน้ำใส แห่งละ 1 ราย จึงควรตรวจสอบ mapping หน่วยบริการและการส่งข้อมูล HDC ก่อนใช้เป็นยอดสรุประดับอำเภอ
+
+## Service Area Mapping
+
+ใช้ `src/lib/hepa-service-area.ts` เป็น master mapping สำหรับงานไวรัสตับอักเสบ โดยแยกรหัสพื้นที่ตามตำบลและหมู่บ้านรับผิดชอบ เช่น `NPH`, `NP`, `NPGKS`, `KMW`, `KNK`, `KS` และรหัส รพ.สต. อื่น ๆ ใน CUP น้ำพอง
+
+mapping นี้ถูกใช้ร่วมกันในหน้า Integration, หน้า Patients และ Dashboard เพื่อให้การแยกรายชื่อกลาง, QR scan, care gap และการ reconcile HDC/HOSxP ใช้รหัสพื้นที่ชุดเดียวกัน
+
 ## 🏗️ Architecture
 
 ```
@@ -61,6 +80,7 @@ This is the fully integrated **HEPA-GLUE Engine** system combining:
 ## 🚀 Quick Start
 
 ### Prerequisites
+
 - Node.js 22.13.0+
 - pnpm package manager
 - Supabase account
@@ -69,12 +89,14 @@ This is the fully integrated **HEPA-GLUE Engine** system combining:
 ### Installation
 
 1. **Clone and setup frontend:**
+
    ```bash
    cd hepa-connect
    pnpm install
    ```
 
 2. **Configure environment:**
+
    ```bash
    cp .env.example .env.local
    # Edit .env.local with your Supabase credentials
@@ -86,12 +108,14 @@ This is the fully integrated **HEPA-GLUE Engine** system combining:
    - Run SQL from `full_production_schema.sql`
 
 4. **Deploy local agent (on-premise):**
+
    ```bash
    # On a machine in the hospital network
    python3 hepa_glue_agent.py
    ```
 
 5. **Start development server:**
+
    ```bash
    pnpm dev
    ```
@@ -170,18 +194,21 @@ API_HEADERS = {
 ## 📊 Key Features
 
 ### 1. Patient Care Gap Dashboard
+
 - Real-time patient list with lab results
 - Behavioral persona classification
 - Care gap identification
 - Search and filter capabilities
 
 ### 2. LINE Behavioral Nudges
+
 - Persona-tailored messaging (The Fearful, The Forgetful, The Denier, The Engaged, The Striver)
 - Automatic dispatch to อสม. and patients
 - Rich Flex card messaging
 - Delivery tracking
 
 ### 3. MOPH Portal Integration
+
 - Automated report submission
 - ICD-10 code mapping
 - Multi-portal support (ddsdoe, d506, DOE)
@@ -189,6 +216,7 @@ API_HEADERS = {
 - Audit logging
 
 ### 4. World Model Simulation
+
 - AI-driven kit allocation
 - Care cascade prediction
 - Resource optimization
@@ -197,9 +225,11 @@ API_HEADERS = {
 ## 🔌 API Endpoints
 
 ### POST /api/send-nudge
+
 Sends a LINE nudge to a patient.
 
 **Request:**
+
 ```json
 {
   "recipientId": "NPH-66-0142",
@@ -209,6 +239,7 @@ Sends a LINE nudge to a patient.
 ```
 
 **Response:**
+
 ```json
 {
   "status": "success",
@@ -217,9 +248,11 @@ Sends a LINE nudge to a patient.
 ```
 
 ### POST /api/submit-moph-report
+
 Submits patient data to MOPH portals.
 
 **Request:**
+
 ```json
 {
   "patientData": {
@@ -232,6 +265,7 @@ Submits patient data to MOPH portals.
 ```
 
 **Response:**
+
 ```json
 {
   "status": "success",
@@ -242,9 +276,11 @@ Submits patient data to MOPH portals.
 ## 📈 Database Schema
 
 ### patients_care_gap
+
 Main table for patient data and care status.
 
 **Key Fields:**
+
 - `hn` (Primary Key): Hospital Number
 - `name`: Patient Name
 - `testDate`: Date of Lab Test
@@ -254,18 +290,22 @@ Main table for patient data and care status.
 - `moph_sync_status`: MOPH Report Status
 
 ### nudge_logs
+
 Tracks all LINE nudge dispatches.
 
 **Key Fields:**
+
 - `hn`: Patient HN (FK)
 - `persona`: Persona Used
 - `sent_at`: Dispatch Timestamp
 - `status`: Delivery Status
 
 ### moph_sync_logs
+
 Tracks all MOPH report submissions.
 
 **Key Fields:**
+
 - `hn`: Patient HN (FK)
 - `portal_type`: Portal Type
 - `transaction_id`: MOPH Transaction ID
@@ -274,23 +314,27 @@ Tracks all MOPH report submissions.
 ## 🧪 Testing
 
 ### Development Mode
+
 ```bash
 pnpm dev
 # Navigate to http://localhost:5173
 ```
 
 ### Build & Preview
+
 ```bash
 pnpm build
 pnpm preview
 ```
 
 ### Linting
+
 ```bash
 pnpm lint
 ```
 
 ### Formatting
+
 ```bash
 pnpm format
 ```
@@ -298,6 +342,7 @@ pnpm format
 ## 🚢 Deployment
 
 ### Docker Deployment
+
 ```bash
 # Build image
 docker build -t hepa-connect:latest .
@@ -310,6 +355,7 @@ docker run -p 3000:3000 \
 ```
 
 ### Vercel Deployment
+
 ```bash
 # Install Vercel CLI
 npm i -g vercel
@@ -323,6 +369,7 @@ vercel env add VITE_SUPABASE_ANON_KEY
 ```
 
 ### Traditional Server Deployment
+
 ```bash
 # Build
 pnpm build
@@ -360,20 +407,25 @@ scp -r dist/* user@server:/var/www/hepa-connect/
 ## 🐛 Troubleshooting
 
 ### Issue: "Loading patients data from Supabase..." stuck
+
 **Solution:** Verify `.env.local` has correct Supabase credentials
 
 ### Issue: LINE nudge fails
+
 **Solution:** Check `/api/send-nudge` endpoint and LINE Bot MCP Server status
 
 ### Issue: MOPH report submission fails
+
 **Solution:** Verify MOPH credentials and portal connectivity
 
 ### Issue: Local agent not syncing data
+
 **Solution:** Check HOSxP connection and Supabase API key in `hepa_glue_agent.py`
 
 ## 📞 Support
 
 For issues or questions:
+
 1. Check the INTEGRATION_GUIDE.md
 2. Review error logs in browser console
 3. Check server logs: `hepa_agent.log`
@@ -398,6 +450,6 @@ This project is part of the HEPA-GLUE Engine initiative for Hepatitis B & C elim
 
 ---
 
-**Version:** 1.0.0-production  
-**Last Updated:** June 18, 2026  
+**Version:** 1.0.0-production
+**Last Updated:** June 18, 2026
 **Maintained By:** HEPA-GLUE Development Team

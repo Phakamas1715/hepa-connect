@@ -11,9 +11,14 @@
     "preview": "vite preview",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "hepa:check": "bun scripts/validate-hepa-consistency.ts",
+    "hermes:version": "hermes version",
+    "hermes:doctor": "hermes doctor",
+    "hermes:setup": "hermes setup",
     "hermes:status": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/hermes-status.ps1",
-    "hermes:ask": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/hermes-hepa-oneshot.ps1"
+    "hermes:ask": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/hermes-hepa-oneshot.ps1",
+    "grok:version": "grok --version",
+    "line:mcp": "node scripts/line-bot-mcp.mjs",
+    "line:mcp:doctor": "grok mcp doctor line-bot"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

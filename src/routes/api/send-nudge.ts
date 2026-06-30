@@ -7,13 +7,168 @@ function isLineRecipientId(value: string) {
   return /^(U|C|R)[0-9a-fA-F]{20,}$/.test(value);
 }
 
-function buildNudgeText(persona: string, messageType: string) {
-  return [
-    "HEPA-GLUE Engine",
-    `ประเภทข้อความ: ${messageType}`,
-    `Persona: ${persona}`,
-    "กรุณาติดตาม care gap ตามแผนงานไวรัสตับอักเสบ B/C",
-  ].join("\n");
+function buildFlexMessage(persona: string, messageType: string) {
+  return {
+    type: "flex",
+    altText: "น้ำพองรักตับ: แจ้งเตือนติดตามสุขภาพ",
+    contents: {
+      type: "bubble",
+      size: "mega",
+      header: {
+        type: "box",
+        layout: "vertical",
+        backgroundColor: "#087F73",
+        paddingAll: "20px",
+        contents: [
+          {
+            type: "text",
+            text: "น้ำพองรักตับ",
+            color: "#FFFFFF",
+            weight: "bold",
+            size: "xl",
+          },
+          {
+            type: "text",
+            text: "ดูแลตับให้แข็งแรง ไปด้วยกัน",
+            color: "#CFF7F1",
+            size: "sm",
+            margin: "sm",
+          },
+        ],
+      },
+      body: {
+        type: "box",
+        layout: "vertical",
+        paddingAll: "20px",
+        contents: [
+          {
+            type: "box",
+            layout: "horizontal",
+            backgroundColor: "#E9F8F5",
+            cornerRadius: "8px",
+            paddingAll: "12px",
+            contents: [
+              {
+                type: "text",
+                text: "นัดติดตามสุขภาพ",
+                color: "#08665E",
+                weight: "bold",
+                size: "sm",
+                flex: 1,
+              },
+              {
+                type: "text",
+                text: "รอยืนยัน",
+                color: "#D85C41",
+                weight: "bold",
+                size: "sm",
+                align: "end",
+              },
+            ],
+          },
+          {
+            type: "text",
+            text: "มีรายการดูแลสุขภาพที่ควรติดตาม",
+            color: "#172B2A",
+            weight: "bold",
+            size: "lg",
+            margin: "xl",
+            wrap: true,
+          },
+          {
+            type: "text",
+            text: "กรุณาติดต่อหน่วยบริการใกล้บ้านเพื่อยืนยันวันและเวลาที่สะดวก เจ้าหน้าที่พร้อมดูแลและให้คำแนะนำ",
+            color: "#506765",
+            size: "sm",
+            margin: "md",
+            wrap: true,
+            lineSpacing: "4px",
+          },
+          {
+            type: "separator",
+            margin: "xl",
+            color: "#DDE9E7",
+          },
+          {
+            type: "box",
+            layout: "vertical",
+            margin: "lg",
+            spacing: "sm",
+            contents: [
+              {
+                type: "box",
+                layout: "horizontal",
+                contents: [
+                  { type: "text", text: "งานติดตาม", color: "#78908D", size: "xs", flex: 2 },
+                  {
+                    type: "text",
+                    text: messageType,
+                    color: "#26423F",
+                    size: "xs",
+                    align: "end",
+                    flex: 3,
+                  },
+                ],
+              },
+              {
+                type: "box",
+                layout: "horizontal",
+                contents: [
+                  { type: "text", text: "รูปแบบดูแล", color: "#78908D", size: "xs", flex: 2 },
+                  {
+                    type: "text",
+                    text: persona,
+                    color: "#26423F",
+                    size: "xs",
+                    align: "end",
+                    flex: 3,
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+      footer: {
+        type: "box",
+        layout: "vertical",
+        paddingAll: "16px",
+        spacing: "sm",
+        contents: [
+          {
+            type: "button",
+            style: "primary",
+            color: "#087F73",
+            height: "sm",
+            action: {
+              type: "message",
+              label: "ยืนยันรับทราบ",
+              text: "รับทราบการแจ้งเตือนแล้ว",
+            },
+          },
+          {
+            type: "button",
+            style: "secondary",
+            height: "sm",
+            action: {
+              type: "message",
+              label: "ขอให้เจ้าหน้าที่ติดต่อกลับ",
+              text: "ต้องการให้เจ้าหน้าที่ติดต่อกลับ",
+            },
+          },
+          {
+            type: "text",
+            text: "ข้อความทดสอบจาก HEPA-GLUE · โรงพยาบาลน้ำพอง",
+            color: "#8A9D9A",
+            size: "xxs",
+            align: "center",
+            margin: "md",
+            wrap: true,
+          },
+        ],
+      },
+    },
+  };
 }
 
 export const Route = createFileRoute("/api/send-nudge")({
@@ -63,12 +218,7 @@ export const Route = createFileRoute("/api/send-nudge")({
             },
             body: JSON.stringify({
               to: resolvedRecipientId,
-              messages: [
-                {
-                  type: "text",
-                  text: buildNudgeText(persona, messageType),
-                },
-              ],
+              messages: [buildFlexMessage(persona, messageType)],
             }),
           });
 
@@ -95,7 +245,10 @@ export const Route = createFileRoute("/api/send-nudge")({
           });
         } catch (error) {
           console.error("Error sending LINE nudge:", error);
-          return Response.json({ status: "error", message: "ส่ง LINE nudge ไม่สำเร็จ" }, { status: 500 });
+          return Response.json(
+            { status: "error", message: "ส่ง LINE nudge ไม่สำเร็จ" },
+            { status: 500 },
+          );
         }
       },
     },

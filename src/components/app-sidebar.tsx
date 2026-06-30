@@ -1,6 +1,20 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Activity, Bot, Cable, ClipboardList, LayoutDashboard, Moon, Network, Sun, Users, X } from "lucide-react";
+import {
+  Activity,
+  Bot,
+  Cable,
+  ClipboardList,
+  Database,
+  LayoutDashboard,
+  Moon,
+  Network,
+  Sun,
+  Users,
+  X,
+} from "lucide-react";
 import { useEffect, useState } from "react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Sidebar,
   SidebarContent,
@@ -14,16 +28,20 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { Button } from "@/components/ui/button";
-import { HEPA_PROJECT_CONFIG } from "@/lib/hepa-data";
+import { TARGET_REGISTRY_SOURCE } from "@/lib/hepa-data";
 
 const items = [
   { title: "แดชบอร์ดผู้บริหาร", url: "/", icon: LayoutDashboard, desc: "KPI และ care cascade" },
-  { title: "ทะเบียน Care Gap", url: "/patients", icon: Users, desc: "จัดลำดับการติดตาม" },
-  { title: "HEPA Agent", url: "/agent", icon: Bot, desc: "LINE invite และ audit log" },
+  { title: "ทะเบียน Care Gap", url: "/patients", icon: Users, desc: "AI ติดตามผู้ป่วย" },
+  { title: "HEPA Agent", url: "/agent", icon: Bot, desc: "LINE invite และ closed loop" },
   { title: "รายงาน ILI", url: "/ili-report", icon: ClipboardList, desc: "D506 จันทร์-อังคาร" },
-  { title: "สถาปัตยกรรมระบบ", url: "/architecture", icon: Network, desc: "Data Flow และ Closed Loop" },
-  { title: "เชื่อมต่อ MOPH", url: "/integration", icon: Cable, desc: "สถานะระบบเชื่อมต่อ" },
+  {
+    title: "สถาปัตยกรรมระบบ",
+    url: "/architecture",
+    icon: Network,
+    desc: "Data Flow และ Closed Loop",
+  },
+  { title: "เชื่อมต่อ MOPH", url: "/integration", icon: Cable, desc: "รายงานอัตโนมัติ" },
 ];
 
 export function AppSidebar() {
@@ -46,15 +64,19 @@ export function AppSidebar() {
   };
 
   return (
-    <Sidebar collapsible="icon">
-      <SidebarHeader className="border-b border-sidebar-border">
-        <div className="flex items-center gap-3 px-2 py-4">
-          <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl gradient-medical shadow-lg shadow-black/10">
+    <Sidebar collapsible="icon" className="border-sidebar-border">
+      <SidebarHeader className="border-b border-sidebar-border px-3 py-3">
+        <div className="flex items-center gap-3">
+          <div className="grid h-11 w-11 shrink-0 place-items-center rounded-lg gradient-medical shadow-sm ring-1 ring-white/10 group-data-[collapsible=icon]:h-9 group-data-[collapsible=icon]:w-9">
             <Activity className="h-5 w-5 text-white" strokeWidth={2.5} />
           </div>
           <div className="min-w-0 flex-1 group-data-[collapsible=icon]:hidden">
-            <div className="truncate text-sm font-bold tracking-tight text-sidebar-foreground">HEPA-GLUE Engine</div>
-            <div className="truncate text-[11px] text-sidebar-foreground/60">Nam Phong Clinical Dashboard</div>
+            <div className="truncate text-sm font-bold tracking-tight text-sidebar-foreground">
+              HEPA-GLUE Engine
+            </div>
+            <div className="mt-0.5 truncate text-[11px] text-sidebar-foreground/60">
+              น้ำพอง · ขอนแก่น
+            </div>
           </div>
           <Button
             type="button"
@@ -69,21 +91,41 @@ export function AppSidebar() {
         </div>
       </SidebarHeader>
 
-      <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupLabel>ศูนย์ปฏิบัติการ</SidebarGroupLabel>
+      <SidebarContent className="px-2 py-3">
+        <SidebarGroup className="p-0">
+          <SidebarGroupLabel className="px-3 text-[10px] font-semibold uppercase tracking-wider text-sidebar-foreground/45">
+            Navigation
+          </SidebarGroupLabel>
           <SidebarGroupContent>
-            <SidebarMenu>
+            <SidebarMenu className="gap-1.5">
               {items.map((item) => {
                 const active = pathname === item.url;
                 return (
                   <SidebarMenuItem key={item.url}>
-                    <SidebarMenuButton asChild isActive={active} tooltip={item.title} className="h-12">
-                      <Link to={item.url} onClick={closeMobileMenu} className="flex items-center gap-3">
-                        <item.icon className="h-4 w-4 shrink-0" />
+                    <SidebarMenuButton
+                      asChild
+                      isActive={active}
+                      size="lg"
+                      tooltip={item.title}
+                      className="h-12 rounded-lg px-3 data-[active=true]:bg-sidebar-primary data-[active=true]:text-sidebar-primary-foreground data-[active=true]:shadow-sm hover:bg-sidebar-accent/80 group-data-[collapsible=icon]:mx-auto group-data-[collapsible=icon]:h-9 group-data-[collapsible=icon]:w-9"
+                    >
+                      <Link
+                        to={item.url}
+                        onClick={closeMobileMenu}
+                        className="flex items-center gap-3"
+                      >
+                        <item.icon className="h-4.5 w-4.5 shrink-0" />
                         <div className="min-w-0 flex-1 group-data-[collapsible=icon]:hidden">
                           <div className="truncate text-sm font-medium">{item.title}</div>
-                          <div className="truncate text-[11px] text-sidebar-foreground/60">{item.desc}</div>
+                          <div
+                            className={`truncate text-[11px] ${
+                              active
+                                ? "text-sidebar-primary-foreground/75"
+                                : "text-sidebar-foreground/55"
+                            }`}
+                          >
+                            {item.desc}
+                          </div>
                         </div>
                       </Link>
                     </SidebarMenuButton>
@@ -93,23 +135,41 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
-      </SidebarContent>
 
-      <SidebarFooter className="border-t border-sidebar-border">
-        <div className="mx-2 my-2 rounded-2xl border border-sidebar-border bg-sidebar-accent/45 p-3 group-data-[collapsible=icon]:p-1">
-          <div className="mb-3 min-w-0 group-data-[collapsible=icon]:hidden">
-            <div className="truncate text-xs font-semibold text-sidebar-foreground">Production status</div>
-            <div className="mt-1 flex items-center gap-1.5 text-[10px] text-sidebar-foreground/65">
-              <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
-              ตรวจสอบก่อนส่งข้อมูล
+        <SidebarGroup className="mt-4 p-0 group-data-[collapsible=icon]:hidden">
+          <SidebarGroupLabel className="px-3 text-[10px] font-semibold uppercase tracking-wider text-sidebar-foreground/45">
+            Data source
+          </SidebarGroupLabel>
+          <div className="mx-1 rounded-lg border border-sidebar-border bg-sidebar-accent/35 p-3">
+            <div className="flex items-start gap-2.5">
+              <div className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-md bg-sidebar-primary/15 text-sidebar-primary">
+                <Database className="h-4 w-4" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-xs font-semibold text-sidebar-foreground">
+                  {TARGET_REGISTRY_SOURCE.label}
+                </div>
+                <div className="mt-1 text-[11px] leading-5 text-sidebar-foreground/60">
+                  Dashboard และ Care Gap ใช้รายชื่อชุดเดียวกัน
+                </div>
+                <Badge className="mt-2 h-5 border-sidebar-primary/30 bg-sidebar-primary/15 px-1.5 text-[10px] text-sidebar-primary hover:bg-sidebar-primary/15">
+                  ไม่ดึงจาก IT dashboard
+                </Badge>
+              </div>
             </div>
           </div>
-          <div className="flex items-center justify-between gap-2 group-data-[collapsible=icon]:flex-col">
+        </SidebarGroup>
+      </SidebarContent>
+
+      <SidebarFooter className="border-t border-sidebar-border px-3 py-3">
+        <div className="flex items-center justify-between gap-2 group-data-[collapsible=icon]:flex-col">
           <div className="min-w-0 group-data-[collapsible=icon]:hidden">
             <div className="truncate text-xs font-medium text-sidebar-foreground">
-              {HEPA_PROJECT_CONFIG.hospitalName.replace("โรงพยาบาล", "รพ.")} · ปีงบ {HEPA_PROJECT_CONFIG.fiscalYear}
+              รพ.น้ำพอง · ปีงบ 2569
             </div>
-            <div className="truncate text-[10px] text-sidebar-foreground/60">รหัสหน่วยบริการ {HEPA_PROJECT_CONFIG.hospitalCode}</div>
+            <div className="truncate text-[10px] text-sidebar-foreground/60">
+              รหัสหน่วยบริการ 11000
+            </div>
           </div>
           <Button
             size="icon"
@@ -120,7 +180,6 @@ export function AppSidebar() {
           >
             {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
           </Button>
-          </div>
         </div>
       </SidebarFooter>
     </Sidebar>

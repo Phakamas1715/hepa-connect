@@ -69,7 +69,7 @@ async function getLiffProfile(liffId: string): Promise<LineProfile> {
 
 function LineStaffPage() {
   const search = useSearch({ from: "/line/staff" }) as { lineUserId?: string; displayName?: string };
-  const liffId = (import.meta.env.VITE_STAFF_LIFF_ID || import.meta.env.VITE_LIFF_ID) as string | undefined;
+  const liffId = import.meta.env.VITE_STAFF_LIFF_ID as string | undefined;
   const [profile, setProfile] = useState<LineProfile | null>(null);
   const [manualLineUserId, setManualLineUserId] = useState(search.lineUserId || "");
   const [manualDisplayName, setManualDisplayName] = useState(search.displayName || "");

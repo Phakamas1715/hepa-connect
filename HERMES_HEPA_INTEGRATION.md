@@ -4,13 +4,44 @@
 
 ## สถานะปัจจุบัน
 
-- Hermes Agent core CLI ติดตั้งแล้วที่ `%LOCALAPPDATA%\hermes`
-- คำสั่ง `hermes version` และ `hermes status` รันได้
-- ยังไม่ได้ตั้งค่า model/provider หรือ API key สำหรับให้ Hermes คิด/ตอบแบบ agent จริง
+- Upstream ที่ใช้: https://github.com/NousResearch/hermes-agent
+- Hermes Agent core CLI ตรวจจาก `HERMES_CLI_PATH`, คำสั่ง `hermes` ใน PATH, หรือ Windows native path `%LOCALAPPDATA%\hermes`
+- คำสั่ง `hermes version`, `hermes status`, `hermes model`, `hermes setup` ใช้ตรวจและตั้งค่า agent
+- ยังไม่ได้ตั้งค่า model/provider หรือ API key สำหรับให้ Hermes คิด/ตอบแบบ agent จริง ถ้ายังไม่มี `NOUS_API_KEY`, `OPENROUTER_API_KEY`, `OPENAI_API_KEY` หรือกลุ่ม `GLM/ZAI`
 - installer ติดปัญหาไดรฟ์ C: เต็ม ทำให้ browser/TUI npm dependencies ยังไม่สมบูรณ์
 - HEPA-Connect local app ยังรันที่ `http://127.0.0.1:5174/`
 - HOSxP MariaDB direct ยังเชื่อมไม่ได้ เพราะ server ปฏิเสธ host เครื่องนี้
 - Smart Query และ KUMHOS Lab API เข้าถึงได้บางส่วน แต่ยังไม่พบ feed lab hepatitis ที่ใช้ production ได้ตรง
+
+## ติดตั้ง Hermes Agent จาก NousResearch
+
+macOS / Linux / WSL:
+
+```bash
+curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash
+hermes setup
+hermes model
+```
+
+Windows PowerShell:
+
+```powershell
+iex (irm https://hermes-agent.nousresearch.com/install.ps1)
+hermes setup
+hermes model
+```
+
+ถ้า `hepa-connect` หา CLI ไม่เจอ ให้ตั้งค่า path เอง:
+
+```bash
+HERMES_CLI_PATH=/absolute/path/to/hermes
+```
+
+หรือบน Windows:
+
+```powershell
+HERMES_CLI_PATH=%LOCALAPPDATA%\hermes\hermes-agent\venv\Scripts\hermes.exe
+```
 
 ## คำสั่งที่เพิ่มในโปรเจกต์
 
@@ -27,6 +58,17 @@ npm run hermes:ask -- "ช่วยตรวจแผนเชื่อม HOSxP
 ```
 
 หมายเหตุ: คำสั่ง `hermes:ask` จะใช้ได้เต็มเมื่อ Hermes มี model/provider แล้ว เช่น Nous Portal, OpenAI, OpenRouter หรือ provider อื่นที่ตั้งค่าใน `hermes model`/`hermes auth`
+
+Environment ที่ `hepa-connect` ใช้ตรวจความพร้อม:
+
+```bash
+NOUS_API_KEY=
+OPENROUTER_API_KEY=
+OPENAI_API_KEY=
+GLM_API_KEY=
+ZAI_API_KEY=
+Z_AI_API_KEY=
+```
 
 ## วิธีรวมกับระบบนี้
 

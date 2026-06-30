@@ -1,6 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { createHash, randomBytes } from "node:crypto";
+import { serverEnv } from "@/lib/server-env";
 
 export type AgentInvite = {
   id: string;
@@ -53,7 +54,11 @@ export type AgentStore = {
   audit: AuditEvent[];
 };
 
-const STORE_PATH = resolve(process.cwd(), "data", "hepa-agent-store.json");
+function storePath() {
+  return (
+    serverEnv("HEPA_AGENT_STORE_PATH") || resolve(process.cwd(), "data", "hepa-agent-store.json")
+  );
+}
 
 function emptyStore(): AgentStore {
   return { invites: [], identities: [], tasks: [], audit: [] };
@@ -72,13 +77,19 @@ function hashToken(token: string) {
 }
 
 export function readAgentStore(): AgentStore {
+  const STORE_PATH = storePath();
   if (!existsSync(STORE_PATH)) return emptyStore();
   return { ...emptyStore(), ...JSON.parse(readFileSync(STORE_PATH, "utf8")) };
 }
 
 export function writeAgentStore(store: AgentStore) {
+  const STORE_PATH = storePath();
   mkdirSync(dirname(STORE_PATH), { recursive: true });
   writeFileSync(STORE_PATH, JSON.stringify(store, null, 2), "utf8");
+}
+
+export function getAgentStorePath() {
+  return storePath();
 }
 
 export function audit(store: AgentStore, event: Omit<AuditEvent, "id" | "at">) {
@@ -229,7 +240,9 @@ export function verifyStaffIdentity(input: { lineUserId: string; displayName?: s
 
 export function queueNudge(input: { hn: string; persona?: string; message?: string }) {
   const store = readAgentStore();
-  const identity = store.identities.find((item) => item.hn === input.hn && item.role === "patient" && item.status === "verified");
+  const identity = store.identities.find(
+    (item) => item.hn === input.hn && item.role === "patient" && item.status === "verified",
+  );
   const createdAt = nowIso();
   const task: AgentTask = {
     id: id("task"),
@@ -238,7 +251,8 @@ export function queueNudge(input: { hn: string; persona?: string; message?: stri
     status: identity ? "pending" : "blocked",
     lineUserId: identity?.lineUserId,
     persona: input.persona,
-    message: input.message || (identity ? "รอส่ง LINE nudge" : "ยังไม่มี LINE identity map สำหรับ HN นี้"),
+    message:
+      input.message || (identity ? "รอส่ง LINE nudge" : "ยังไม่มี LINE identity map สำหรับ HN นี้"),
     createdAt,
     updatedAt: createdAt,
   };

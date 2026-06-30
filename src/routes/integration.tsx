@@ -5,26 +5,29 @@ import {
   ArrowRight,
   Cable,
   CheckCircle2,
-  Database,
+  ClipboardList,
   FileCheck2,
   Loader2,
   MessageCircle,
   PlayCircle,
+  QrCode,
   RefreshCcw,
-  Server,
+  ScanLine,
   ShieldCheck,
+  Users,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { HEPA_SERVICE_AREAS } from "@/lib/hepa-service-area";
 
 export const Route = createFileRoute("/integration")({
   head: () => ({
     meta: [
-      { title: "สถานะการเชื่อมต่อ — HEPA-GLUE Engine" },
+      { title: "การเชื่อมต่ออัตโนมัติ — HEPA-GLUE Engine" },
       {
         name: "description",
-        content: "สถานะการเชื่อมต่อ HEPA-GLUE กับ HOSxP, Smart Query, LINE และ MOPH",
+        content: "สถานะการทำงาน HEPA-GLUE แบบรายชื่อเป้าหมาย + QR scan + LINE closed loop",
       },
     ],
   }),
@@ -50,6 +53,17 @@ type ProductionGate = {
   state: "ready" | "partial" | "blocked";
   detail: string;
   required: boolean;
+  action?: string;
+};
+
+type ProductionGap = {
+  id: string;
+  name: string;
+  state: "partial" | "blocked";
+  detail: string;
+  action: string;
+  required: boolean;
+  priority: "critical" | "high" | "medium";
 };
 
 type ProductionResponse = {
@@ -58,24 +72,28 @@ type ProductionResponse = {
   canRunProduction: boolean;
   mode: "production" | "production-no-it" | "guarded";
   gates: ProductionGate[];
+  gaps?: ProductionGap[];
   nextAction: string;
   status?: string;
   message?: string;
 };
 
-const stateMap: Record<CheckState, { label: string; className: string; icon: typeof CheckCircle2 }> = {
+const stateMap: Record<
+  CheckState,
+  { label: string; className: string; icon: typeof CheckCircle2 }
+> = {
   ready: {
     label: "พร้อมใช้",
     className: "border-emerald-200 bg-emerald-50 text-emerald-800",
     icon: CheckCircle2,
   },
   partial: {
-    label: "เชื่อมได้บางส่วน",
+    label: "ใช้ได้บางส่วน",
     className: "border-sky-200 bg-sky-50 text-sky-800",
     icon: Cable,
   },
   blocked: {
-    label: "ติดสิทธิ์/เครือข่าย",
+    label: "ยังติดเงื่อนไข",
     className: "border-amber-200 bg-amber-50 text-amber-900",
     icon: AlertTriangle,
   },
@@ -87,19 +105,54 @@ const stateMap: Record<CheckState, { label: string; className: string; icon: typ
 };
 
 const targetFlow = [
-  { title: "1. รับข้อมูลคัดกรอง", detail: "รับผล rapid test จาก JHCIS หรือช่องทางบันทึกที่กำหนด", icon: MessageCircle },
-  { title: "2. รับผลยืนยัน", detail: "HOSxP หรือ lab API ส่ง HBsAg, Anti-HCV, HCV RNA", icon: Database },
-  { title: "3. วิเคราะห์ care gap", detail: "ประเมินผลบวก ค้างนัด และระดับความเร่งด่วน", icon: PlayCircle },
-  { title: "4. ติดตามผู้ป่วย", detail: "ส่งข้อความถึง อสม. หรือผู้ป่วยตามสถานะในระบบ", icon: MessageCircle },
-  { title: "5. รายงาน MOPH", detail: "ส่งข้อมูลเข้า Hep-BC-DDC, D506 และ DOE เมื่อ credential พร้อม", icon: FileCheck2 },
+  {
+    title: "1. เตรียมรายชื่อ",
+    detail: "ใช้รายชื่อเป้าหมายที่เราทำไว้และ mapping ให้ รพ.สต.",
+    icon: ClipboardList,
+  },
+  {
+    title: "2. รพ.สต. สแกน",
+    detail: "เปิดรายชื่อ/QR ของหน่วย แล้วสแกนหรือเลือกผู้ป่วยจากรายการ",
+    icon: QrCode,
+  },
+  {
+    title: "3. ส่งผลคัดกรอง",
+    detail: "บันทึก HBsAg และ Anti-HCV เข้า HEPA โดยตรง ไม่ต้องดึงจาก JHCIS",
+    icon: ScanLine,
+  },
+  {
+    title: "4. ติดตามอัตโนมัติ",
+    detail: "LINE Bot แจ้งผู้ป่วย/อสม. ตาม care gap และสถานะจริง",
+    icon: MessageCircle,
+  },
+  {
+    title: "5. รายงาน/ยืนยันผล",
+    detail: "ใช้ lab/HOSxP เฉพาะยืนยันผลและปิด loop การรักษา",
+    icon: FileCheck2,
+  },
 ];
 
 const nextSteps = [
-  "เปิด endpoint หรือ dataset สำหรับ lab_order ที่มี HBsAg / Anti-HCV / HCV RNA บน server 172.16.213.55",
-  "วาง HEPA-GLUE Agent บน server ฝั่งเดียวกับ MariaDB หรือ whitelist host เครื่องนี้ใน MariaDB",
-  "ตั้งค่า LINE channel token และ MOPH credential แบบ production ใน env ของ server",
-  "เชื่อมปุ่ม Sync กับ agent/reporter หลัง credential พร้อมใช้งาน",
+  "นำรายชื่อเป้าหมายที่จัดทำแล้วเข้า HEPA พร้อมรหัส รพ.สต./ตำบล/หมู่บ้าน",
+  "สร้าง QR หรือหน้ารายชื่อเฉพาะหน่วย เพื่อให้ รพ.สต. สแกนและบันทึกผล rapid test",
+  "เปิด LINE LIFF/ผูกตัวตนผู้ป่วย เพื่อส่งนัดและติดตาม care gap โดยไม่ต้องพิมพ์ LINE ID",
+  "ใช้ HOSxP/Lab เป็นข้อมูลยืนยันหลังคัดกรอง ไม่ใช่แหล่งเริ่มต้นของรายชื่อ",
 ];
+
+const priorityMap: Record<ProductionGap["priority"], { label: string; className: string }> = {
+  critical: {
+    label: "ต้องทำก่อนเปิดจริง",
+    className: "border-red-200 bg-red-50 text-red-900",
+  },
+  high: {
+    label: "สำคัญ",
+    className: "border-amber-200 bg-amber-50 text-amber-900",
+  },
+  medium: {
+    label: "ควรเตรียม",
+    className: "border-sky-200 bg-sky-50 text-sky-900",
+  },
+};
 
 async function fetchConnectionStatus(): Promise<StatusResponse> {
   const response = await fetch("/api/connection-status");
@@ -109,7 +162,7 @@ async function fetchConnectionStatus(): Promise<StatusResponse> {
 
 async function fetchProductionStatus(): Promise<ProductionResponse> {
   const response = await fetch("/api/production-automation");
-  if (!response.ok) throw new Error("ตรวจเงื่อนไขการใช้งานไม่สำเร็จ");
+  if (!response.ok) throw new Error("ตรวจ production automation ไม่สำเร็จ");
   return response.json();
 }
 
@@ -120,7 +173,7 @@ async function armProductionAutomation(): Promise<ProductionResponse> {
     body: JSON.stringify({}),
   });
   const payload = await response.json();
-  if (!response.ok) throw new Error(payload?.message || "ยังเปิดใช้งานไม่ได้");
+  if (!response.ok) throw new Error(payload?.message || "ยังเปิด production automation ไม่ได้");
   return payload;
 }
 
@@ -141,28 +194,36 @@ function IntegrationPage() {
   const checks = data?.checks || [];
   const readyCount = checks.filter((item) => item.state === "ready").length;
   const partialCount = checks.filter((item) => item.state === "partial").length;
-  const blockedCount = checks.filter((item) => item.state === "blocked" || item.state === "not_configured").length;
-  const canRunFullyAutomatic = blockedCount === 0;
-  const productionReady = production.data?.canRunProduction === true;
+  const blockedCount = checks.filter(
+    (item) => item.state === "blocked" || item.state === "not_configured",
+  ).length;
+  const gaps = production.data?.gaps || [];
+  const criticalGaps = gaps.filter((item) => item.priority === "critical").length;
+  const highGaps = gaps.filter((item) => item.priority === "high").length;
 
   return (
-    <div className="page-shell">
-      <header className="page-header flex flex-col gap-3">
-        <Badge variant="outline" className="page-eyebrow">
-          Integration Status
+    <div className="mx-auto w-full max-w-7xl space-y-6 px-4 py-5 sm:px-6 lg:px-8">
+      <header className="flex flex-col gap-3 border-b pb-5">
+        <Badge variant="outline" className="w-fit border-teal/30 bg-teal/5 text-teal">
+          Target List + QR Scan Control
         </Badge>
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-3xl">
-            <h1 className="page-title">
-              สถานะการเชื่อมต่อระบบ
+            <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+              การทำงานจากรายชื่อเป้าหมายไปสู่แดชบอร์ด
             </h1>
-            <p className="page-description">
-              ตรวจสถานะการเชื่อมต่อ HEPA-GLUE กับ server โรงพยาบาล, HOSxP, LINE และ MOPH
-              เพื่อระบุรายการที่พร้อมใช้งานและรายการที่ต้องตั้งค่าเพิ่มเติม
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">
+              ระบบนี้ให้ รพ.สต. ส่งผลคัดกรองจากรายชื่อที่เราจัดไว้เข้า HEPA โดยตรง
+              ไม่ต้องดึงข้อมูลคัดกรองจาก JHCIS เป็นหลัก ส่วน HOSxP/Lab ใช้สำหรับยืนยันผลและปิด loop
+              การรักษาภายหลัง
             </p>
           </div>
           <Button onClick={() => refetch()} disabled={isFetching} className="w-fit gap-2">
-            {isFetching ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCcw className="h-4 w-4" />}
+            {isFetching ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <RefreshCcw className="h-4 w-4" />
+            )}
             ตรวจสอบอีกครั้ง
           </Button>
         </div>
@@ -178,61 +239,147 @@ function IntegrationPage() {
         <Card className="border-sky-200 bg-sky-50">
           <CardContent className="p-4">
             <div className="text-2xl font-bold text-sky-800">{partialCount}</div>
-            <div className="text-xs text-sky-700">เชื่อมได้บางส่วน</div>
+            <div className="text-xs text-sky-700">ใช้ได้บางส่วน</div>
           </CardContent>
         </Card>
         <Card className="border-amber-200 bg-amber-50">
           <CardContent className="p-4">
             <div className="text-2xl font-bold text-amber-900">{blockedCount}</div>
-            <div className="text-xs text-amber-800">ต้องดำเนินการเพิ่มเติม</div>
+            <div className="text-xs text-amber-800">ยังติดเงื่อนไข</div>
           </CardContent>
         </Card>
-        <Card className={productionReady || canRunFullyAutomatic ? "border-emerald-200 bg-emerald-50" : "border-slate-200 bg-slate-50"}>
+        <Card className="border-teal-200 bg-teal-50">
           <CardContent className="p-4">
-            <div className="text-sm font-bold text-foreground">
-              {productionReady ? "พร้อมใช้งาน" : canRunFullyAutomatic ? "พร้อมเชื่อมต่อ" : "อยู่ระหว่างตั้งค่า"}
+            <div className="flex items-center gap-2 text-sm font-bold text-teal-900">
+              <Users className="h-4 w-4" />
+              รายชื่อกลางเป็น source หลัก
             </div>
-            <div className="mt-1 text-xs text-muted-foreground">
+            <div className="mt-1 text-xs text-teal-800">
               {data?.checkedAt ? new Date(data.checkedAt).toLocaleString("th-TH") : "รอตรวจสอบ"}
             </div>
           </CardContent>
         </Card>
       </section>
 
-      <Card className={`metric-card ${production.data?.canRunProduction ? "border-emerald-200 bg-emerald-50" : "border-amber-200 bg-amber-50"}`}>
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <ClipboardList className="h-5 w-5 text-teal" />
+            Mapping ไวรัสตับอักเสบตามพื้นที่รับผิดชอบ
+          </CardTitle>
+          <p className="text-xs leading-5 text-muted-foreground">
+            ใช้ตารางนี้เป็น master mapping สำหรับแยกรายชื่อกลาง, QR scan, งาน รพ.สต. และ reconcile
+            ผลงาน HDC/HOSxP ภายหลัง
+          </p>
+        </CardHeader>
+        <CardContent>
+          <div className="overflow-x-auto rounded-lg border">
+            <table className="w-full min-w-[860px] text-sm">
+              <thead className="bg-muted/50 text-left text-[11px] uppercase tracking-wider text-muted-foreground">
+                <tr>
+                  <th className="px-3 py-2">รหัสพื้นที่</th>
+                  <th className="px-3 py-2">ชื่อหน่วยบริการ</th>
+                  <th className="px-3 py-2">ตำบล</th>
+                  <th className="px-3 py-2">หมู่ที่รับผิดชอบ</th>
+                  <th className="px-3 py-2">ประเภท</th>
+                </tr>
+              </thead>
+              <tbody>
+                {HEPA_SERVICE_AREAS.map((area) => (
+                  <tr
+                    key={`${area.code}-${area.subdistrict}`}
+                    className="border-t hover:bg-muted/30"
+                  >
+                    <td className="px-3 py-2 font-mono text-xs font-semibold">{area.code}</td>
+                    <td className="px-3 py-2">
+                      <div className="font-medium text-foreground">{area.unitName}</div>
+                      {area.coverageNote && (
+                        <div className="text-[10px] text-muted-foreground">{area.coverageNote}</div>
+                      )}
+                    </td>
+                    <td className="px-3 py-2 text-muted-foreground">{area.subdistrict}</td>
+                    <td className="px-3 py-2 text-muted-foreground">{area.villages.join(",")}</td>
+                    <td className="px-3 py-2">
+                      <Badge variant="outline">
+                        {area.unitType === "hospital" ? "รพ." : "รพ.สต."}
+                      </Badge>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card
+        className={
+          production.data?.canRunProduction
+            ? "border-emerald-200 bg-emerald-50"
+            : "border-amber-200 bg-amber-50"
+        }
+      >
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
             <PlayCircle className="h-5 w-5 text-teal" />
-            Production Gate
+            Production Automation Gate
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div>
-              <div className="text-3xl font-bold text-foreground">{production.data?.readiness ?? 0}%</div>
+              <div className="text-3xl font-bold text-foreground">
+                {production.data?.readiness ?? 0}%
+              </div>
               <div className="text-sm text-muted-foreground">
-                {production.data?.canRunProduction ? "ผ่านเงื่อนไขการใช้งาน" : production.data?.nextAction || "กำลังตรวจสอบเงื่อนไข"}
+                {production.data?.canRunProduction
+                  ? "พร้อมเปิด production automation"
+                  : production.data?.nextAction || "กำลังตรวจ gate"}
               </div>
             </div>
             <div className="flex gap-2">
-              <Button variant="outline" onClick={() => production.refetch()} disabled={production.isFetching} className="gap-2 bg-white/70">
-                {production.isFetching ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCcw className="h-4 w-4" />}
+              <Button
+                variant="outline"
+                onClick={() => production.refetch()}
+                disabled={production.isFetching}
+                className="gap-2 bg-white/70"
+              >
+                {production.isFetching ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <RefreshCcw className="h-4 w-4" />
+                )}
                 ตรวจ gate
               </Button>
-              <Button onClick={() => armProduction.mutate()} disabled={armProduction.isPending || !production.data?.canRunProduction} className="gap-2">
-                {armProduction.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
-                เปิดใช้งาน
+              <Button
+                onClick={() => armProduction.mutate()}
+                disabled={armProduction.isPending || !production.data?.canRunProduction}
+                className="gap-2"
+              >
+                {armProduction.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <ShieldCheck className="h-4 w-4" />
+                )}
+                เปิด production
               </Button>
             </div>
           </div>
           {armProduction.error && (
             <div className="rounded-lg border border-amber-300 bg-white/70 p-3 text-sm text-amber-900">
-              {armProduction.error instanceof Error ? armProduction.error.message : "ยังเปิดใช้งานไม่ได้"}
+              {armProduction.error instanceof Error
+                ? armProduction.error.message
+                : "ยังเปิด production automation ไม่ได้"}
             </div>
           )}
           <div className="grid gap-2 md:grid-cols-2">
             {(production.data?.gates || []).map((gate) => {
-              const state = gate.state === "ready" ? stateMap.ready : gate.state === "partial" ? stateMap.partial : stateMap.blocked;
+              const state =
+                gate.state === "ready"
+                  ? stateMap.ready
+                  : gate.state === "partial"
+                    ? stateMap.partial
+                    : stateMap.blocked;
               const Icon = state.icon;
               return (
                 <div key={gate.id} className={`rounded-lg border p-3 ${state.className}`}>
@@ -255,11 +402,87 @@ function IntegrationPage() {
         </CardContent>
       </Card>
 
+      <Card
+        className={
+          criticalGaps
+            ? "border-red-200 bg-red-50"
+            : highGaps
+              ? "border-amber-200 bg-amber-50"
+              : "border-emerald-200 bg-emerald-50"
+        }
+      >
+        <CardHeader>
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <AlertTriangle className="h-5 w-5 text-amber-700" />
+                สิ่งที่ระบบยังขาด
+              </CardTitle>
+              <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                สรุปจาก production gates แบบสด: แยกว่าส่วนไหนต้องทำก่อนเปิดจริง
+                และส่วนไหนเป็นงานเตรียมความพร้อม
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <Badge variant="outline" className="bg-white/70">
+                critical {criticalGaps}
+              </Badge>
+              <Badge variant="outline" className="bg-white/70">
+                high {highGaps}
+              </Badge>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {production.isFetching && !production.data ? (
+            <div className="flex items-center gap-2 rounded-lg border bg-white/70 p-3 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              กำลังตรวจ gap ของระบบ
+            </div>
+          ) : gaps.length ? (
+            <div className="grid gap-3 xl:grid-cols-2">
+              {gaps.map((gap) => {
+                const priority = priorityMap[gap.priority];
+                return (
+                  <div key={gap.id} className={`rounded-lg border p-4 ${priority.className}`}>
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <div className="font-semibold">{gap.name}</div>
+                          {gap.required && (
+                            <Badge variant="outline" className="bg-white/60">
+                              required
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="mt-1 text-xs leading-5 opacity-80">{gap.detail}</p>
+                      </div>
+                      <Badge variant="outline" className="w-fit shrink-0 bg-white/70">
+                        {priority.label}
+                      </Badge>
+                    </div>
+                    <div className="mt-3 rounded-md bg-white/60 p-3 text-xs leading-5">
+                      <span className="font-semibold">ต้องทำต่อ: </span>
+                      {gap.action}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="rounded-lg border border-emerald-200 bg-white/70 p-4 text-sm text-emerald-900">
+              ไม่พบ gap สำคัญจาก production gates ตอนนี้ ระบบพร้อมเข้าสู่ขั้นทดสอบ production
+              แบบควบคุมแล้ว
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       <section className="grid gap-6 xl:grid-cols-[1.1fr_.9fr]">
-        <Card className="metric-card">
+        <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
-              <Server className="h-5 w-5 text-teal" />
+              <Cable className="h-5 w-5 text-teal" />
               สถานะการเชื่อมต่อจริง
             </CardTitle>
           </CardHeader>
@@ -298,54 +521,47 @@ function IntegrationPage() {
           </CardContent>
         </Card>
 
-        <Card className="metric-card">
+        <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
               <ShieldCheck className="h-5 w-5 text-teal" />
-              สถานะสรุป
+              คำตอบสั้น ๆ
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {productionReady ? (
-              <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-emerald-900">
-                <div className="font-semibold">ผ่านเงื่อนไขการใช้งาน</div>
-                <p className="mt-2 text-sm leading-6">
-                  ระบบสามารถใช้ KUMHOS เป็น proxy ฝั่ง server, ส่งข้อความผ่าน LINE และบันทึก audit log ตามเงื่อนไขที่กำหนด
-                </p>
-              </div>
-            ) : (
-              <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-amber-900">
-                <div className="font-semibold">ยังไม่ผ่านทุกเงื่อนไข</div>
-                <p className="mt-2 text-sm leading-6">
-                  บางบริการเชื่อมต่อได้แล้ว แต่ยังมีรายการที่ต้องตั้งค่าก่อนเปิดใช้งานครบกระบวนการ
-                </p>
-              </div>
-            )}
             <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-emerald-900">
-              <div className="font-semibold">แนวทางดำเนินการ</div>
+              <div className="font-semibold">ข้อมูลคัดกรองให้เข้าจาก รพ.สต. โดยตรง</div>
               <p className="mt-2 text-sm leading-6">
-                วาง Agent บน server 172.16.213.55 หรือเพิ่ม API lab hepatitis บน server นั้น แล้วให้ HEPA-Connect
-                เรียกผ่าน HTTPS แทนการต่อ MariaDB ตรงจากเครื่องนี้
+                ให้ใช้รายชื่อกลางที่ทำไว้เป็น master list แล้วให้ รพ.สต.
+                สแกน/เลือกคนไข้เพื่อส่งผลคัดกรองเข้า HEPA ไม่ต้องรอให้ IT ดึงจาก JHCIS
+              </p>
+            </div>
+            <div className="rounded-lg border border-sky-200 bg-sky-50 p-4 text-sky-900">
+              <div className="font-semibold">สิ่งที่ยังต้องใช้ HOSxP</div>
+              <p className="mt-2 text-sm leading-6">
+                ใช้เฉพาะผลยืนยันจากห้อง lab, สถานะพบแพทย์ และข้อมูลรักษาที่ต้องปิด loop หลังพบผลบวก
               </p>
             </div>
           </CardContent>
         </Card>
       </section>
 
-      <Card className="metric-card">
+      <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
             <PlayCircle className="h-5 w-5 text-teal" />
-            ขั้นตอนการทำงานเมื่อเชื่อมต่อครบ
+            Workflow เป้าหมาย
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid gap-3 lg:grid-cols-5">
             {targetFlow.map((step, index) => (
-              <div key={step.title} className="rounded-2xl border bg-card/85 p-3 shadow-sm">
+              <div key={step.title} className="rounded-lg border bg-card p-3">
                 <div className="flex items-center justify-between gap-2">
                   <step.icon className="h-5 w-5 text-teal" />
-                  {index < targetFlow.length - 1 && <ArrowRight className="hidden h-4 w-4 text-muted-foreground lg:block" />}
+                  {index < targetFlow.length - 1 && (
+                    <ArrowRight className="hidden h-4 w-4 text-muted-foreground lg:block" />
+                  )}
                 </div>
                 <div className="mt-3 text-sm font-semibold text-foreground">{step.title}</div>
                 <p className="mt-1 text-xs leading-5 text-muted-foreground">{step.detail}</p>
@@ -355,13 +571,16 @@ function IntegrationPage() {
         </CardContent>
       </Card>
 
-      <Card className="metric-card">
+      <Card>
         <CardHeader>
-          <CardTitle className="text-base">รายการที่ต้องดำเนินการ</CardTitle>
+          <CardTitle className="text-base">งานที่ต้องทำต่อเพื่อใช้งานจริง</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-2 md:grid-cols-2">
           {nextSteps.map((step) => (
-            <div key={step} className="flex items-start gap-2 rounded-lg border bg-muted/20 p-3 text-sm">
+            <div
+              key={step}
+              className="flex items-start gap-2 rounded-lg border bg-muted/20 p-3 text-sm"
+            >
               <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-teal" />
               <span>{step}</span>
             </div>

@@ -7,7 +7,6 @@ import {
   createRootRouteWithContext,
   useRouter,
 } from "@tanstack/react-router";
-import { Activity, ShieldCheck } from "lucide-react";
 import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
@@ -15,7 +14,6 @@ import { reportLovableError } from "../lib/lovable-error-reporting";
 import { AppSidebar } from "@/components/app-sidebar";
 import { Toaster } from "@/components/ui/sonner";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
-import { HEPA_PROJECT_CONFIG } from "@/lib/hepa-data";
 
 function NotFoundComponent() {
   return (
@@ -49,7 +47,9 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
-        <h1 className="text-xl font-semibold tracking-tight text-foreground">โหลดหน้านี้ไม่สำเร็จ</h1>
+        <h1 className="text-xl font-semibold tracking-tight text-foreground">
+          โหลดหน้านี้ไม่สำเร็จ
+        </h1>
         <p className="mt-2 text-sm text-muted-foreground">
           ระบบขัดข้องชั่วคราว ลองโหลดใหม่หรือกลับไปหน้าแดชบอร์ด
         </p>
@@ -80,17 +80,17 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: `HEPA-GLUE Engine — ระบบกำจัดไวรัสตับอักเสบ ${HEPA_PROJECT_CONFIG.districtName.replace("อำเภอ", "")}` },
+      { title: "HEPA-GLUE Engine — ระบบกำจัดไวรัสตับอักเสบ น้ำพอง" },
       {
         name: "description",
         content:
-          `ระบบติดตามงานไวรัสตับอักเสบ B/C ${HEPA_PROJECT_CONFIG.districtName}: KPI, การติดตามผู้ป่วย และรายงาน MOPH`,
+          "ศูนย์บัญชาการงานไวรัสตับอักเสบ B/C อำเภอน้ำพอง: KPI, AI nudge และรายงาน MOPH อัตโนมัติ",
       },
-      { name: "author", content: HEPA_PROJECT_CONFIG.hospitalName },
+      { name: "author", content: "โรงพยาบาลน้ำพอง" },
       { property: "og:title", content: "HEPA-GLUE Engine" },
       {
         property: "og:description",
-        content: `ระบบติดตามงานไวรัสตับอักเสบ B/C ${HEPA_PROJECT_CONFIG.districtName}`,
+        content: "ศูนย์บัญชาการงานไวรัสตับอักเสบ B/C อำเภอน้ำพอง",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
@@ -139,22 +139,13 @@ function AppLayout() {
     <SidebarProvider>
       <AppSidebar />
       <SidebarInset className="min-w-0">
-        <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-border/70 bg-background/80 px-4 backdrop-blur-xl supports-[backdrop-filter]:bg-background/65">
-          <SidebarTrigger />
-          <div className="ml-1 flex min-w-0 flex-1 items-center gap-3">
-            <div className="hidden h-9 w-9 shrink-0 place-items-center rounded-xl border bg-card shadow-sm sm:grid">
-              <Activity className="h-4 w-4 text-teal" />
-            </div>
-            <div className="min-w-0">
-              <div className="truncate text-sm font-semibold text-foreground">HEPA-GLUE Engine</div>
-              <div className="hidden truncate text-xs text-muted-foreground sm:block">
-                ระบบติดตาม HBV/HCV {HEPA_PROJECT_CONFIG.districtName} · ปีงบ {HEPA_PROJECT_CONFIG.fiscalYear}
-              </div>
-            </div>
-          </div>
-          <div className="hidden items-center gap-2 rounded-full border bg-card/80 px-3 py-1.5 text-xs text-muted-foreground shadow-sm md:flex">
-            <ShieldCheck className="h-3.5 w-3.5 text-teal" />
-            <span>ตรวจสอบก่อนใช้งานจริง</span>
+        <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-border bg-background/90 px-4 backdrop-blur-md">
+          <SidebarTrigger className="h-9 w-9 rounded-lg border border-border bg-card text-muted-foreground shadow-sm hover:bg-accent hover:text-foreground" />
+          <div className="flex min-w-0 items-baseline gap-2">
+            <span className="shrink-0 text-sm font-semibold text-foreground">HEPA-GLUE</span>
+            <span className="hidden truncate text-xs text-muted-foreground sm:inline">
+              / กำจัด HBV-HCV อำเภอน้ำพอง · ปีงบ 2569
+            </span>
           </div>
         </header>
         <main className="min-w-0 flex-1">
