@@ -20,6 +20,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { OfficialPageHeader } from "@/components/official-layout";
 import { HBV_HDV_MONITORING_INSIGHT } from "@/lib/hepa-clinical-evidence";
 import { HEPA_SERVICE_AREAS } from "@/lib/hepa-service-area";
 
@@ -204,32 +205,22 @@ function IntegrationPage() {
   const highGaps = gaps.filter((item) => item.priority === "high").length;
 
   return (
-    <div className="mx-auto w-full max-w-7xl space-y-6 px-4 py-5 sm:px-6 lg:px-8">
-      <header className="flex flex-col gap-3 border-b pb-5">
-        <Badge variant="outline" className="w-fit border-teal/30 bg-teal/5 text-teal">
-          รายชื่อเป้าหมาย + สแกน QR
-        </Badge>
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <div className="max-w-3xl">
-            <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-              การทำงานจากรายชื่อเป้าหมายไปสู่แดชบอร์ด
-            </h1>
-            <p className="mt-2 text-sm leading-6 text-muted-foreground">
-              ระบบนี้ให้ รพ.สต. ส่งผลคัดกรองจากรายชื่อที่เราจัดไว้เข้า HEPA โดยตรง
-              ไม่ต้องดึงข้อมูลคัดกรองจาก JHCIS เป็นหลัก ส่วน HOSxP/Lab ใช้สำหรับยืนยันผลและปิด loop
-              การรักษาภายหลัง
-            </p>
-          </div>
-          <Button onClick={() => refetch()} disabled={isFetching} className="w-fit gap-2">
-            {isFetching ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <RefreshCcw className="h-4 w-4" />
-            )}
-            ตรวจสอบอีกครั้ง
-          </Button>
-        </div>
-      </header>
+    <div className="page-shell">
+      <OfficialPageHeader
+        eyebrow="การเชื่อมโยงและรายงานอัตโนมัติ"
+        title="สถานะการทำงานและการเชื่อมต่อระบบ"
+        description="ตรวจสอบความพร้อมของการทำงานจากรายชื่อเป้าหมาย การสแกน QR การส่งผลคัดกรอง การติดตามผ่าน LINE และการรายงานกระทรวงสาธารณสุข ในขั้นตอนเดียว"
+        badges={["รายชื่อเป้าหมายเป็นหลัก", "รายงานอัตโนมัติ", "ตรวจสอบสถานะแบบเรียลไทม์"]}
+      >
+        <Button onClick={() => refetch()} disabled={isFetching} className="w-fit gap-2">
+          {isFetching ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <RefreshCcw className="h-4 w-4" />
+          )}
+          ตรวจสอบอีกครั้ง
+        </Button>
+      </OfficialPageHeader>
 
       <section className="grid gap-3 md:grid-cols-4">
         <Card className="border-emerald-200 bg-emerald-50">

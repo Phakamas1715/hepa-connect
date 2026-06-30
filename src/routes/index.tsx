@@ -11,6 +11,7 @@ import {
   TrendingDown,
   Users,
 } from "lucide-react";
+import { InnovationShowcase, OfficialPageHeader } from "@/components/official-layout";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -81,7 +82,7 @@ function KpiCard({
   return (
     <Card className={`relative overflow-hidden ${ring}`}>
       <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
-        <CardTitle className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+        <CardTitle className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
           {title}
         </CardTitle>
         <div
@@ -183,16 +184,30 @@ function Dashboard() {
   };
 
   return (
-    <div className="mx-auto w-full max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-          แดชบอร์ดผู้บริหาร
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          ผลการดำเนินงานกำจัดไวรัสตับอักเสบ B/C อำเภอน้ำพอง ปีงบประมาณ 2569 ·{" "}
-          {TARGET_REGISTRY_SOURCE.label}
-        </p>
-      </div>
+    <div className="page-shell">
+      <OfficialPageHeader
+        eyebrow="ศูนย์บัญชาการงานไวรัสตับอักเสบ อำเภอน้ำพอง"
+        title="แดชบอร์ดผู้บริหารและติดตามผลงาน"
+        description={`สรุปตัวชี้วัดการคัดกรอง การรักษา และการจัดสรรทรัพยากร จาก${TARGET_REGISTRY_SOURCE.label} เพื่อใช้ในการบริหารจัดการและรายงานผลต่อหน่วยงานกำกับ`}
+        badges={["รายชื่อเป้าหมายเป็นหลัก", "ติดตามอัตโนมัติผ่าน LINE", "รายงาน สธ. แบบปิดวงจร"]}
+      />
+
+      <InnovationShowcase
+        items={[
+          {
+            title: "รายชื่อเป้าหมายเชิงรุก",
+            detail: "ใช้ทะเบียนกลางที่จัดทำเองเป็นแหล่งข้อมูลหลัก ลดความคลาดเคลื่อนจากการดึงข้อมูลหลายระบบ",
+          },
+          {
+            title: "ติดตามผู้ป่วยอัจฉริยะ",
+            detail: "ระบบ Agent ผูกบัญชี LINE กับ HN และแจ้งเตือนผู้ป่วยที่ยังติดตามไม่ครบโดยอัตโนมัติ",
+          },
+          {
+            title: "รายงานและเชื่อมโยงข้อมูล",
+            detail: "เชื่อม HOSxP, นัดหมาย และรายงานกระทรวงสาธารณสุขในขั้นตอนเดียว พร้อมตรวจสอบความพร้อม",
+          },
+        ]}
+      />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <KpiCard
@@ -430,7 +445,7 @@ function Dashboard() {
                 />
               </div>
               <Button onClick={handleAllocate} className="gap-2 gradient-medical text-white">
-                <Sparkles className="h-4 w-4" /> ให้ AI แนะนำการจัดสรร
+                <Sparkles className="h-4 w-4" /> คำนวณการจัดสรรอัจฉริยะ
               </Button>
             </div>
           </div>

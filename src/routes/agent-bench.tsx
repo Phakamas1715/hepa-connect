@@ -1,10 +1,10 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
+import { InnovationShowcase, OfficialNavHint, OfficialPageHeader } from "@/components/official-layout";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import {
   Activity,
   CheckCircle2,
   Database,
-  FlaskConical,
   Loader2,
   PlayCircle,
   XCircle,
@@ -117,25 +117,29 @@ function AgentBenchPage() {
 
   return (
     <div className="page-shell">
-      <header className="page-header">
-        <div className="page-eyebrow">
-          <FlaskConical className="h-3.5 w-3.5" />
-          AgentWorldBench · HEPA
-        </div>
-        <h1 className="page-title">ทดสอบความพร้อมของ Agent</h1>
-        <p className="page-description">
-          รันชุดทดสอบอ้างอิง{" "}
-          <a
-            href="https://huggingface.co/datasets/Qwen/AgentWorldBench"
-            target="_blank"
-            rel="noreferrer"
-            className="font-medium text-teal underline-offset-2 hover:underline"
-          >
-            Qwen/AgentWorldBench
-          </a>{" "}
-          กับ endpoint จริงของระบบ เพื่อยืนยันว่า automation, API และข้อความตอบกลับทำงานครบ
-        </p>
-      </header>
+      <OfficialPageHeader
+        eyebrow="หลักฐานนวัตกรรมดิจิทัล · Agent Intelligence"
+        title="การทดสอบความพร้อมระบบติดตามอัจฉริยะ"
+        description="หน้านี้แสดงผลการทดสอบระบบ Agent กับ API จริงของโรงพยาบาล อ้างอิงมาตรฐาน AgentWorldBench จาก Qwen เพื่อยืนยันความถูกต้อง ความสอดคล้อง และความพร้อมใช้งานจริง"
+        badges={["ทดสอบบนระบบจริง", "ให้คะแนน 5 มิติ", "ตรวจสอบซ้ำได้"]}
+      />
+
+      <InnovationShowcase
+        items={[
+          {
+            title: "World Model Benchmark",
+            detail: "ประเมินคุณภาพการจำลองสภาพแวดล้อมระบบหลัง agent ทำงาน ตามกรอบ Qwen/AgentWorldBench",
+          },
+          {
+            title: "HEPA Live Adapter",
+            detail: "ทดสอบ endpoint จริง เช่น สุขภาพระบบ, automation, HOSxP sync และการเชื่อมต่อรายงาน",
+          },
+          {
+            title: "หลักฐานต่อผู้ตรวจ",
+            detail: "แสดงผลแบบตรวจสอบได้ทันที พร้อมเวลาทดสอบ คะแนนรวม และรายละเอียดรายการ",
+          },
+        ]}
+      />
 
       <section className="grid gap-6 lg:grid-cols-[1fr_.9fr]">
         <Card className="metric-card">
@@ -229,11 +233,11 @@ function AgentBenchPage() {
         </Card>
       </section>
 
-      <Card className="metric-card border-violet-200 bg-violet-50/50">
+      <Card className="metric-card">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base text-violet-950">
-            <Database className="h-5 w-5 text-teal" />
-            ชุดข้อมูล Qwen บนเครื่อง
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Database className="h-5 w-5 text-primary" />
+            ชุดข้อมูลอ้างอิง Qwen/AgentWorldBench
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -334,12 +338,7 @@ function AgentBenchPage() {
         </Card>
       )}
 
-      <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
-        ต้องการจัดการ LINE invite และงานติดตาม? ไปที่{" "}
-        <Link to="/agent" className="font-medium text-teal underline-offset-2 hover:underline">
-          หน้าตัวจัดการ Agent
-        </Link>
-      </div>
+      <OfficialNavHint to="/agent" label="หน้าระบบติดตามอัจฉริยะ (LINE Agent)" />
     </div>
   );
 }

@@ -29,21 +29,22 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { OFFICIAL_META } from "@/components/official-layout";
 import { TARGET_REGISTRY_SOURCE } from "@/lib/hepa-data";
 
 const items = [
-  { title: "แดชบอร์ดผู้บริหาร", url: "/", icon: LayoutDashboard, desc: "KPI และ care cascade" },
-  { title: "ทะเบียน Care Gap", url: "/patients", icon: Users, desc: "AI ติดตามผู้ป่วย" },
-  { title: "ตัวจัดการ Agent", url: "/agent", icon: Bot, desc: "ผูก LINE และติดตามผู้ป่วย" },
-  { title: "ทดสอบ Agent", url: "/agent-bench", icon: FlaskConical, desc: "AgentWorldBench บนระบบจริง" },
-  { title: "รายงาน ILI", url: "/ili-report", icon: ClipboardList, desc: "D506 จันทร์-อังคาร" },
+  { title: "แดชบอร์ดผู้บริหาร", url: "/", icon: LayoutDashboard, desc: "ตัวชี้วัดและผลงานรายพื้นที่" },
+  { title: "ทะเบียนผู้ป่วยค้างติดตาม", url: "/patients", icon: Users, desc: "รายชื่อและสถานะการดูแล" },
+  { title: "ระบบติดตามอัจฉริยะ", url: "/agent", icon: Bot, desc: "ผูก LINE และแจ้งเตือนอัตโนมัติ" },
+  { title: "หลักฐานนวัตกรรม Agent", url: "/agent-bench", icon: FlaskConical, desc: "ทดสอบความพร้อมระบบ" },
+  { title: "รายงานไข้หวัดใหญ่", url: "/ili-report", icon: ClipboardList, desc: "แบบฟอร์ม D506 รายสัปดาห์" },
   {
     title: "สถาปัตยกรรมระบบ",
     url: "/architecture",
     icon: Network,
-    desc: "Data Flow และ Closed Loop",
+    desc: "เส้นทางข้อมูลและการปิดวงจร",
   },
-  { title: "เชื่อมต่อ MOPH", url: "/integration", icon: Cable, desc: "รายงานอัตโนมัติ" },
+  { title: "เชื่อมโยงรายงาน สธ.", url: "/integration", icon: Cable, desc: "อัตโนมัติและสถานะการเชื่อมต่อ" },
 ];
 
 export function AppSidebar() {
@@ -69,15 +70,15 @@ export function AppSidebar() {
     <Sidebar collapsible="icon" className="border-sidebar-border">
       <SidebarHeader className="border-b border-sidebar-border px-3 py-3">
         <div className="flex items-center gap-3">
-          <div className="grid h-11 w-11 shrink-0 place-items-center rounded-lg gradient-medical shadow-sm ring-1 ring-white/10 group-data-[collapsible=icon]:h-9 group-data-[collapsible=icon]:w-9">
-            <Activity className="h-5 w-5 text-white" strokeWidth={2.5} />
+          <div className="grid h-11 w-11 shrink-0 place-items-center rounded-md border border-white/10 bg-primary shadow-sm group-data-[collapsible=icon]:h-9 group-data-[collapsible=icon]:w-9">
+            <Activity className="h-5 w-5 text-primary-foreground" strokeWidth={2.5} />
           </div>
           <div className="min-w-0 flex-1 group-data-[collapsible=icon]:hidden">
             <div className="truncate text-sm font-bold tracking-tight text-sidebar-foreground">
-              HEPA-GLUE Engine
+              {OFFICIAL_META.hospital}
             </div>
             <div className="mt-0.5 truncate text-[11px] text-sidebar-foreground/60">
-              น้ำพอง · ขอนแก่น
+              {OFFICIAL_META.system}
             </div>
           </div>
           <Button
@@ -167,10 +168,10 @@ export function AppSidebar() {
         <div className="flex items-center justify-between gap-2 group-data-[collapsible=icon]:flex-col">
           <div className="min-w-0 group-data-[collapsible=icon]:hidden">
             <div className="truncate text-xs font-medium text-sidebar-foreground">
-              รพ.น้ำพอง · ปีงบ 2569
+              {OFFICIAL_META.fiscalYear}
             </div>
             <div className="truncate text-[10px] text-sidebar-foreground/60">
-              รหัสหน่วยบริการ 11000
+              {OFFICIAL_META.unitCode}
             </div>
           </div>
           <Button

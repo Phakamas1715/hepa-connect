@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { OfficialPageHeader } from "@/components/official-layout";
 import { HBV_HDV_MONITORING_INSIGHT } from "@/lib/hepa-clinical-evidence";
 
 export const Route = createFileRoute("/agent")({
@@ -91,16 +92,12 @@ function AgentPage() {
 
   return (
     <div className="page-shell">
-      <header className="page-header">
-        <div className="page-eyebrow">
-          <ShieldCheck className="h-3.5 w-3.5" />
-          ตัวจัดการ Agent
-        </div>
-        <h1 className="page-title">ติดตามผู้ป่วยผ่าน LINE</h1>
-        <p className="page-description">
-          สร้าง QR ผูกบัญชี LINE กับ HN จัดคิวแจ้งเตือนผู้ป่วยที่ยังติดตามไม่ครบ และบันทึกทุกขั้นตอนก่อนส่งข้อความ
-        </p>
-      </header>
+      <OfficialPageHeader
+        eyebrow="ระบบติดตามผู้ป่วยอัจฉริยะ"
+        title="การผูกบัญชี LINE และแจ้งเตือนอัตโนมัติ"
+        description="เครื่องมือสำหรับเจ้าหน้าที่โรงพยาบาล สร้าง QR ผูกบัญชี LINE กับหมายเลข HN จัดคิวแจ้งเตือนผู้ป่วยที่ยังติดตามไม่ครบ และบันทึกการทำงานทุกขั้นตอนเพื่อตรวจสอย้อนหลัง"
+        badges={["ปิดวงจรการดูแล", "บันทึกการทำงานครบถ้วน", "ใช้งานร่วมกับ LIFF"]}
+      />
 
       <section className="grid gap-6 lg:grid-cols-[.9fr_1.1fr]">
         <Card className="metric-card">
