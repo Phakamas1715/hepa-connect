@@ -1,3 +1,4 @@
+import { resolveHosxpProxyUrl } from "@/lib/hosxp-proxy-url";
 import { serverEnv } from "@/lib/server-env";
 
 type KumhosRequestOptions = {
@@ -134,7 +135,7 @@ export type ScreenedTestResult = {
 };
 
 export async function getScreenedPassedResults(date: string): Promise<ScreenedTestResult[]> {
-  const proxyUrl = serverEnv("HEPA_HOSXP_PROXY_URL");
+  const proxyUrl = resolveHosxpProxyUrl();
   if (!proxyUrl) return [];
 
   const url = new URL(proxyUrl);
