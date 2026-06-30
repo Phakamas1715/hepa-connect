@@ -5,6 +5,7 @@ import { serverEnv } from "@/lib/server-env";
 
 type LineWebhookEvent = {
   type: string;
+  replyToken?: string;
   timestamp?: number;
   source?: {
     type?: string;
@@ -19,6 +20,11 @@ type LineWebhookEvent = {
   follow?: {
     isUnblocked?: boolean;
   };
+};
+
+type LineReplyMessage = {
+  type: "text";
+  text: string;
 };
 
 function verifyLineSignature(body: string, signature: string | null) {
@@ -37,6 +43,118 @@ function eventSummary(event: LineWebhookEvent) {
   const source = event.source?.userId || event.source?.groupId || event.source?.roomId || "unknown-source";
   const text = event.message?.text ? ` text="${event.message.text.slice(0, 80)}"` : "";
   return `${event.type} from ${source}${text}`;
+}
+
+function publicBaseUrl(request: Request) {
+  const configured = serverEnv("PUBLIC_BASE_URL");
+  if (configured) return configured.replace(/\/$/, "");
+
+  const url = new URL(request.url);
+  return `${url.protocol}//${url.host}`;
+}
+
+function liffUrl(liffId: string) {
+  return `https://liff.line.me/${liffId}`;
+}
+
+function normalizedCommand(text?: string) {
+  return (text || "").trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+function commandReply(text: string | undefined, baseUrl: string): LineReplyMessage[] {
+  const command = normalizedCommand(text);
+  const staffLiffId = serverEnv("VITE_STAFF_LIFF_ID");
+  const patientLiffId = serverEnv("VITE_PATIENT_LIFF_ID") || serverEnv("VITE_LIFF_ID");
+  const staffLink = staffLiffId ? liffUrl(staffLiffId) : `${baseUrl}/line/staff`;
+  const agentLink = `${baseUrl}/agent`;
+  const patientLink = patientLiffId ? liffUrl(patientLiffId) : `${baseUrl}/line/link`;
+
+  if (["report", "daily report", "hepbc", "รายงาน"].includes(command)) {
+    return [
+      {
+        type: "text",
+        text:
+          `รับคำสั่งรายงาน Hep-B/C แล้วครับ\n\n` +
+          `สถานะใช้งาน:\n` +
+          `• Dashboard: ${agentLink}\n` +
+          `• เจ้าหน้าที่: ${staffLink}\n\n` +
+          `หมายเหตุ: ถ้าต้องผูกผู้ป่วย ให้สร้าง invite/QR เฉพาะรายจากหน้า Agent หรือ Patients ก่อน`,
+      },
+    ];
+  }
+
+  if (["staff", "เจ้าหน้าที่", "line staff"].includes(command)) {
+    return [
+      {
+        type: "text",
+        text:
+          `ลิงก์ยืนยัน LINE เจ้าหน้าที่\n${staffLink}\n\n` +
+          `บัญชีนี้จะถูกบันทึกเป็น role=staff และไม่ผูก HN ผู้ป่วย`,
+      },
+    ];
+  }
+
+  if (["patient", "ผู้ป่วย", "link patient"].includes(command)) {
+    return [
+      {
+        type: "text",
+        text:
+          `ลิงก์ LIFF ผู้ป่วย: ${patientLink}\n\n` +
+          `การผูกผู้ป่วยต้องใช้ invite token เฉพาะรายจากหน้า Agent/Patients เพื่อป้องกันผูกผิด HN`,
+      },
+    ];
+  }
+
+  if (["scan", "qr", "สแกน", "แสกน"].includes(command)) {
+    return [
+      {
+        type: "text",
+        text:
+          `วิธีใช้งานสแกน QR\n\n` +
+          `1) เจ้าหน้าที่เปิด ${staffLink} เพื่อยืนยันตัวตน staff\n` +
+          `2) ผู้ป่วยต้องใช้ QR/link เฉพาะรายที่สร้างจาก ${agentLink}\n` +
+          `3) หลังผู้ป่วยยืนยัน ระบบจะส่ง LINE ติดตามเฉพาะ identity ที่ role=patient`,
+      },
+    ];
+  }
+
+  if (["help", "เมนู", "ช่วยเหลือ", "เริ่มต้น"].includes(command)) {
+    return [
+      {
+        type: "text",
+        text:
+          `เมนูน้ำพองรักตับ\n\n` +
+          `พิมพ์:\n` +
+          `• รายงาน หรือ hepbc = ดูทางไปรายงาน\n` +
+          `• staff หรือ เจ้าหน้าที่ = ลิงก์ยืนยันเจ้าหน้าที่\n` +
+          `• สแกน หรือ qr = วิธีสแกน/ผูก LINE\n\n` +
+          `Dashboard: ${agentLink}`,
+      },
+    ];
+  }
+
+  return [];
+}
+
+async function replyLine(replyToken: string | undefined, messages: LineReplyMessage[]) {
+  const token = serverEnv("LINE_CHANNEL_ACCESS_TOKEN");
+  if (!replyToken || !token || !messages.length) return { skipped: true };
+
+  const response = await fetch("https://api.line.me/v2/bot/message/reply", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ replyToken, messages }),
+  });
+
+  if (!response.ok) {
+    const detail = await response.text().catch(() => "");
+    return { skipped: false, ok: false, status: response.status, detail: detail.slice(0, 200) };
+  }
+
+  return { skipped: false, ok: true, status: response.status };
 }
 
 export const Route = createFileRoute("/api/line-webhook")({
@@ -59,6 +177,8 @@ export const Route = createFileRoute("/api/line-webhook")({
         const payload = JSON.parse(body || "{}") as { events?: LineWebhookEvent[]; destination?: string };
         const events = Array.isArray(payload.events) ? payload.events : [];
         const store = readAgentStore();
+        const baseUrl = publicBaseUrl(request);
+        let replies = 0;
 
         for (const event of events) {
           audit(store, {
@@ -66,12 +186,26 @@ export const Route = createFileRoute("/api/line-webhook")({
             action: "line_webhook_received",
             detail: eventSummary(event),
           });
+
+          if (event.type === "message" && event.message?.type === "text") {
+            const messages = commandReply(event.message.text, baseUrl);
+            const reply = await replyLine(event.replyToken, messages);
+            if (!reply.skipped) {
+              replies += 1;
+              audit(store, {
+                actor: "system",
+                action: reply.ok ? "line_command_replied" : "line_command_reply_failed",
+                detail: `${eventSummary(event)} replyStatus=${reply.status || "skipped"}`,
+              });
+            }
+          }
         }
 
         writeAgentStore(store);
         return Response.json({
           ok: true,
           received: events.length,
+          replies,
           checkedAt: new Date().toISOString(),
         });
       },
