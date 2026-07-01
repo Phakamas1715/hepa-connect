@@ -58,7 +58,6 @@ const SERVICE_QUOTA: Record<string, number> = {
   NK: 150,
   KS: 150,
   BK: 150,
-  NPH: 100,
   BY: 150,
   KB: 100,
   WC: 150,
@@ -82,7 +81,6 @@ const INITIAL_BOOKED: Record<string, number> = {
   NK: 52,
   KS: 98,
   BK: 41,
-  NPH: 45,
   BY: 33,
   KB: 48,
   WC: 87,
@@ -139,6 +137,7 @@ export function getScreeningStorePath() {
 export function getScreeningServiceUnits() {
   const unique = new Map<string, HepaServiceArea>();
   for (const area of HEPA_SERVICE_AREAS) {
+    if (area.code === "NPH") continue;
     if (!unique.has(area.code)) unique.set(area.code, area);
   }
   const rows = Array.from(unique.values()).map((area) => ({
@@ -149,11 +148,7 @@ export function getScreeningServiceUnits() {
     quota: SERVICE_QUOTA[area.code] ?? (area.unitType === "hospital" ? 100 : 150),
     initialBooked: INITIAL_BOOKED[area.code] ?? 0,
   }));
-  return rows.sort((a, b) => {
-    if (a.code === "NPH") return -1;
-    if (b.code === "NPH") return 1;
-    return a.unitName.localeCompare(b.unitName, "th");
-  });
+  return rows.sort((a, b) => a.unitName.localeCompare(b.unitName, "th"));
 }
 
 export function evaluateScreeningRisk(input: Pick<ScreeningBookingInput, "birthYear" | "riskFactors">) {
@@ -201,7 +196,9 @@ function bookingCode() {
 export function getScreeningSummary() {
   const store = readScreeningStore();
   const units = getScreeningServiceUnits();
-  const activeBookings = store.bookings.filter((item) => item.status !== "cancelled");
+  const includedUnitCodes = new Set(units.map((unit) => unit.code));
+  const countedBookings = store.bookings.filter((item) => includedUnitCodes.has(item.selectedServiceUnitCode));
+  const activeBookings = countedBookings.filter((item) => item.status !== "cancelled");
   const totalQuota = units.reduce((sum, item) => sum + item.quota, 0);
   const initialBooked = units.reduce((sum, item) => sum + item.initialBooked, 0);
   const booked = initialBooked + activeBookings.length;
@@ -226,7 +223,7 @@ export function getScreeningSummary() {
         percentage: unit.quota > 0 ? Math.min(100, Math.round((booked / unit.quota) * 100)) : 100,
       };
     }),
-    bookings: [...store.bookings].sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+    bookings: [...countedBookings].sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
   };
 }
 
