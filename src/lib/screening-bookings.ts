@@ -23,6 +23,7 @@ export type ScreeningBookingInput = {
   birthYear: number;
   gender?: string;
   idNumber?: string;
+  consentAccepted?: boolean;
   riskFactors: ScreeningRiskFactors;
   selectedServiceUnitCode: string;
   preferredDate?: string;
@@ -39,6 +40,9 @@ export type ScreeningBooking = Omit<ScreeningBookingInput, "idNumber"> & {
   recommendation: string;
   selectedServiceUnit: Pick<HepaServiceArea, "code" | "unitName" | "unitType" | "subdistrict">;
   status: ScreeningBookingStatus;
+  consentAccepted: boolean;
+  consentAcceptedAt: string;
+  consentNoticeVersion: string;
   createdAt: string;
   updatedAt: string;
 };
@@ -52,6 +56,8 @@ export const SCREENING_RISK_LABEL: Record<ScreeningRiskLevel, string> = {
   MEDIUM: "เข้าเกณฑ์ตรวจฟรีตามปีเกิด",
   HIGH: "มีปัจจัยเสี่ยง ควรรับการคัดกรอง",
 };
+
+export const SCREENING_CONSENT_NOTICE_VERSION = "pdpa-screening-v1-2026-07-01";
 
 // Source: Google Sheet 1vvx-UIaeoMQn1e4prFKOw0xY0ggpTx6AR8-y900ADXM.
 // Online workbook row total is 2,000 kits.
@@ -219,6 +225,9 @@ export function createScreeningBooking(input: ScreeningBookingInput) {
   if (!Number.isFinite(input.birthYear) || input.birthYear < 2400 || input.birthYear > 2600) {
     throw new Error("กรุณาระบุปีเกิด พ.ศ. ให้ถูกต้อง");
   }
+  if (input.consentAccepted !== true) {
+    throw new Error("กรุณายินยอมการใช้ข้อมูลส่วนบุคคลตาม PDPA ก่อนจองสิทธิ์");
+  }
 
   const summary = getScreeningSummary();
   const unitSummary = summary.units.find((item) => item.code === unit.code);
@@ -251,6 +260,9 @@ export function createScreeningBooking(input: ScreeningBookingInput) {
     lineUserId: input.lineUserId,
     lineDisplayName: input.lineDisplayName,
     status: "reserved",
+    consentAccepted: true,
+    consentAcceptedAt: createdAt,
+    consentNoticeVersion: SCREENING_CONSENT_NOTICE_VERSION,
     createdAt,
     updatedAt: createdAt,
     ...evaluation,

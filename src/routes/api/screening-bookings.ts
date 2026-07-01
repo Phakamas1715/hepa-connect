@@ -17,6 +17,10 @@ const emptyRiskFactors: ScreeningRiskFactors = {
   chronicLiverDisease: false,
 };
 
+function bool(value: unknown) {
+  return value === true || String(value).trim().toLowerCase() === "true" || String(value).trim() === "1";
+}
+
 export const Route = createFileRoute("/api/screening-bookings")({
   server: {
     handlers: {
@@ -30,6 +34,7 @@ export const Route = createFileRoute("/api/screening-bookings")({
             birthYear: Number(body.birthYear),
             gender: body.gender ? String(body.gender) : "",
             idNumber: body.idNumber ? String(body.idNumber) : "",
+            consentAccepted: bool(body.consentAccepted),
             riskFactors: { ...emptyRiskFactors, ...(body.riskFactors || {}) },
             selectedServiceUnitCode: String(body.selectedServiceUnitCode || ""),
             preferredDate: body.preferredDate ? String(body.preferredDate) : "",

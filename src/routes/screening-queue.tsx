@@ -23,6 +23,9 @@ type Booking = {
   selectedServiceUnit: { unitName: string; subdistrict: string };
   preferredDate?: string;
   status: "reserved" | "confirmed" | "cancelled";
+  consentAccepted?: boolean;
+  consentAcceptedAt?: string;
+  consentNoticeVersion?: string;
   createdAt: string;
   lineUserId?: string;
   lineDisplayName?: string;
@@ -181,6 +184,7 @@ function ScreeningQueuePage() {
                   <th className="px-3 py-2">วันที่ต้องการ</th>
                   <th className="px-3 py-2">ความเสี่ยง</th>
                   <th className="px-3 py-2">LINE</th>
+                  <th className="px-3 py-2">PDPA</th>
                   <th className="px-3 py-2">สถานะ</th>
                   <th className="px-3 py-2 text-right">จัดการ</th>
                 </tr>
@@ -215,6 +219,22 @@ function ScreeningQueuePage() {
                       {booking.lineUserId ? booking.lineDisplayName || booking.lineUserId.slice(0, 10) : "ยังไม่ผูก"}
                     </td>
                     <td className="px-3 py-2">
+                      {booking.consentAccepted ? (
+                        <>
+                          <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-emerald-900">
+                            ยินยอมแล้ว
+                          </Badge>
+                          <div className="mt-1 text-[10px] text-muted-foreground">
+                            {booking.consentAcceptedAt ? new Date(booking.consentAcceptedAt).toLocaleString("th-TH") : ""}
+                          </div>
+                        </>
+                      ) : (
+                        <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-900">
+                          ยังไม่มีบันทึก
+                        </Badge>
+                      )}
+                    </td>
+                    <td className="px-3 py-2">
                       <Badge variant="outline" className={statusClass(booking.status)}>
                         {booking.status}
                       </Badge>
@@ -233,7 +253,7 @@ function ScreeningQueuePage() {
                 ))}
                 {!filtered.length && (
                   <tr>
-                    <td colSpan={8} className="px-3 py-8 text-center text-sm text-muted-foreground">
+                    <td colSpan={9} className="px-3 py-8 text-center text-sm text-muted-foreground">
                       ยังไม่มีรายการตามเงื่อนไขนี้
                     </td>
                   </tr>

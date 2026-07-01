@@ -152,6 +152,7 @@ function LineScreeningPage() {
     birthYear: "",
     gender: "",
     idNumber: "",
+    consentAccepted: false,
     selectedServiceUnitCode: "",
     preferredDate: "",
     riskFactors: emptyRiskFactors,
@@ -214,7 +215,7 @@ function LineScreeningPage() {
   });
 
   const canNextProfile = Boolean(form.fullName.trim() && form.phone.trim() && form.birthYear.trim());
-  const canSubmit = Boolean(canNextProfile && form.selectedServiceUnitCode && !submitBooking.isPending);
+  const canSubmit = Boolean(canNextProfile && form.selectedServiceUnitCode && form.consentAccepted && !submitBooking.isPending);
 
   return (
     <div className="min-h-screen bg-slate-950 px-3 py-4 sm:px-4">
@@ -390,6 +391,24 @@ function LineScreeningPage() {
                 {selectedUnit && (
                   <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-900">
                     เลือก {selectedUnit.unitName} · คงเหลือ {selectedUnit.remaining} สิทธิ์
+                  </div>
+                )}
+                <label className="flex items-start gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-xs leading-5 text-emerald-950">
+                  <input
+                    type="checkbox"
+                    checked={form.consentAccepted}
+                    onChange={(e) => setForm({ ...form, consentAccepted: e.target.checked })}
+                    className="mt-1"
+                  />
+                  <span>
+                    ข้าพเจ้ายินยอมให้โครงการน้ำพองรักตับเก็บ ใช้ และเปิดเผยข้อมูลที่จำเป็น
+                    เพื่อประเมินความเสี่ยง จองคิวคัดกรอง ติดต่อยืนยันบริการ และบันทึกผลการติดตามสุขภาพตามกฎหมายคุ้มครองข้อมูลส่วนบุคคล
+                    โดยระบบเก็บเลขบัตรเฉพาะ 4 หลักท้ายในคิวนี้
+                  </span>
+                </label>
+                {!form.consentAccepted && (
+                  <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
+                    ต้องติ๊กยินยอมก่อนจองสิทธิ์ เพื่อให้ระบบบันทึกข้อมูลตามวัตถุประสงค์การคัดกรองได้
                   </div>
                 )}
                 <div className="grid grid-cols-2 gap-2">
