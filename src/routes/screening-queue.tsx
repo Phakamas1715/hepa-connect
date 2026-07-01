@@ -26,6 +26,10 @@ type Booking = {
   consentAccepted?: boolean;
   consentAcceptedAt?: string;
   consentNoticeVersion?: string;
+  rosterVerified?: boolean;
+  rosterSourceSheet?: string;
+  rosterRowNumber?: number;
+  rosterMatchedBy?: "cid" | "phone_name" | "name";
   createdAt: string;
   lineUserId?: string;
   lineDisplayName?: string;
@@ -184,6 +188,7 @@ function ScreeningQueuePage() {
                   <th className="px-3 py-2">วันที่ต้องการ</th>
                   <th className="px-3 py-2">ความเสี่ยง</th>
                   <th className="px-3 py-2">LINE</th>
+                  <th className="px-3 py-2">รายชื่อ</th>
                   <th className="px-3 py-2">PDPA</th>
                   <th className="px-3 py-2">สถานะ</th>
                   <th className="px-3 py-2 text-right">จัดการ</th>
@@ -217,6 +222,23 @@ function ScreeningQueuePage() {
                     </td>
                     <td className="px-3 py-2 text-xs text-muted-foreground">
                       {booking.lineUserId ? booking.lineDisplayName || booking.lineUserId.slice(0, 10) : "ยังไม่ผูก"}
+                    </td>
+                    <td className="px-3 py-2">
+                      {booking.rosterVerified ? (
+                        <>
+                          <Badge variant="outline" className="border-sky-200 bg-sky-50 text-sky-900">
+                            ตรงรายชื่อ
+                          </Badge>
+                          <div className="mt-1 text-[10px] text-muted-foreground">
+                            {booking.rosterSourceSheet}
+                            {booking.rosterRowNumber ? ` · แถว ${booking.rosterRowNumber}` : ""}
+                          </div>
+                        </>
+                      ) : (
+                        <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-900">
+                          ไม่พบหลักฐาน
+                        </Badge>
+                      )}
                     </td>
                     <td className="px-3 py-2">
                       {booking.consentAccepted ? (
@@ -253,7 +275,7 @@ function ScreeningQueuePage() {
                 ))}
                 {!filtered.length && (
                   <tr>
-                    <td colSpan={9} className="px-3 py-8 text-center text-sm text-muted-foreground">
+                    <td colSpan={10} className="px-3 py-8 text-center text-sm text-muted-foreground">
                       ยังไม่มีรายการตามเงื่อนไขนี้
                     </td>
                   </tr>

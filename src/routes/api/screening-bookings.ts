@@ -2,7 +2,9 @@ import { createFileRoute } from "@tanstack/react-router";
 import {
   createScreeningBooking,
   getScreeningSummary,
+  isScreeningRosterRequired,
   updateScreeningBookingStatus,
+  verifyScreeningRosterEligibility,
   type ScreeningRiskFactors,
   type ScreeningBookingStatus,
 } from "@/lib/screening-bookings";
@@ -28,6 +30,14 @@ export const Route = createFileRoute("/api/screening-bookings")({
       POST: async ({ request }) => {
         try {
           const body = await request.json();
+          const rosterVerification = isScreeningRosterRequired()
+            ? await verifyScreeningRosterEligibility({
+                fullName: String(body.fullName || ""),
+                phone: String(body.phone || ""),
+                idNumber: body.idNumber ? String(body.idNumber) : "",
+                selectedServiceUnitCode: String(body.selectedServiceUnitCode || ""),
+              })
+            : undefined;
           const booking = createScreeningBooking({
             fullName: String(body.fullName || ""),
             phone: String(body.phone || ""),
@@ -40,6 +50,7 @@ export const Route = createFileRoute("/api/screening-bookings")({
             preferredDate: body.preferredDate ? String(body.preferredDate) : "",
             lineUserId: body.lineUserId ? String(body.lineUserId) : undefined,
             lineDisplayName: body.lineDisplayName ? String(body.lineDisplayName) : undefined,
+            rosterVerification,
           });
           return Response.json({ status: "success", booking, summary: getScreeningSummary() });
         } catch (error) {

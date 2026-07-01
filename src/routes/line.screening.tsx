@@ -295,6 +295,10 @@ function LineScreeningPage() {
                 <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900">
                   ระบบเก็บเฉพาะเลขท้ายบัตร 4 หลักเพื่อใช้ตรวจสอบหน้างาน ไม่เก็บเลขเต็มใน queue นี้
                 </div>
+                <div className="rounded-lg border border-sky-200 bg-sky-50 p-3 text-xs leading-5 text-sky-900">
+                  ระบบจะตรวจสอบกับรายชื่อที่ รพ.สต. นำเข้าใน Google Sheet ของหน่วยบริการที่เลือกก่อนบันทึกคิว
+                  กรุณากรอกชื่อ เบอร์โทรศัพท์ และ/หรือเลขบัตรให้ตรงกับรายชื่อ
+                </div>
                 <Button disabled={!canNextProfile} onClick={() => setStep(1)} className="w-full gap-2">
                   ถัดไป <ChevronRight className="h-4 w-4" />
                 </Button>

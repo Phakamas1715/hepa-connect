@@ -24,11 +24,20 @@ export type ScreeningBookingInput = {
   gender?: string;
   idNumber?: string;
   consentAccepted?: boolean;
+  rosterVerification?: ScreeningRosterVerification;
   riskFactors: ScreeningRiskFactors;
   selectedServiceUnitCode: string;
   preferredDate?: string;
   lineUserId?: string;
   lineDisplayName?: string;
+};
+
+export type ScreeningRosterVerification = {
+  matched: boolean;
+  sourceSheet: string;
+  rowNumber?: number;
+  matchedBy?: "cid" | "phone_name" | "name";
+  checkedAt: string;
 };
 
 export type ScreeningBooking = Omit<ScreeningBookingInput, "idNumber"> & {
@@ -43,6 +52,11 @@ export type ScreeningBooking = Omit<ScreeningBookingInput, "idNumber"> & {
   consentAccepted: boolean;
   consentAcceptedAt: string;
   consentNoticeVersion: string;
+  rosterVerified: boolean;
+  rosterVerifiedAt?: string;
+  rosterSourceSheet?: string;
+  rosterRowNumber?: number;
+  rosterMatchedBy?: "cid" | "phone_name" | "name";
   createdAt: string;
   updatedAt: string;
 };
@@ -58,6 +72,7 @@ export const SCREENING_RISK_LABEL: Record<ScreeningRiskLevel, string> = {
 };
 
 export const SCREENING_CONSENT_NOTICE_VERSION = "pdpa-screening-v1-2026-07-01";
+const DEFAULT_SCREENING_ROSTER_SHEET_ID = "1vvx-UIaeoMQn1e4prFKOw0xY0ggpTx6AR8-y900ADXM";
 
 // Source: Google Sheet 1vvx-UIaeoMQn1e4prFKOw0xY0ggpTx6AR8-y900ADXM.
 // Online workbook row total is 2,000 kits.
@@ -86,6 +101,28 @@ const SERVICE_QUOTA: Record<string, number> = {
 };
 
 const INITIAL_BOOKED: Record<string, number> = {};
+
+const ROSTER_SHEET_BY_UNIT_CODE: Record<string, string> = {
+  PT: "รพ.สต.พังทุย",
+  NK: "รพ.สต.หนองกุง",
+  KS: "รพ.สต.กุดน้ำใส",
+  BK: "รพ.สต.บ้านขาม",
+  BY: "รพ.สต.บัวใหญ่",
+  KB: "รพ.สต.บ้านคำบง",
+  WC: "รพ.สต.วังชัย",
+  MW: "รพ.สต.ม่วงหวาน",
+  BN: "รพ.สต.บัวเงิน",
+  NP: "รพ.สต.น้ำพอง",
+  TK: "รพ.สต.ท่ากระเสริม",
+  NS: "รพ.สต.นาศรี",
+  SM: "รพ.สต.ทรายมูล",
+  KY: "รพ.สต.โคกใหญ่",
+  KMW: "รพ.สต.คำแก่นคูณ (เขตม่วงหวาน)",
+  NW: "รพ.สต.บ้านหนองหว้า",
+  BL: "รพ.สต.บ้านเหล่าใหญ่",
+  TM: "รพ.สต.บ้านท่ามะเดื่อ",
+  KNK: "รพ.สต.คำแก่นคูณ (เขตหนองกุง)",
+};
 
 function storePath() {
   return (
@@ -181,6 +218,121 @@ function bookingCode() {
   return `HEP-NP-${Math.floor(100000 + Math.random() * 900000)}`;
 }
 
+function screeningRosterSheetId() {
+  return serverEnv("HEPA_SCREENING_ROSTER_SHEET_ID") || DEFAULT_SCREENING_ROSTER_SHEET_ID;
+}
+
+export function isScreeningRosterRequired() {
+  return serverEnv("HEPA_SCREENING_ROSTER_REQUIRED") !== "false";
+}
+
+function parseCsv(text: string) {
+  const rows: string[][] = [];
+  let row: string[] = [];
+  let cell = "";
+  let quoted = false;
+
+  for (let i = 0; i < text.length; i += 1) {
+    const char = text[i];
+    const next = text[i + 1];
+    if (char === '"' && quoted && next === '"') {
+      cell += '"';
+      i += 1;
+    } else if (char === '"') {
+      quoted = !quoted;
+    } else if (char === "," && !quoted) {
+      row.push(cell);
+      cell = "";
+    } else if ((char === "\n" || char === "\r") && !quoted) {
+      if (char === "\r" && next === "\n") i += 1;
+      row.push(cell);
+      if (row.some((item) => item.trim())) rows.push(row);
+      row = [];
+      cell = "";
+    } else {
+      cell += char;
+    }
+  }
+  row.push(cell);
+  if (row.some((item) => item.trim())) rows.push(row);
+  return rows;
+}
+
+function cleanDigits(value?: string) {
+  return String(value || "").replace(/\D/g, "");
+}
+
+function normalizeLookupText(value?: string) {
+  return String(value || "").trim().toLowerCase().replace(/\s+/g, "");
+}
+
+function rowValue(row: Record<string, string>, keys: string[]) {
+  for (const key of keys) {
+    const value = row[key];
+    if (value != null && String(value).trim()) return String(value).trim();
+  }
+  return "";
+}
+
+export async function verifyScreeningRosterEligibility(
+  input: Pick<ScreeningBookingInput, "fullName" | "phone" | "idNumber" | "selectedServiceUnitCode">,
+): Promise<ScreeningRosterVerification> {
+  const sourceSheet = ROSTER_SHEET_BY_UNIT_CODE[input.selectedServiceUnitCode];
+  const checkedAt = nowIso();
+  if (!sourceSheet) {
+    throw new Error("ยังไม่ได้ตั้งค่า Google Sheet รายชื่อสำหรับหน่วยบริการนี้");
+  }
+
+  const sheetId = screeningRosterSheetId();
+  const csvUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sourceSheet)}`;
+  const response = await fetch(csvUrl);
+  if (!response.ok) {
+    throw new Error(`ดึงรายชื่อจาก Google Sheet ไม่สำเร็จ: HTTP ${response.status}`);
+  }
+
+  const rows = parseCsv(await response.text());
+  const headerIndex = rows.findIndex((row) =>
+    row.some((cell) => cell.trim() === "เลขบัตรประชาชน") &&
+    row.some((cell) => cell.trim() === "ชื่อ") &&
+    row.some((cell) => cell.trim() === "เบอร์โทรศัพท์"),
+  );
+  if (headerIndex < 0) {
+    throw new Error(`ไม่พบหัวตารางรายชื่อในชีต ${sourceSheet}`);
+  }
+
+  const headers = rows[headerIndex].map((item) => item.trim());
+  const candidates = rows.slice(headerIndex + 1).map((cells, index) => ({
+    rowNumber: headerIndex + index + 2,
+    row: Object.fromEntries(headers.map((header, cellIndex) => [header, cells[cellIndex]?.trim() || ""])),
+  }));
+
+  const inputCid = cleanDigits(input.idNumber);
+  const inputPhone = cleanDigits(input.phone);
+  const inputName = normalizeLookupText(input.fullName);
+
+  for (const candidate of candidates) {
+    const cid = cleanDigits(rowValue(candidate.row, ["เลขบัตรประชาชน", "cid", "CID"]));
+    const phone = cleanDigits(rowValue(candidate.row, ["เบอร์โทรศัพท์", "phone"]));
+    const firstName = rowValue(candidate.row, ["ชื่อ"]);
+    const lastName = rowValue(candidate.row, ["สกุล"]);
+    const fullName = normalizeLookupText(`${firstName}${lastName}`);
+    const hasRosterData = Boolean(cid || phone || fullName);
+    if (!hasRosterData) continue;
+
+    if (inputCid.length >= 13 && cid && inputCid === cid) {
+      return { matched: true, sourceSheet, rowNumber: candidate.rowNumber, matchedBy: "cid", checkedAt };
+    }
+    if (inputPhone.length >= 9 && phone && inputPhone === phone && inputName && fullName && inputName === fullName) {
+      return { matched: true, sourceSheet, rowNumber: candidate.rowNumber, matchedBy: "phone_name", checkedAt };
+    }
+    if (!phone && !cid && inputName && fullName && inputName === fullName) {
+      return { matched: true, sourceSheet, rowNumber: candidate.rowNumber, matchedBy: "name", checkedAt };
+    }
+  }
+
+  throw new Error(`ไม่พบรายชื่อใน Google Sheet ของ ${sourceSheet} กรุณาติดต่อ รพ.สต. ให้ตรวจสอบ/นำเข้ารายชื่อก่อนจอง`);
+}
+
 export function getScreeningSummary() {
   const store = readScreeningStore();
   const units = getScreeningServiceUnits();
@@ -228,6 +380,9 @@ export function createScreeningBooking(input: ScreeningBookingInput) {
   if (input.consentAccepted !== true) {
     throw new Error("กรุณายินยอมการใช้ข้อมูลส่วนบุคคลตาม PDPA ก่อนจองสิทธิ์");
   }
+  if (isScreeningRosterRequired() && input.rosterVerification?.matched !== true) {
+    throw new Error("กรุณาตรวจสอบรายชื่อจาก Google Sheet ของ รพ.สต. ก่อนจองสิทธิ์");
+  }
 
   const summary = getScreeningSummary();
   const unitSummary = summary.units.find((item) => item.code === unit.code);
@@ -263,6 +418,11 @@ export function createScreeningBooking(input: ScreeningBookingInput) {
     consentAccepted: true,
     consentAcceptedAt: createdAt,
     consentNoticeVersion: SCREENING_CONSENT_NOTICE_VERSION,
+    rosterVerified: input.rosterVerification?.matched === true,
+    rosterVerifiedAt: input.rosterVerification?.checkedAt,
+    rosterSourceSheet: input.rosterVerification?.sourceSheet,
+    rosterRowNumber: input.rosterVerification?.rowNumber,
+    rosterMatchedBy: input.rosterVerification?.matchedBy,
     createdAt,
     updatedAt: createdAt,
     ...evaluation,
