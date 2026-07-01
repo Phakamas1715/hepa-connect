@@ -80,12 +80,12 @@ export async function autoFillHepBCReport(
   options: { dryRun?: boolean } = {}
 ): Promise<HepBCReportResult> {
   const { dryRun = false } = options;
-  const user = credentials?.user || serverEnv('MOPH_USERNAME') || 'Jane';
-  const pass = credentials?.pass || serverEnv('MOPH_PASSWORD') || 'Nph133';
+  const user = credentials?.user || serverEnv('MOPH_USERNAME');
+  const pass = credentials?.pass || serverEnv('MOPH_PASSWORD');
   const hospitalCode = credentials?.hospitalCode || serverEnv('MOPH_HOSPITAL_CODE') || '11000';
 
   if (!user || !pass) {
-    throw new Error('Missing MOPH credentials for Hep-BC-DDC (Jane / Nph133)');
+    throw new Error('Missing MOPH credentials for Hep-BC-DDC (MOPH_USERNAME / MOPH_PASSWORD)');
   }
 
   const result: HepBCReportResult = {

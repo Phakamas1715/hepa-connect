@@ -73,7 +73,7 @@ function buildDailyReportFlex(date: string, positives: number, reported: number,
 async function pushDailyReport(date: string, positives: number, reported: number, details: any[], dryRun: boolean) {
   const token = serverEnv("LINE_CHANNEL_ACCESS_TOKEN");
   const pushEnabled = serverEnv("LINE_PUSH_ENABLED") === "true";
-  const recipient = serverEnv("LINE_DAILY_RECIPIENT_ID") || serverEnv("LINE_TEST_RECIPIENT_ID") || "U92af20982e6ef372dc957418d6e8efdb";
+  const recipient = serverEnv("LINE_DAILY_RECIPIENT_ID") || serverEnv("LINE_TEST_RECIPIENT_ID");
 
   if (!token || !pushEnabled || !isValidLineId(recipient)) {
     console.log("[Daily Hep-BC] LINE push skipped (token not set / LINE_PUSH_ENABLED=false / invalid recipient)");

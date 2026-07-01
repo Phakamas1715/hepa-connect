@@ -47,12 +47,12 @@ export function cleanHospitalTestResults(raw: ScreenedTestResult[]): CleanedSynd
 }
 
 export async function autoFillSyndromicReport(records: CleanedSyndromicRecord[], credentials?: {user: string; pass: string}) {
-  const user = credentials?.user || serverEnv('MOPH_USERNAME') || 'Jane';
-  const pass = credentials?.pass || serverEnv('MOPH_PASSWORD') || 'Nph133';
+  const user = credentials?.user || serverEnv('MOPH_USERNAME');
+  const pass = credentials?.pass || serverEnv('MOPH_PASSWORD');
   const hospitalCode = serverEnv('MOPH_HOSPITAL_CODE') || '11000';
 
   if (!user || !pass) {
-    throw new Error('Missing MOPH credentials (Jane / Nph133)');
+    throw new Error('Missing MOPH credentials (MOPH_USERNAME / MOPH_PASSWORD)');
   }
 
   const browser = await puppeteer.launch({
