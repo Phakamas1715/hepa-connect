@@ -87,7 +87,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       {
         name: "description",
         content:
-          "ศูนย์บัญชาการงานไวรัสตับอักเสบ B/C อำเภอน้ำพอง: KPI, AI nudge และรายงาน MOPH อัตโนมัติ",
+          "ศูนย์บัญชาการงานไวรัสตับอักเสบ B/C อำเภอน้ำพอง: KPI ทะเบียนติดตาม LINE และรายงาน MOPH",
       },
       { name: "author", content: "โรงพยาบาลน้ำพอง" },
       { property: "og:title", content: "HEPA-GLUE Engine" },

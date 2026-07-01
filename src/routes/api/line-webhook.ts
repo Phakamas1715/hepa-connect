@@ -35,12 +35,14 @@ function verifyLineSignature(body: string, signature: string | null) {
   const expected = createHmac("sha256", secret).update(body).digest("base64");
   const expectedBuffer = Buffer.from(expected);
   const actualBuffer = Buffer.from(signature);
-  if (expectedBuffer.length !== actualBuffer.length) return { ok: false, reason: "Invalid signature" };
+  if (expectedBuffer.length !== actualBuffer.length)
+    return { ok: false, reason: "Invalid signature" };
   return { ok: timingSafeEqual(expectedBuffer, actualBuffer), reason: "Invalid signature" };
 }
 
 function eventSummary(event: LineWebhookEvent) {
-  const source = event.source?.userId || event.source?.groupId || event.source?.roomId || "unknown-source";
+  const source =
+    event.source?.userId || event.source?.groupId || event.source?.roomId || "unknown-source";
   const text = event.message?.text ? ` text="${event.message.text.slice(0, 80)}"` : "";
   return `${event.type} from ${source}${text}`;
 }
@@ -90,11 +92,11 @@ function commandReply(text: string | undefined, baseUrl: string): LineReplyMessa
       {
         type: "text",
         text:
-          `รับคำสั่งรายงาน Hep-B/C แล้ว กำลังรัน HOSxP pull + MOPH auto\n\n` +
+          `รับคำสั่งรายงาน Hep-B/C แล้ว ระบบกำลังดึงข้อมูล HOSxP และเตรียมรายงาน MOPH\n\n` +
           `สถานะใช้งาน:\n` +
-          `• Dashboard: ${agentLink}\n` +
+          `• แดชบอร์ดติดตาม: ${agentLink}\n` +
           `• เจ้าหน้าที่: ${staffLink}\n\n` +
-          `หมายเหตุ: ถ้าต้องผูกผู้ป่วย ให้สร้าง invite/QR เฉพาะรายจากหน้า Agent หรือ Patients ก่อน`,
+          `หมายเหตุ: การผูกผู้ป่วยต้องสร้าง QR เฉพาะรายจากหน้าติดตามหรือทะเบียนผู้ป่วยก่อน`,
       },
     ];
   }
@@ -105,7 +107,7 @@ function commandReply(text: string | undefined, baseUrl: string): LineReplyMessa
         type: "text",
         text:
           `ลิงก์ยืนยัน LINE เจ้าหน้าที่\n${staffLink}\n\n` +
-          `บัญชีนี้จะถูกบันทึกเป็น role=staff และไม่ผูก HN ผู้ป่วย`,
+          `บัญชีนี้จะถูกบันทึกเป็นเจ้าหน้าที่ และจะไม่ผูกกับ HN ผู้ป่วย`,
       },
     ];
   }
@@ -115,8 +117,8 @@ function commandReply(text: string | undefined, baseUrl: string): LineReplyMessa
       {
         type: "text",
         text:
-          `ลิงก์ LIFF ผู้ป่วย: ${patientLink}\n\n` +
-          `การผูกผู้ป่วยต้องใช้ invite token เฉพาะรายจากหน้า Agent/Patients เพื่อป้องกันผูกผิด HN`,
+          `ลิงก์ยืนยัน LINE ผู้ป่วย: ${patientLink}\n\n` +
+          `การผูกผู้ป่วยต้องใช้ QR เฉพาะรายจากหน้าติดตามหรือทะเบียนผู้ป่วย เพื่อป้องกันผูกผิด HN`,
       },
     ];
   }
@@ -138,9 +140,9 @@ function commandReply(text: string | undefined, baseUrl: string): LineReplyMessa
         type: "text",
         text:
           `วิธีใช้งานสแกน QR\n\n` +
-          `1) เจ้าหน้าที่เปิด ${staffLink} เพื่อยืนยันตัวตน staff\n` +
-          `2) ผู้ป่วยต้องใช้ QR/link เฉพาะรายที่สร้างจาก ${agentLink}\n` +
-          `3) หลังผู้ป่วยยืนยัน ระบบจะส่ง LINE ติดตามเฉพาะ identity ที่ role=patient`,
+          `1) เจ้าหน้าที่เปิด ${staffLink} เพื่อยืนยันตัวตนเจ้าหน้าที่\n` +
+          `2) ผู้ป่วยใช้ QR เฉพาะรายที่สร้างจาก ${agentLink}\n` +
+          `3) ระบบส่ง LINE ติดตามเฉพาะบัญชีผู้ป่วยที่ยืนยันแล้วเท่านั้น`,
       },
     ];
   }
@@ -152,11 +154,11 @@ function commandReply(text: string | undefined, baseUrl: string): LineReplyMessa
         text:
           `เมนูน้ำพองรักตับ\n\n` +
           `พิมพ์:\n` +
-          `• รายงาน หรือ hepbc = ดูทางไปรายงาน\n` +
+          `• รายงาน หรือ hepbc = รันรายงานประจำวัน\n` +
           `• คัดกรอง หรือ จอง = ลงทะเบียนจองสิทธิ์ตรวจฟรี\n` +
           `• staff หรือ เจ้าหน้าที่ = ลิงก์ยืนยันเจ้าหน้าที่\n` +
           `• สแกน หรือ qr = วิธีสแกน/ผูก LINE\n\n` +
-          `Dashboard: ${agentLink}`,
+          `แดชบอร์ด: ${agentLink}`,
       },
     ];
   }
@@ -202,7 +204,10 @@ export const Route = createFileRoute("/api/line-webhook")({
           return Response.json({ ok: false, error: verification.reason }, { status: 401 });
         }
 
-        const payload = JSON.parse(body || "{}") as { events?: LineWebhookEvent[]; destination?: string };
+        const payload = JSON.parse(body || "{}") as {
+          events?: LineWebhookEvent[];
+          destination?: string;
+        };
         const events = Array.isArray(payload.events) ? payload.events : [];
         const store = readAgentStore();
         const baseUrl = publicBaseUrl(request);

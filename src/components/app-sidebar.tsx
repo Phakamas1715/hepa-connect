@@ -34,19 +34,44 @@ import { OFFICIAL_META } from "@/components/official-layout";
 import { TARGET_REGISTRY_SOURCE } from "@/lib/hepa-data";
 
 const items = [
-  { title: "แดชบอร์ดผู้บริหาร", url: "/", icon: LayoutDashboard, desc: "ตัวชี้วัดและผลงานรายพื้นที่" },
-  { title: "ทะเบียนผู้ป่วยค้างติดตาม", url: "/patients", icon: Users, desc: "รายชื่อและสถานะการดูแล" },
-  { title: "คิวจองคัดกรอง", url: "/screening-queue", icon: CalendarCheck, desc: "ประชาชนลงทะเบียนผ่าน LINE" },
-  { title: "ระบบติดตามอัจฉริยะ", url: "/agent", icon: Bot, desc: "ผูก LINE และแจ้งเตือนอัตโนมัติ" },
-  { title: "หลักฐานนวัตกรรม Agent", url: "/agent-bench", icon: FlaskConical, desc: "ทดสอบความพร้อมระบบ" },
-  { title: "รายงานไข้หวัดใหญ่", url: "/ili-report", icon: ClipboardList, desc: "แบบฟอร์ม D506 รายสัปดาห์" },
+  {
+    title: "แดชบอร์ดผู้บริหาร",
+    url: "/",
+    icon: LayoutDashboard,
+    desc: "ตัวชี้วัดและผลงานรายพื้นที่",
+  },
+  {
+    title: "ทะเบียนผู้ป่วยค้างติดตาม",
+    url: "/patients",
+    icon: Users,
+    desc: "รายชื่อและสถานะการดูแล",
+  },
+  {
+    title: "คิวจองคัดกรอง",
+    url: "/screening-queue",
+    icon: CalendarCheck,
+    desc: "ประชาชนลงทะเบียนผ่าน LINE",
+  },
+  { title: "ติดตามผ่าน LINE", url: "/agent", icon: Bot, desc: "ผูกบัญชีและส่งข้อความติดตาม" },
+  { title: "ตรวจสอบ Agent", url: "/agent-bench", icon: FlaskConical, desc: "ทดสอบความพร้อมระบบ" },
+  {
+    title: "รายงานไข้หวัดใหญ่",
+    url: "/ili-report",
+    icon: ClipboardList,
+    desc: "แบบฟอร์ม D506 รายสัปดาห์",
+  },
   {
     title: "สถาปัตยกรรมระบบ",
     url: "/architecture",
     icon: Network,
-    desc: "เส้นทางข้อมูลและการปิดวงจร",
+    desc: "เส้นทางข้อมูลและจุดตรวจสอบ",
   },
-  { title: "เชื่อมโยงรายงาน สธ.", url: "/integration", icon: Cable, desc: "อัตโนมัติและสถานะการเชื่อมต่อ" },
+  {
+    title: "เชื่อมโยงรายงาน สธ.",
+    url: "/integration",
+    icon: Cable,
+    desc: "สถานะเชื่อมต่อและรายงาน",
+  },
 ];
 
 export function AppSidebar() {
@@ -155,10 +180,10 @@ export function AppSidebar() {
                   {TARGET_REGISTRY_SOURCE.label}
                 </div>
                 <div className="mt-1 text-[11px] leading-5 text-sidebar-foreground/60">
-                  Dashboard และ Care Gap ใช้รายชื่อชุดเดียวกัน
+                  แดชบอร์ดและ Care Gap ใช้รายชื่อชุดเดียวกัน
                 </div>
                 <Badge className="mt-2 h-5 border-sidebar-primary/30 bg-sidebar-primary/15 px-1.5 text-[10px] text-sidebar-primary hover:bg-sidebar-primary/15">
-                  ไม่ดึงจาก IT dashboard
+                  ไม่ใช้ตัวเลขจาก dashboard ภายนอก
                 </Badge>
               </div>
             </div>

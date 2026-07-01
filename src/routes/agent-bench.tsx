@@ -1,14 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { InnovationShowcase, OfficialNavHint, OfficialPageHeader } from "@/components/official-layout";
-import { useMutation, useQuery } from "@tanstack/react-query";
 import {
-  Activity,
-  CheckCircle2,
-  Database,
-  Loader2,
-  PlayCircle,
-  XCircle,
-} from "lucide-react";
+  InnovationShowcase,
+  OfficialNavHint,
+  OfficialPageHeader,
+} from "@/components/official-layout";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { Activity, CheckCircle2, Database, Loader2, PlayCircle, XCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -118,9 +115,9 @@ function AgentBenchPage() {
   return (
     <div className="page-shell">
       <OfficialPageHeader
-        eyebrow="หลักฐานนวัตกรรมดิจิทัล · Agent Intelligence"
-        title="การทดสอบความพร้อมระบบติดตามอัจฉริยะ"
-        description="หน้านี้แสดงผลการทดสอบระบบ Agent กับ API จริงของโรงพยาบาล อ้างอิงมาตรฐาน AgentWorldBench จาก Qwen เพื่อยืนยันความถูกต้อง ความสอดคล้อง และความพร้อมใช้งานจริง"
+        eyebrow="ตรวจสอบความพร้อมระบบ Agent"
+        title="การทดสอบระบบติดตามและรายงาน"
+        description="หน้านี้เรียก API จริงของโรงพยาบาลเพื่อตรวจความถูกต้อง ความสอดคล้องของข้อมูล และความพร้อมใช้งานของระบบติดตาม"
         badges={["ทดสอบบนระบบจริง", "ให้คะแนน 5 มิติ", "ตรวจสอบซ้ำได้"]}
       />
 
@@ -128,11 +125,13 @@ function AgentBenchPage() {
         items={[
           {
             title: "World Model Benchmark",
-            detail: "ประเมินคุณภาพการจำลองสภาพแวดล้อมระบบหลัง agent ทำงาน ตามกรอบ Qwen/AgentWorldBench",
+            detail:
+              "ประเมินคุณภาพการจำลองสภาพแวดล้อมระบบหลัง agent ทำงาน ตามกรอบ Qwen/AgentWorldBench",
           },
           {
             title: "HEPA Live Adapter",
-            detail: "ทดสอบ endpoint จริง เช่น สุขภาพระบบ, automation, HOSxP sync และการเชื่อมต่อรายงาน",
+            detail:
+              "ทดสอบ endpoint จริง เช่น สุขภาพระบบ, automation, HOSxP sync และการเชื่อมต่อรายงาน",
           },
           {
             title: "หลักฐานต่อผู้ตรวจ",
@@ -151,14 +150,10 @@ function AgentBenchPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-sm leading-6 text-muted-foreground">
-              ระบบจะเรียก API จริง {meta.data?.scenarios.length || 0} รายการ แล้วให้คะแนน 5 มิติตามมาตรฐาน
-              AgentWorldBench
+              ระบบจะเรียก API จริง {meta.data?.scenarios.length || 0} รายการ แล้วให้คะแนน 5
+              มิติตามมาตรฐาน AgentWorldBench
             </p>
-            <Button
-              onClick={() => run.mutate()}
-              disabled={run.isPending}
-              className="gap-2"
-            >
+            <Button onClick={() => run.mutate()} disabled={run.isPending} className="gap-2">
               {run.isPending ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
@@ -222,7 +217,9 @@ function AgentBenchPage() {
                   <div key={scenario.id} className="rounded-lg border bg-background/60 p-3 text-sm">
                     <div className="flex items-center justify-between gap-2">
                       <span className="font-medium">{scenario.title}</span>
-                      <Badge variant="outline">{domainLabels[scenario.task] || scenario.task}</Badge>
+                      <Badge variant="outline">
+                        {domainLabels[scenario.task] || scenario.task}
+                      </Badge>
                     </div>
                     <p className="mt-1 text-xs leading-5 text-muted-foreground">
                       {scenario.instruction}
@@ -259,7 +256,10 @@ function AgentBenchPage() {
               </p>
               <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
                 {meta.data.dataset.domains.slice(0, 7).map((item) => (
-                  <div key={item.domain} className="rounded-lg border border-violet-200 bg-white/80 p-3">
+                  <div
+                    key={item.domain}
+                    className="rounded-lg border border-violet-200 bg-white/80 p-3"
+                  >
                     <div className="text-xs text-muted-foreground">
                       {domainLabels[item.domain] || item.domain}
                     </div>
@@ -279,7 +279,9 @@ function AgentBenchPage() {
                     className="rounded-lg border border-violet-200 bg-white/80 p-3 text-sm text-violet-950"
                   >
                     <div className="mb-1 flex items-center gap-2 text-xs text-muted-foreground">
-                      <Badge variant="outline">{domainLabels[preview.domain] || preview.domain}</Badge>
+                      <Badge variant="outline">
+                        {domainLabels[preview.domain] || preview.domain}
+                      </Badge>
                       <span>เทิร์น {preview.turn}</span>
                     </div>
                     {preview.instruction}
@@ -338,7 +340,7 @@ function AgentBenchPage() {
         </Card>
       )}
 
-      <OfficialNavHint to="/agent" label="หน้าระบบติดตามอัจฉริยะ (LINE Agent)" />
+      <OfficialNavHint to="/agent" label="หน้าระบบติดตามผ่าน LINE" />
     </div>
   );
 }

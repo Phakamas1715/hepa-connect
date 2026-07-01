@@ -290,7 +290,7 @@ function Dashboard() {
     const result = allocateKits(kitPool, subdistricts);
     setAllocated(result);
     toast.success(
-      `AI จัดสรรชุดตรวจ ${kitPool.toLocaleString()} ชุดให้ ${subdistricts.length} รพ.สต. แล้ว`,
+      `คำนวณจัดสรรชุดตรวจ ${kitPool.toLocaleString()} ชุดให้ ${subdistricts.length} รพ.สต. แล้ว`,
       {
         description: "คำนวณจากกลุ่มเป้าหมาย 60% และดัชนีความเสี่ยง 40%",
       },
@@ -304,9 +304,9 @@ function Dashboard() {
         title="แดชบอร์ดผู้บริหารและติดตามผลงาน"
         description={`สรุปตัวชี้วัดการคัดกรอง การรักษา และการจัดสรรทรัพยากรจาก ${sourceLabel} พร้อมสถานะคิวคัดกรอง LINE เพื่อให้ทุกโมดูลอ้างอิงข้อมูลชุดเดียวกัน`}
         badges={[
-          dashboardIsLive ? "KPI อ่านจาก API live" : "กำลังใช้ข้อมูลสำรอง",
-          "ติดตามอัตโนมัติผ่าน LINE",
-          "รายงาน สธ. แบบปิดวงจร",
+          dashboardIsLive ? "KPI อ่านจาก API ปัจจุบัน" : "กำลังใช้ข้อมูลสำรอง",
+          "ติดตามผ่าน LINE",
+          "รายงาน สธ. พร้อม audit",
         ]}
       />
 
@@ -331,7 +331,7 @@ function Dashboard() {
                       : "border-amber-200 bg-amber-50 text-amber-900"
                   }
                 >
-                  {dashboardIsLive ? "อ่านจาก API เดียวกันแล้ว" : "ใช้ข้อมูล fallback"}
+                  {dashboardIsLive ? "อ่านจาก API เดียวกันแล้ว" : "ใช้ข้อมูลสำรอง"}
                 </Badge>
               </div>
               <p className="mt-1 text-xs leading-5 text-muted-foreground">
@@ -388,9 +388,8 @@ function Dashboard() {
               "ใช้ทะเบียนกลางที่จัดทำเองเป็นแหล่งข้อมูลหลัก ลดความคลาดเคลื่อนจากการดึงข้อมูลหลายระบบ",
           },
           {
-            title: "ติดตามผู้ป่วยอัจฉริยะ",
-            detail:
-              "ระบบ Agent ผูกบัญชี LINE กับ HN และแจ้งเตือนผู้ป่วยที่ยังติดตามไม่ครบโดยอัตโนมัติ",
+            title: "ติดตามผู้ป่วยผ่าน LINE",
+            detail: "ผูกบัญชี LINE กับ HN และจัดคิวข้อความติดตามสำหรับผู้ป่วยที่ยังติดตามไม่ครบ",
           },
           {
             title: "รายงานและเชื่อมโยงข้อมูล",
@@ -612,7 +611,7 @@ function Dashboard() {
               ผู้ป่วย HCV ผลบวก {treatmentGap.toLocaleString()} รายยังไม่เข้าสู่การรักษาด้วย Sofvel
             </h3>
             <p className="mt-1 text-sm text-muted-foreground">
-              การปิดช่องว่างนี้เป็นงานที่มีผลสูงสุดต่อเป้าหมายปีงบ 2569 ให้ใช้ AI nudge
+              การปิดช่องว่างนี้เป็นงานที่มีผลสูงสุดต่อเป้าหมายปีงบ 2569 ให้ใช้คิวติดตาม
               จากโมดูลทะเบียน Care Gap ซึ่งอ่านจากรายชื่อกลางเดียวกับแดชบอร์ด
             </p>
           </div>
@@ -715,7 +714,7 @@ function Dashboard() {
                 />
               </div>
               <Button onClick={handleAllocate} className="gap-2 gradient-medical text-white">
-                <Sparkles className="h-4 w-4" /> คำนวณการจัดสรรอัจฉริยะ
+                <Sparkles className="h-4 w-4" /> คำนวณการจัดสรร
               </Button>
             </div>
           </div>

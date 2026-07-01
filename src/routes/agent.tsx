@@ -1,6 +1,17 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { Activity, BookOpenCheck, CheckCircle2, Copy, Link2, Loader2, PlayCircle, QrCode, Send, ShieldCheck } from "lucide-react";
+import {
+  Activity,
+  BookOpenCheck,
+  CheckCircle2,
+  Copy,
+  Link2,
+  Loader2,
+  PlayCircle,
+  QrCode,
+  Send,
+  ShieldCheck,
+} from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
@@ -24,10 +35,39 @@ export const Route = createFileRoute("/agent")({
 });
 
 type Store = {
-  invites: Array<{ id: string; hn: string; patientName?: string; status: string; expiresAt: string; usedAt?: string }>;
-  identities: Array<{ lineUserId: string; hn?: string; role: string; displayName?: string; verifiedAt: string; status: string }>;
-  tasks: Array<{ id: string; hn: string; type: string; status: string; message?: string; lineUserId?: string; createdAt: string }>;
-  audit: Array<{ id: string; at: string; actor: string; action: string; hn?: string; detail: string }>;
+  invites: Array<{
+    id: string;
+    hn: string;
+    patientName?: string;
+    status: string;
+    expiresAt: string;
+    usedAt?: string;
+  }>;
+  identities: Array<{
+    lineUserId: string;
+    hn?: string;
+    role: string;
+    displayName?: string;
+    verifiedAt: string;
+    status: string;
+  }>;
+  tasks: Array<{
+    id: string;
+    hn: string;
+    type: string;
+    status: string;
+    message?: string;
+    lineUserId?: string;
+    createdAt: string;
+  }>;
+  audit: Array<{
+    id: string;
+    at: string;
+    actor: string;
+    action: string;
+    hn?: string;
+    detail: string;
+  }>;
 };
 
 async function fetchStore(): Promise<Store> {
@@ -51,7 +91,10 @@ function AgentPage() {
   const [hn, setHn] = useState("");
   const [patientName, setPatientName] = useState("");
   const [latestLink, setLatestLink] = useState("");
-  const { data, refetch, isFetching } = useQuery({ queryKey: ["agent-store"], queryFn: fetchStore });
+  const { data, refetch, isFetching } = useQuery({
+    queryKey: ["agent-store"],
+    queryFn: fetchStore,
+  });
 
   const createInvite = useMutation({
     mutationFn: () => postAgent("create_invite", { hn, patientName }),
@@ -77,9 +120,14 @@ function AgentPage() {
   });
 
   const sendNudge = useMutation({
-    mutationFn: () => postAgent("send_nudge", { hn, persona: "engaged", messageType: "LINE_NUDGE" }),
+    mutationFn: () =>
+      postAgent("send_nudge", { hn, persona: "engaged", messageType: "LINE_NUDGE" }),
     onSuccess: (result) => {
-      toast.success(result.status === "sent" ? "ส่งข้อความ LINE แล้ว" : result.line?.message || "ยังไม่ได้ส่งข้อความ LINE");
+      toast.success(
+        result.status === "sent"
+          ? "ส่งข้อความ LINE แล้ว"
+          : result.line?.message || "ยังไม่ได้ส่งข้อความ LINE",
+      );
       refetch();
     },
     onError: (error) => toast.error(error instanceof Error ? error.message : "ส่ง LINE ไม่สำเร็จ"),
@@ -93,10 +141,10 @@ function AgentPage() {
   return (
     <div className="page-shell">
       <OfficialPageHeader
-        eyebrow="ระบบติดตามผู้ป่วยอัจฉริยะ"
+        eyebrow="ระบบติดตามผู้ป่วยผ่าน LINE"
         title="การผูกบัญชี LINE และแจ้งเตือนอัตโนมัติ"
-        description="เครื่องมือสำหรับเจ้าหน้าที่โรงพยาบาล สร้าง QR ผูกบัญชี LINE กับหมายเลข HN จัดคิวแจ้งเตือนผู้ป่วยที่ยังติดตามไม่ครบ และบันทึกการทำงานทุกขั้นตอนเพื่อตรวจสอย้อนหลัง"
-        badges={["ปิดวงจรการดูแล", "บันทึกการทำงานครบถ้วน", "ใช้งานร่วมกับ LIFF"]}
+        description="เครื่องมือสำหรับเจ้าหน้าที่โรงพยาบาล สร้าง QR ผูกบัญชี LINE กับหมายเลข HN จัดคิวแจ้งเตือนผู้ป่วยที่ยังติดตามไม่ครบ และบันทึกการทำงานทุกขั้นตอนเพื่อตรวจสอบย้อนหลัง"
+        badges={["ติดตามตามทะเบียนผู้ป่วย", "บันทึกการทำงานครบถ้วน", "ใช้งานร่วมกับ LIFF"]}
       />
 
       <section className="grid gap-6 lg:grid-cols-[.9fr_1.1fr]">
@@ -111,24 +159,54 @@ function AgentPage() {
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <label className="text-xs font-medium text-muted-foreground">HN</label>
-                <Input value={hn} onChange={(event) => setHn(event.target.value)} placeholder="เช่น 0001234" />
+                <Input
+                  value={hn}
+                  onChange={(event) => setHn(event.target.value)}
+                  placeholder="เช่น 0001234"
+                />
               </div>
               <div className="space-y-1.5">
                 <label className="text-xs font-medium text-muted-foreground">ชื่อผู้ป่วย</label>
-                <Input value={patientName} onChange={(event) => setPatientName(event.target.value)} placeholder="ระบุเพื่อแสดงในรายการ" />
+                <Input
+                  value={patientName}
+                  onChange={(event) => setPatientName(event.target.value)}
+                  placeholder="ระบุเพื่อแสดงในรายการ"
+                />
               </div>
             </div>
             <div className="flex flex-wrap gap-2">
-              <Button disabled={!hn || createInvite.isPending} onClick={() => createInvite.mutate()} className="gap-2">
-                {createInvite.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Link2 className="h-4 w-4" />}
+              <Button
+                disabled={!hn || createInvite.isPending}
+                onClick={() => createInvite.mutate()}
+                className="gap-2"
+              >
+                {createInvite.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Link2 className="h-4 w-4" />
+                )}
                 สร้าง QR
               </Button>
-              <Button disabled={!hn || queueNudge.isPending} onClick={() => queueNudge.mutate()} variant="outline" className="gap-2">
+              <Button
+                disabled={!hn || queueNudge.isPending}
+                onClick={() => queueNudge.mutate()}
+                variant="outline"
+                className="gap-2"
+              >
                 <Send className="h-4 w-4" />
                 จัดคิวติดตาม
               </Button>
-              <Button disabled={!hn || sendNudge.isPending} onClick={() => sendNudge.mutate()} variant="outline" className="gap-2">
-                {sendNudge.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+              <Button
+                disabled={!hn || sendNudge.isPending}
+                onClick={() => sendNudge.mutate()}
+                variant="outline"
+                className="gap-2"
+              >
+                {sendNudge.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Send className="h-4 w-4" />
+                )}
                 ส่งข้อความ LINE
               </Button>
             </div>
@@ -147,7 +225,12 @@ function AgentPage() {
                       ใช้ QR นี้สำหรับผูก LINE กับ HN ตามสิทธิ์ที่ผู้ป่วยยืนยันใน LIFF
                     </div>
                     <div className="mt-2 break-all text-xs">{latestLink}</div>
-                    <Button size="sm" variant="outline" onClick={copyLink} className="mt-3 gap-2 bg-white/70">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={copyLink}
+                      className="mt-3 gap-2 bg-white/70"
+                    >
                       <Copy className="h-3.5 w-3.5" />
                       คัดลอกลิงก์
                     </Button>
@@ -156,7 +239,8 @@ function AgentPage() {
               </div>
             )}
             <div className="rounded-lg border bg-muted/20 p-3 text-xs leading-5 text-muted-foreground">
-              ขั้นตอนมาตรฐาน: เลือก HN → สร้าง QR → ผู้ป่วยยืนยันใน LINE → ระบบบันทึก mapping สำหรับการติดตาม
+              ขั้นตอนมาตรฐาน: เลือก HN → สร้าง QR → ผู้ป่วยยืนยันใน LINE →
+              ระบบบันทึกการเชื่อมบัญชีสำหรับการติดตาม
             </div>
           </CardContent>
         </Card>
@@ -191,7 +275,7 @@ function AgentPage() {
             <div>
               <CardTitle className="flex items-center gap-2 text-base text-sky-950">
                 <BookOpenCheck className="h-5 w-5 text-teal" />
-                {HBV_HDV_MONITORING_INSIGHT.title}
+                ข้อสังเกต HBV/HDV สำหรับการติดตาม
               </CardTitle>
               <p className="mt-2 max-w-4xl text-sm leading-6 text-sky-900/80">
                 {HBV_HDV_MONITORING_INSIGHT.summary}
@@ -215,7 +299,10 @@ function AgentPage() {
             </div>
             <div className="grid gap-2">
               {HBV_HDV_MONITORING_INSIGHT.operationalUse.map((item) => (
-                <div key={item} className="flex items-start gap-2 rounded-lg border border-sky-200 bg-white/70 p-3 text-sm text-sky-950">
+                <div
+                  key={item}
+                  className="flex items-start gap-2 rounded-lg border border-sky-200 bg-white/70 p-3 text-sm text-sky-950"
+                >
                   <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-teal" />
                   <span>{item}</span>
                 </div>
@@ -230,7 +317,11 @@ function AgentPage() {
               </div>
               <div className="flex flex-wrap gap-2">
                 {HBV_HDV_MONITORING_INSIGHT.markers.map((marker) => (
-                  <Badge key={marker} variant="outline" className="border-sky-200 bg-white/80 text-sky-900">
+                  <Badge
+                    key={marker}
+                    variant="outline"
+                    className="border-sky-200 bg-white/80 text-sky-900"
+                  >
                     {marker}
                   </Badge>
                 ))}
@@ -255,7 +346,9 @@ function AgentPage() {
                   <span className="font-mono text-xs">{item.hn}</span>
                   <Badge variant="outline">{item.status}</Badge>
                 </div>
-                <div className="mt-1 text-xs text-muted-foreground">หมดอายุ {new Date(item.expiresAt).toLocaleString("th-TH")}</div>
+                <div className="mt-1 text-xs text-muted-foreground">
+                  หมดอายุ {new Date(item.expiresAt).toLocaleString("th-TH")}
+                </div>
               </div>
             ))}
             {!data?.invites.length && <EmptyLine text="ยังไม่มีคำเชิญ" />}
@@ -309,8 +402,13 @@ function AgentPage() {
         </CardHeader>
         <CardContent className="space-y-2">
           {data?.audit.slice(0, 12).map((item) => (
-            <div key={item.id} className="grid gap-2 rounded-lg border p-3 text-sm md:grid-cols-[180px_140px_1fr]">
-              <div className="text-xs text-muted-foreground">{new Date(item.at).toLocaleString("th-TH")}</div>
+            <div
+              key={item.id}
+              className="grid gap-2 rounded-lg border p-3 text-sm md:grid-cols-[180px_140px_1fr]"
+            >
+              <div className="text-xs text-muted-foreground">
+                {new Date(item.at).toLocaleString("th-TH")}
+              </div>
               <div className="font-mono text-xs">{item.action}</div>
               <div className="text-xs text-muted-foreground">{item.detail}</div>
             </div>
@@ -323,5 +421,9 @@ function AgentPage() {
 }
 
 function EmptyLine({ text }: { text: string }) {
-  return <div className="rounded-lg border border-dashed p-4 text-center text-xs text-muted-foreground">{text}</div>;
+  return (
+    <div className="rounded-lg border border-dashed p-4 text-center text-xs text-muted-foreground">
+      {text}
+    </div>
+  );
 }

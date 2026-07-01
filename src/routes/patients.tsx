@@ -47,14 +47,15 @@ type PatientsSearch = {
 
 export const Route = createFileRoute("/patients")({
   validateSearch: (search: Record<string, unknown>): PatientsSearch => ({
-    filter: typeof search.filter === "string" ? (search.filter as PatientsSearch["filter"]) : undefined,
+    filter:
+      typeof search.filter === "string" ? (search.filter as PatientsSearch["filter"]) : undefined,
   }),
   head: () => ({
     meta: [
       { title: "ทะเบียน Care Gap — HEPA-GLUE Engine" },
       {
         name: "description",
-        content: "ทะเบียนผู้ป่วยไวรัสตับอักเสบ B/C พร้อม HEPA-RAAIA scoring และ QR ผูก LINE",
+        content: "ทะเบียนผู้ป่วยไวรัสตับอักเสบ B/C พร้อมคะแนนความเร่งด่วนและ QR ผูก LINE",
       },
     ],
   }),
@@ -196,9 +197,9 @@ async function syncGoogleSheetPatients() {
 function PatientsPage() {
   const { filter: searchFilter } = Route.useSearch();
   const [query, setQuery] = useState("");
-  const [filter, setFilter] = useState<"all" | "gap" | "high" | "need_qr" | "hbv_hdv" | "hcv_sofvel">(
-    searchFilter || "all",
-  );
+  const [filter, setFilter] = useState<
+    "all" | "gap" | "high" | "need_qr" | "hbv_hdv" | "hcv_sofvel"
+  >(searchFilter || "all");
   const [latestLink, setLatestLink] = useState("");
   const [editing, setEditing] = useState<PatientForm | null>(null);
   const [deleteHn, setDeleteHn] = useState("");
@@ -213,7 +214,7 @@ function PatientsPage() {
     refetch,
   } = useQuery({ queryKey: ["patients"], queryFn: fetchPatients });
 
-  const patients = patientResponse?.patients || [];
+  const patients = useMemo(() => patientResponse?.patients || [], [patientResponse?.patients]);
   const patientMeta = patientResponse?.meta;
 
   const createInvite = useMutation({
@@ -233,7 +234,8 @@ function PatientsPage() {
       refetch();
       toast.success("บันทึกข้อมูลผู้ป่วยแล้ว");
     },
-    onError: (err) => toast.error(err instanceof Error ? err.message : "บันทึกข้อมูลผู้ป่วยไม่สำเร็จ"),
+    onError: (err) =>
+      toast.error(err instanceof Error ? err.message : "บันทึกข้อมูลผู้ป่วยไม่สำเร็จ"),
   });
 
   const deletePatientMutation = useMutation({
@@ -252,7 +254,8 @@ function PatientsPage() {
       refetch();
       toast.success(`ซิงก์ Google Sheet แล้ว ${result.sync?.count ?? 0} ราย`);
     },
-    onError: (err) => toast.error(err instanceof Error ? err.message : "ซิงก์ Google Sheet ไม่สำเร็จ"),
+    onError: (err) =>
+      toast.error(err instanceof Error ? err.message : "ซิงก์ Google Sheet ไม่สำเร็จ"),
   });
 
   const moduleStatus = useQuery({
@@ -264,9 +267,7 @@ function PatientsPage() {
     mutationFn: openHcvQueue,
     onSuccess: (result) => {
       moduleStatus.refetch();
-      toast.success(
-        `จัดคิวแล้ว ${result.queued} ราย · รอผูก LINE ${result.blocked} ราย`,
-      );
+      toast.success(`จัดคิวแล้ว ${result.queued} ราย · รอผูก LINE ${result.blocked} ราย`);
     },
     onError: (err) => toast.error(err instanceof Error ? err.message : "เปิดคิวไม่สำเร็จ"),
   });
@@ -346,10 +347,10 @@ function PatientsPage() {
   return (
     <div className="page-shell">
       <OfficialPageHeader
-        eyebrow="ทะเบียนผู้ป่วยค้างติดตาม · HEPA-RAAIA"
-        title="จัดลำดับผู้ป่วยและเปิดคิว AI nudge"
-        description="อ่านจากรายชื่อกลางเดียวกับแดชบอร์ด จัดลำดับความเร่งด่วนด้วย HEPA-RAAIA สร้าง QR ผูก LINE และจัดคิวข้อความติดตามอัตโนมัติ"
-        badges={["รายชื่อกลาง", "AI nudge", "QR ผูก LINE"]}
+        eyebrow="ทะเบียนผู้ป่วยค้างติดตาม"
+        title="จัดลำดับผู้ป่วยและเปิดคิวติดตาม LINE"
+        description="อ่านจากรายชื่อกลางเดียวกับแดชบอร์ด จัดลำดับความเร่งด่วน สร้าง QR ผูก LINE และจัดคิวข้อความติดตามให้เจ้าหน้าที่ตรวจสอบได้"
+        badges={["รายชื่อกลาง", "คิวติดตาม LINE", "QR ผูก LINE"]}
       >
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" onClick={() => refetch()} className="w-fit gap-2">
@@ -381,9 +382,15 @@ function PatientsPage() {
           <div>
             <div className="font-medium">แหล่งข้อมูลทะเบียน</div>
             <div className="text-muted-foreground">
-              {patientMeta?.source === "google-sheet" ? "Google Sheet" : "รายชื่อที่เตรียมไว้ในระบบ"}
-              {patientMeta?.lastGoogleSyncAt ? ` · ซิงก์ล่าสุด ${new Date(String(patientMeta.lastGoogleSyncAt)).toLocaleString("th-TH")}` : ""}
-              {patientMeta?.lastGoogleSyncError ? ` · ล่าสุด: ${String(patientMeta.lastGoogleSyncError)}` : ""}
+              {patientMeta?.source === "google-sheet"
+                ? "Google Sheet"
+                : "รายชื่อที่เตรียมไว้ในระบบ"}
+              {patientMeta?.lastGoogleSyncAt
+                ? ` · ซิงก์ล่าสุด ${new Date(String(patientMeta.lastGoogleSyncAt)).toLocaleString("th-TH")}`
+                : ""}
+              {patientMeta?.lastGoogleSyncError
+                ? ` · ล่าสุด: ${String(patientMeta.lastGoogleSyncError)}`
+                : ""}
             </div>
           </div>
           <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
@@ -406,19 +413,72 @@ function PatientsPage() {
           </CardHeader>
           <CardContent>
             <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
-              <Input value={editing.hn} onChange={(e) => setEditing({ ...editing, hn: e.target.value })} placeholder="HN *" />
-              <Input value={editing.name} onChange={(e) => setEditing({ ...editing, name: e.target.value })} placeholder="ชื่อ-นามสกุล *" />
-              <Input value={editing.cid} onChange={(e) => setEditing({ ...editing, cid: e.target.value })} placeholder="CID" />
-              <Input value={editing.birth_date} onChange={(e) => setEditing({ ...editing, birth_date: e.target.value })} placeholder="วันเกิด YYYY-MM-DD" />
-              <Input value={editing.testDate} onChange={(e) => setEditing({ ...editing, testDate: e.target.value })} placeholder="วันที่ตรวจ YYYY-MM-DD" />
-              <Input value={editing.subdistrict} onChange={(e) => setEditing({ ...editing, subdistrict: e.target.value })} placeholder="ตำบล" />
-              <Input value={editing.village} onChange={(e) => setEditing({ ...editing, village: e.target.value })} placeholder="หมู่บ้าน/หมู่ที่" />
-              <Input value={editing.serviceUnitCode || ""} onChange={(e) => setEditing({ ...editing, serviceUnitCode: e.target.value })} placeholder="รหัสพื้นที่ เช่น KS" />
-              <Input value={editing.hbsag} onChange={(e) => setEditing({ ...editing, hbsag: e.target.value })} placeholder="HBsAg" />
-              <Input value={editing.hcvAb} onChange={(e) => setEditing({ ...editing, hcvAb: e.target.value })} placeholder="HCV Ab" />
-              <Input value={editing.hcvVL} onChange={(e) => setEditing({ ...editing, hcvVL: e.target.value })} placeholder="HCV RNA" />
-              <Input value={editing.care_status || ""} onChange={(e) => setEditing({ ...editing, care_status: e.target.value })} placeholder="สถานะดูแล" />
-              <Select value={editing.persona} onValueChange={(value) => setEditing({ ...editing, persona: value as Patient["persona"] })}>
+              <Input
+                value={editing.hn}
+                onChange={(e) => setEditing({ ...editing, hn: e.target.value })}
+                placeholder="HN *"
+              />
+              <Input
+                value={editing.name}
+                onChange={(e) => setEditing({ ...editing, name: e.target.value })}
+                placeholder="ชื่อ-นามสกุล *"
+              />
+              <Input
+                value={editing.cid}
+                onChange={(e) => setEditing({ ...editing, cid: e.target.value })}
+                placeholder="CID"
+              />
+              <Input
+                value={editing.birth_date}
+                onChange={(e) => setEditing({ ...editing, birth_date: e.target.value })}
+                placeholder="วันเกิด YYYY-MM-DD"
+              />
+              <Input
+                value={editing.testDate}
+                onChange={(e) => setEditing({ ...editing, testDate: e.target.value })}
+                placeholder="วันที่ตรวจ YYYY-MM-DD"
+              />
+              <Input
+                value={editing.subdistrict}
+                onChange={(e) => setEditing({ ...editing, subdistrict: e.target.value })}
+                placeholder="ตำบล"
+              />
+              <Input
+                value={editing.village}
+                onChange={(e) => setEditing({ ...editing, village: e.target.value })}
+                placeholder="หมู่บ้าน/หมู่ที่"
+              />
+              <Input
+                value={editing.serviceUnitCode || ""}
+                onChange={(e) => setEditing({ ...editing, serviceUnitCode: e.target.value })}
+                placeholder="รหัสพื้นที่ เช่น KS"
+              />
+              <Input
+                value={editing.hbsag}
+                onChange={(e) => setEditing({ ...editing, hbsag: e.target.value })}
+                placeholder="HBsAg"
+              />
+              <Input
+                value={editing.hcvAb}
+                onChange={(e) => setEditing({ ...editing, hcvAb: e.target.value })}
+                placeholder="HCV Ab"
+              />
+              <Input
+                value={editing.hcvVL}
+                onChange={(e) => setEditing({ ...editing, hcvVL: e.target.value })}
+                placeholder="HCV RNA"
+              />
+              <Input
+                value={editing.care_status || ""}
+                onChange={(e) => setEditing({ ...editing, care_status: e.target.value })}
+                placeholder="สถานะดูแล"
+              />
+              <Select
+                value={editing.persona}
+                onValueChange={(value) =>
+                  setEditing({ ...editing, persona: value as Patient["persona"] })
+                }
+              >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -437,7 +497,11 @@ function PatientsPage() {
                 disabled={savePatientMutation.isPending || !editing.hn || !editing.name}
                 className="gap-2"
               >
-                {savePatientMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                {savePatientMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Save className="h-4 w-4" />
+                )}
                 บันทึก
               </Button>
               <Button variant="outline" onClick={() => setEditing(null)}>
@@ -457,7 +521,7 @@ function PatientsPage() {
                 คิวเร่งด่วน: HCV รอ Sofvel {sofvelGapCount} ราย
               </div>
               <p className="mt-1 text-sm text-muted-foreground">
-                กดจัดคิวทั้งหมดเพื่อสร้างงาน AI nudge — รายที่ยังไม่ผูก LINE ต้องสร้าง QR ก่อนจึงส่งได้
+                กดจัดคิวทั้งหมดเพื่อสร้างงานติดตาม — รายที่ยังไม่ผูก LINE ต้องสร้าง QR ก่อนจึงส่งได้
               </p>
             </div>
             <Button
@@ -470,7 +534,7 @@ function PatientsPage() {
               ) : (
                 <Send className="h-4 w-4" />
               )}
-              จัดคิว AI nudge ทั้งหมด
+              จัดคิวติดตามทั้งหมด
             </Button>
           </CardContent>
         </Card>
@@ -542,7 +606,7 @@ function PatientsPage() {
               className="h-32 w-32 rounded-lg border bg-white p-2"
             />
             <div className="min-w-0">
-              <div className="font-semibold">QR พร้อมให้ผู้ป่วยสแกน</div>
+              <div className="font-semibold">QR สำหรับให้ผู้ป่วยสแกน</div>
               <p className="mt-1 text-sm leading-6">
                 ผู้ป่วยสแกนแล้วกดยืนยัน ระบบรู้ HN จาก token และดึง LINE userId ผ่าน LIFF
                 เมื่อขึ้นใช้งานจริง
@@ -620,9 +684,14 @@ function PatientsPage() {
           </div>
           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
             {HBV_HDV_MONITORING_INSIGHT.markers.map((marker) => (
-              <div key={marker} className="rounded-lg border border-sky-200 bg-white/70 p-3 text-xs">
+              <div
+                key={marker}
+                className="rounded-lg border border-sky-200 bg-white/70 p-3 text-xs"
+              >
                 <div className="font-semibold text-sky-950">{marker}</div>
-                <div className="mt-1 leading-5 text-sky-900/70">ดูร่วมกับ clinical context และแนวโน้มตามเวลา</div>
+                <div className="mt-1 leading-5 text-sky-900/70">
+                  ดูร่วมกับ clinical context และแนวโน้มตามเวลา
+                </div>
               </div>
             ))}
           </div>
@@ -672,7 +741,7 @@ function PatientsPage() {
                   <th className="px-3 py-2">HCV Ab</th>
                   <th className="px-3 py-2">HCV RNA</th>
                   <th className="px-3 py-2">Persona</th>
-                  <th className="px-3 py-2">HEPA-RAAIA</th>
+                  <th className="px-3 py-2">คะแนนเร่งด่วน</th>
                   <th className="px-3 py-2">HBV/HDV</th>
                   <th className="px-3 py-2">Action</th>
                   <th className="px-3 py-2 text-right">ทำงาน</th>

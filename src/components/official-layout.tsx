@@ -80,14 +80,10 @@ export function OfficialPageHeader({
   );
 }
 
-export function InnovationShowcase({
-  items,
-}: {
-  items: Array<{ title: string; detail: string }>;
-}) {
+export function InnovationShowcase({ items }: { items: Array<{ title: string; detail: string }> }) {
   return (
-    <section className="official-innovation-panel" aria-label="นวัตกรรมที่นำเสนอ">
-      <div className="official-section-label">นวัตกรรมที่นำเสนอต่อผู้ตรวจ</div>
+    <section className="official-innovation-panel" aria-label="แนวทางการทำงานของระบบ">
+      <div className="official-section-label">แนวทางการทำงานของระบบ</div>
       <div className="mt-3 grid gap-3 md:grid-cols-3">
         {items.map((item) => (
           <div key={item.title} className="official-innovation-item">

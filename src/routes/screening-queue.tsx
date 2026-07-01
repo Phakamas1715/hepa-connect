@@ -1,6 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { Calendar, CheckCircle2, ClipboardList, Loader2, RefreshCcw, Search, ShieldCheck, Users } from "lucide-react";
+import {
+  Calendar,
+  CheckCircle2,
+  ClipboardList,
+  Loader2,
+  RefreshCcw,
+  Search,
+  ShieldCheck,
+  Users,
+} from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
@@ -42,7 +51,13 @@ type ScreeningSummary = {
   remaining: number;
   percentage: number;
   bookings: Booking[];
-  units: Array<{ code: string; unitName: string; quota: number; booked: number; remaining: number }>;
+  units: Array<{
+    code: string;
+    unitName: string;
+    quota: number;
+    booked: number;
+    remaining: number;
+  }>;
 };
 
 export const Route = createFileRoute("/screening-queue")({
@@ -93,7 +108,8 @@ function ScreeningQueuePage() {
   const [unit, setUnit] = useState("all");
   const queue = useQuery({ queryKey: ["screening-bookings"], queryFn: fetchQueue });
   const mutation = useMutation({
-    mutationFn: ({ id, status }: { id: string; status: Booking["status"] }) => updateStatus(id, status),
+    mutationFn: ({ id, status }: { id: string; status: Booking["status"] }) =>
+      updateStatus(id, status),
     onSuccess: () => {
       toast.success("อัปเดตสถานะแล้ว");
       queue.refetch();
@@ -101,7 +117,7 @@ function ScreeningQueuePage() {
     onError: (error) => toast.error(error instanceof Error ? error.message : "อัปเดตไม่สำเร็จ"),
   });
 
-  const bookings = queue.data?.bookings || [];
+  const bookings = useMemo(() => queue.data?.bookings || [], [queue.data?.bookings]);
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return bookings.filter((booking) => {
@@ -123,13 +139,22 @@ function ScreeningQueuePage() {
   return (
     <div className="page-shell">
       <OfficialPageHeader
-        eyebrow="Public Screening Queue"
+        eyebrow="คิวคัดกรองจาก LINE"
         title="คิวจองสิทธิ์คัดกรองจาก LINE"
-        description="รายการประชาชนที่ประเมินความเสี่ยงและจองสิทธิ์คัดกรองไวรัสตับอักเสบ B/C ผ่านหน้า LINE Screening"
-        badges={["ไม่ใช้ Firebase client", "บันทึกฝั่ง server", "พร้อมตรวจหน้างาน"]}
+        description="รายการประชาชนที่ประเมินความเสี่ยงและจองสิทธิ์คัดกรองไวรัสตับอักเสบ B/C ผ่าน LINE โดยตรวจรายชื่อ รพ.สต. และบันทึกความยินยอม PDPA ก่อนเข้าคิว"
+        badges={["ตรวจรายชื่อจาก Google Sheet", "บันทึกฝั่งระบบ", "พร้อมตรวจหน้างาน"]}
       >
-        <Button variant="outline" onClick={() => queue.refetch()} disabled={queue.isFetching} className="gap-2">
-          {queue.isFetching ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCcw className="h-4 w-4" />}
+        <Button
+          variant="outline"
+          onClick={() => queue.refetch()}
+          disabled={queue.isFetching}
+          className="gap-2"
+        >
+          {queue.isFetching ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <RefreshCcw className="h-4 w-4" />
+          )}
           รีเฟรช
         </Button>
       </OfficialPageHeader>
@@ -161,9 +186,18 @@ function ScreeningQueuePage() {
             <div className="flex flex-col gap-2 sm:flex-row">
               <div className="relative">
                 <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="ค้นหาชื่อ/เบอร์/รหัส" className="pl-9 sm:w-64" />
+                <Input
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                  placeholder="ค้นหาชื่อ/เบอร์/รหัส"
+                  className="pl-9 sm:w-64"
+                />
               </div>
-              <select className="h-10 rounded-md border bg-background px-3 text-sm" value={unit} onChange={(event) => setUnit(event.target.value)}>
+              <select
+                className="h-10 rounded-md border bg-background px-3 text-sm"
+                value={unit}
+                onChange={(event) => setUnit(event.target.value)}
+              >
                 <option value="all">ทุกหน่วยบริการ</option>
                 {queue.data?.units.map((item) => (
                   <option key={item.code} value={item.code}>
@@ -174,7 +208,8 @@ function ScreeningQueuePage() {
             </div>
           </div>
           <div className="text-xs text-muted-foreground">
-            เสี่ยงสูง {highRisk} ราย · อัปเดตล่าสุด {queue.data?.checkedAt ? new Date(queue.data.checkedAt).toLocaleString("th-TH") : "-"}
+            เสี่ยงสูง {highRisk} ราย · อัปเดตล่าสุด{" "}
+            {queue.data?.checkedAt ? new Date(queue.data.checkedAt).toLocaleString("th-TH") : "-"}
           </div>
         </CardHeader>
         <CardContent>
@@ -207,10 +242,14 @@ function ScreeningQueuePage() {
                     </td>
                     <td className="px-3 py-2">
                       <div>{booking.selectedServiceUnit.unitName}</div>
-                      <div className="text-xs text-muted-foreground">{booking.selectedServiceUnit.subdistrict}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {booking.selectedServiceUnit.subdistrict}
+                      </div>
                     </td>
                     <td className="px-3 py-2 text-xs text-muted-foreground">
-                      {booking.preferredDate ? new Date(booking.preferredDate).toLocaleDateString("th-TH") : "ไม่ระบุ"}
+                      {booking.preferredDate
+                        ? new Date(booking.preferredDate).toLocaleDateString("th-TH")
+                        : "ไม่ระบุ"}
                     </td>
                     <td className="px-3 py-2">
                       <Badge variant="outline" className={riskClass(booking.riskLevel)}>
@@ -221,12 +260,17 @@ function ScreeningQueuePage() {
                       </div>
                     </td>
                     <td className="px-3 py-2 text-xs text-muted-foreground">
-                      {booking.lineUserId ? booking.lineDisplayName || booking.lineUserId.slice(0, 10) : "ยังไม่ผูก"}
+                      {booking.lineUserId
+                        ? booking.lineDisplayName || booking.lineUserId.slice(0, 10)
+                        : "ยังไม่ผูก"}
                     </td>
                     <td className="px-3 py-2">
                       {booking.rosterVerified ? (
                         <>
-                          <Badge variant="outline" className="border-sky-200 bg-sky-50 text-sky-900">
+                          <Badge
+                            variant="outline"
+                            className="border-sky-200 bg-sky-50 text-sky-900"
+                          >
                             ตรงรายชื่อ
                           </Badge>
                           <div className="mt-1 text-[10px] text-muted-foreground">
@@ -235,7 +279,10 @@ function ScreeningQueuePage() {
                           </div>
                         </>
                       ) : (
-                        <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-900">
+                        <Badge
+                          variant="outline"
+                          className="border-amber-200 bg-amber-50 text-amber-900"
+                        >
                           ไม่พบหลักฐาน
                         </Badge>
                       )}
@@ -243,15 +290,23 @@ function ScreeningQueuePage() {
                     <td className="px-3 py-2">
                       {booking.consentAccepted ? (
                         <>
-                          <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-emerald-900">
+                          <Badge
+                            variant="outline"
+                            className="border-emerald-200 bg-emerald-50 text-emerald-900"
+                          >
                             ยินยอมแล้ว
                           </Badge>
                           <div className="mt-1 text-[10px] text-muted-foreground">
-                            {booking.consentAcceptedAt ? new Date(booking.consentAcceptedAt).toLocaleString("th-TH") : ""}
+                            {booking.consentAcceptedAt
+                              ? new Date(booking.consentAcceptedAt).toLocaleString("th-TH")
+                              : ""}
                           </div>
                         </>
                       ) : (
-                        <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-900">
+                        <Badge
+                          variant="outline"
+                          className="border-amber-200 bg-amber-50 text-amber-900"
+                        >
                           ยังไม่มีบันทึก
                         </Badge>
                       )}
@@ -263,10 +318,20 @@ function ScreeningQueuePage() {
                     </td>
                     <td className="px-3 py-2 text-right">
                       <div className="flex justify-end gap-1.5">
-                        <Button size="sm" variant="outline" disabled={mutation.isPending || booking.status === "confirmed"} onClick={() => mutation.mutate({ id: booking.id, status: "confirmed" })}>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={mutation.isPending || booking.status === "confirmed"}
+                          onClick={() => mutation.mutate({ id: booking.id, status: "confirmed" })}
+                        >
                           ยืนยัน
                         </Button>
-                        <Button size="sm" variant="outline" disabled={mutation.isPending || booking.status === "cancelled"} onClick={() => mutation.mutate({ id: booking.id, status: "cancelled" })}>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={mutation.isPending || booking.status === "cancelled"}
+                          onClick={() => mutation.mutate({ id: booking.id, status: "cancelled" })}
+                        >
                           ยกเลิก
                         </Button>
                       </div>
@@ -275,7 +340,10 @@ function ScreeningQueuePage() {
                 ))}
                 {!filtered.length && (
                   <tr>
-                    <td colSpan={10} className="px-3 py-8 text-center text-sm text-muted-foreground">
+                    <td
+                      colSpan={10}
+                      className="px-3 py-8 text-center text-sm text-muted-foreground"
+                    >
                       ยังไม่มีรายการตามเงื่อนไขนี้
                     </td>
                   </tr>

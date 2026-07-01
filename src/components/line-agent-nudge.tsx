@@ -56,7 +56,9 @@ const NUDGE_LIBRARY: Record<Persona, Nudge> = {
 function mapPersona(patient: Patient): Persona {
   if (
     patient.persona === "The Forgetful" &&
-    (patient.hcvVL === "รอผล" || patient.hcvVL === "ไม่พอตรวจขอเจาะใหม่" || patient.hcvVL === "Pending")
+    (patient.hcvVL === "รอผล" ||
+      patient.hcvVL === "ไม่พอตรวจขอเจาะใหม่" ||
+      patient.hcvVL === "Pending")
   ) {
     return "The Striver";
   }
@@ -106,13 +108,13 @@ function LineAgentDialog({ patient, onClose }: { patient: Patient; onClose: () =
       if (!response.ok) throw new Error("ส่ง LINE nudge ไม่สำเร็จ");
 
       setStage("sent");
-      toast.success("เรียก LINE Bot MCP สำเร็จ", {
-        description: `ส่งข้อความตาม persona: ${persona}`,
+      toast.success("ส่งคำขอติดตามผ่าน LINE แล้ว", {
+        description: `ใช้รูปแบบข้อความ: ${persona}`,
       });
     } catch (error) {
       console.error("Error sending nudge:", error);
-      toast.error("ส่ง LINE nudge ไม่สำเร็จ", {
-        description: "กรุณาลองใหม่หรือตรวจสอบ LINE MCP Server",
+      toast.error("ส่งข้อความติดตามไม่สำเร็จ", {
+        description: "กรุณาลองใหม่หรือตรวจสอบการเชื่อมต่อ LINE",
       });
       setStage("preview");
     }
@@ -140,22 +142,26 @@ function LineAgentDialog({ patient, onClose }: { patient: Patient; onClose: () =
               VL: {patient.hcvVL}
             </Badge>
             <Badge className="bg-success/15 text-success border-success/30" variant="outline">
-              Persona: {persona}
+              รูปแบบข้อความ: {persona}
             </Badge>
           </DialogDescription>
         </DialogHeader>
 
         <div className="grid gap-4 md:grid-cols-2">
           <div className="space-y-3">
-            <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">รายละเอียดการส่งข้อความ</div>
+            <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              รายละเอียดการส่งข้อความ
+            </div>
             <div className="rounded-lg border border-border bg-slate-950 p-3 font-mono text-[11px] leading-relaxed text-slate-100 shadow-inner">
               <div className="mb-1.5 flex items-center gap-2 text-[10px] text-slate-400">
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                <span>agent → line-bot-mcp-server</span>
+                <span>ระบบติดตาม → LINE</span>
               </div>
               <div>line.push_message(</div>
               <div className="pl-3">to: "{osmId}",</div>
-              <div className="pl-3">text: "[{persona}] {text.slice(0, 80)}..."</div>
+              <div className="pl-3">
+                text: "[{persona}] {text.slice(0, 80)}..."
+              </div>
               <div>)</div>
             </div>
 
@@ -173,13 +179,15 @@ function LineAgentDialog({ patient, onClose }: { patient: Patient; onClose: () =
 
             <div className="rounded-md border border-teal/30 bg-teal/5 p-2.5 text-[11px] text-muted-foreground">
               <strong className="text-teal">เกณฑ์ประเมิน:</strong> สถานะ viral load คือ{" "}
-              <code className="rounded bg-muted px-1">{patient.hcvVL}</code> ระบบเลือก persona{" "}
+              <code className="rounded bg-muted px-1">{patient.hcvVL}</code> ระบบเลือกแบบข้อความ{" "}
               <strong>{persona}</strong> และเตรียมส่งข้อความให้ทั้ง อสม. และผู้ป่วย
             </div>
           </div>
 
           <div className="space-y-3">
-            <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">ตัวอย่าง LINE Flex Card</div>
+            <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              ตัวอย่าง LINE Flex Card
+            </div>
             <div className="overflow-hidden rounded-2xl border border-border bg-[#7e8e9f]/10 p-3 shadow-md">
               <div className="overflow-hidden rounded-xl bg-card shadow-lg">
                 <div className={`h-20 bg-gradient-to-br ${nudge.accent} relative`}>
@@ -189,13 +197,20 @@ function LineAgentDialog({ patient, onClose }: { patient: Patient; onClose: () =
                   </div>
                 </div>
                 <div className="space-y-2 p-4">
-                  <div className="text-sm font-bold leading-snug text-foreground">{nudge.headline}</div>
+                  <div className="text-sm font-bold leading-snug text-foreground">
+                    {nudge.headline}
+                  </div>
                   <div className="text-[12px] leading-relaxed text-muted-foreground">{text}</div>
                   <div className="flex items-center justify-between gap-2 pt-1">
-                    <Badge variant="outline" className="text-[10px]">Persona · {persona}</Badge>
+                    <Badge variant="outline" className="text-[10px]">
+                      รูปแบบ · {persona}
+                    </Badge>
                     <span className="text-[10px] text-muted-foreground">HN {patient.hn}</span>
                   </div>
-                  <Button size="sm" className={`mt-1 w-full bg-gradient-to-r ${nudge.accent} text-white shadow`}>
+                  <Button
+                    size="sm"
+                    className={`mt-1 w-full bg-gradient-to-r ${nudge.accent} text-white shadow`}
+                  >
                     {nudge.cta}
                   </Button>
                 </div>
@@ -207,13 +222,19 @@ function LineAgentDialog({ patient, onClose }: { patient: Patient; onClose: () =
                     อสม.
                   </div>
                   <div className="min-w-0 text-xs">
-                    <div className="truncate font-semibold text-foreground">ถึง อสม. {patient.subdistrict}</div>
-                    <div className="truncate text-[10px] text-muted-foreground">LINE ID: {osmId}</div>
+                    <div className="truncate font-semibold text-foreground">
+                      ถึง อสม. {patient.subdistrict}
+                    </div>
+                    <div className="truncate text-[10px] text-muted-foreground">
+                      LINE ID: {osmId}
+                    </div>
                   </div>
                 </div>
                 <div className="space-y-1.5 p-3 text-[12px] leading-relaxed text-foreground">
                   <strong>{patient.name}</strong> ({patient.village})<br />
-                  สถานะ: <span className="text-warning-foreground">รอติดตาม viral load</span> · Persona: <em>{persona}</em><br />
+                  สถานะ: <span className="text-warning-foreground">รอติดตาม viral load</span> ·
+                  รูปแบบข้อความ: <em>{persona}</em>
+                  <br />
                   ขอความกรุณาประสานผู้ป่วยมาตรวจหรือยืนยันนัดที่{HEPA_PROJECT_CONFIG.hospitalName}
                 </div>
               </div>
@@ -224,9 +245,11 @@ function LineAgentDialog({ patient, onClose }: { patient: Patient; onClose: () =
         <DialogFooter>
           {stage === "preview" && (
             <>
-              <Button variant="outline" onClick={handleClose}>ยกเลิก</Button>
+              <Button variant="outline" onClick={handleClose}>
+                ยกเลิก
+              </Button>
               <Button className="gradient-medical text-white gap-1.5" onClick={handleExecute}>
-                <Send className="h-4 w-4" /> เรียก MCP และส่งข้อความ
+                <Send className="h-4 w-4" /> ส่งข้อความติดตาม
               </Button>
             </>
           )}
@@ -236,7 +259,10 @@ function LineAgentDialog({ patient, onClose }: { patient: Patient; onClose: () =
             </Button>
           )}
           {stage === "sent" && (
-            <Button onClick={handleClose} className="gap-1.5 bg-success text-success-foreground hover:bg-success/90">
+            <Button
+              onClick={handleClose}
+              className="gap-1.5 bg-success text-success-foreground hover:bg-success/90"
+            >
               <CheckCircle2 className="h-4 w-4" /> ส่งแล้ว · ปิด
             </Button>
           )}
