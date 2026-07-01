@@ -53,13 +53,13 @@ export const SCREENING_RISK_LABEL: Record<ScreeningRiskLevel, string> = {
   HIGH: "มีปัจจัยเสี่ยง ควรรับการคัดกรอง",
 };
 
-// Source: /Users/megamac/Downloads/hepBC_data_collection.xlsx, sheet "สรุปการจัดสรร".
-// The source title says 2,000 kits, but the actual row total is 1,997.
+// Source: Google Sheet 1vvx-UIaeoMQn1e4prFKOw0xY0ggpTx6AR8-y900ADXM.
+// Online workbook row total is 2,000 kits.
 // NPH hospital direct quota (113) is intentionally excluded from LINE screening per ops request.
 const SERVICE_QUOTA: Record<string, number> = {
-  PT: 135,
-  NK: 130,
-  KS: 126,
+  PT: 136,
+  NK: 131,
+  KS: 127,
   BK: 122,
   BY: 111,
   KB: 110,
