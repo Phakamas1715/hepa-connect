@@ -22,6 +22,7 @@ USER="${VPS_USER:-ubuntu}"
 APP_DIR="${APP_DIR:-/opt/hepa-connect}"
 KEY_FILE="${SSH_KEY_FILE:-/tmp/hepa-namphong-default-raw.pem}"
 PUBLIC_BASE_URL="${PUBLIC_BASE_URL:-https://hepa-namphong.${HOST}.sslip.io}"
+SSH_OPTS=(-i "$KEY_FILE" -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=10)
 
 echo "== HEPA Connect -> AWS Lightsail production =="
 echo "commit: $(git rev-parse --short HEAD 2>/dev/null || echo unknown)"
@@ -55,7 +56,7 @@ aws lightsail download-default-key-pair \
 chmod 600 "$KEY_FILE"
 
 echo "== Testing SSH and current service =="
-ssh -i "$KEY_FILE" -o BatchMode=yes -o IdentitiesOnly=yes -o ConnectTimeout=10 \
+ssh "${SSH_OPTS[@]}" \
   "${USER}@${HOST}" \
   'echo "connected: $(hostname)"; sudo systemctl is-active hepa-connect || true'
 
@@ -65,7 +66,7 @@ git archive --format=tar HEAD -- . \
   ':(exclude)data/screening-bookings.json' \
   ':(exclude).env.local' \
   ':(exclude).env.production' |
-  ssh -i "$KEY_FILE" -o BatchMode=yes -o IdentitiesOnly=yes "${USER}@${HOST}" \
+  ssh "${SSH_OPTS[@]}" "${USER}@${HOST}" \
     "set -euo pipefail
      sudo tar -xf - -C '$APP_DIR' --no-same-owner
      sudo chown -R www-data:www-data '$APP_DIR'
@@ -87,7 +88,7 @@ for path in / /patients /agent /line/staff /line/screening /screening-queue /api
 done
 
 echo "== Recent service errors =="
-ssh -i "$KEY_FILE" -o BatchMode=yes -o IdentitiesOnly=yes "${USER}@${HOST}" \
+ssh "${SSH_OPTS[@]}" "${USER}@${HOST}" \
   "sudo journalctl -u hepa-connect --since '5 minutes ago' --no-pager |
    grep -Ei 'error|failed|exception|traceback' |
    tail -n 20 || true"
