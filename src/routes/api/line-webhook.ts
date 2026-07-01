@@ -82,10 +82,12 @@ function commandReply(text: string | undefined, baseUrl: string): LineReplyMessa
   const staffLiffId = serverEnv("VITE_STAFF_LIFF_ID");
   const patientLiffId = serverEnv("VITE_PATIENT_LIFF_ID") || serverEnv("VITE_LIFF_ID");
   const screeningLiffId = serverEnv("VITE_SCREENING_LIFF_ID");
+  const positiveLiffId = serverEnv("VITE_POSITIVE_LIFF_ID") || patientLiffId;
   const staffLink = staffLiffId ? liffUrl(staffLiffId) : `${baseUrl}/line/staff`;
   const agentLink = `${baseUrl}/agent`;
   const patientLink = patientLiffId ? liffUrl(patientLiffId) : `${baseUrl}/line/link`;
   const screeningLink = screeningLiffId ? liffUrl(screeningLiffId) : `${baseUrl}/line/screening`;
+  const positiveLink = positiveLiffId ? liffUrl(positiveLiffId) : `${baseUrl}/line/positive`;
 
   if (["report", "daily report", "hepbc", "รายงาน"].includes(command)) {
     return [
@@ -134,6 +136,17 @@ function commandReply(text: string | undefined, baseUrl: string): LineReplyMessa
     ];
   }
 
+  if (["positive", "ผลบวก", "พบเชื้อ", "ผู้พบเชื้อ", "ติดเชื้อ"].includes(command)) {
+    return [
+      {
+        type: "text",
+        text:
+          `แจ้งข้อมูลผู้พบเชื้อ/ผลบวกผ่าน LINE\n${positiveLink}\n\n` +
+          `กรอกชื่อ-นามสกุล เลือกสถานบริการที่ตรวจ และยินยอม PDPA จากนั้นระบบจะสร้างงานให้ Agent/เจ้าหน้าที่ติดตามต่อ`,
+      },
+    ];
+  }
+
   if (["scan", "qr", "สแกน", "แสกน"].includes(command)) {
     return [
       {
@@ -156,6 +169,7 @@ function commandReply(text: string | undefined, baseUrl: string): LineReplyMessa
           `พิมพ์:\n` +
           `• รายงาน หรือ hepbc = รันรายงานประจำวัน\n` +
           `• คัดกรอง หรือ จอง = ลงทะเบียนจองสิทธิ์ตรวจฟรี\n` +
+          `• ผลบวก หรือ พบเชื้อ = แจ้งข้อมูลผู้พบเชื้อให้เจ้าหน้าที่ติดตาม\n` +
           `• staff หรือ เจ้าหน้าที่ = ลิงก์ยืนยันเจ้าหน้าที่\n` +
           `• สแกน หรือ qr = วิธีสแกน/ผูก LINE\n\n` +
           `แดชบอร์ด: ${agentLink}`,

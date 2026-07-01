@@ -11,6 +11,7 @@ import {
   Moon,
   Network,
   Sun,
+  UserCheck,
   Users,
   X,
 } from "lucide-react";
@@ -51,6 +52,12 @@ const items = [
     url: "/screening-queue",
     icon: CalendarCheck,
     desc: "ประชาชนลงทะเบียนผ่าน LINE",
+  },
+  {
+    title: "คิวผู้พบเชื้อ",
+    url: "/positive-intake",
+    icon: UserCheck,
+    desc: "ผลบวกยืนยันผ่าน LIFF",
   },
   { title: "ติดตามผ่าน LINE", url: "/agent", icon: Bot, desc: "ผูกบัญชีและส่งข้อความติดตาม" },
   { title: "ตรวจสอบ Agent", url: "/agent-bench", icon: FlaskConical, desc: "ทดสอบความพร้อมระบบ" },

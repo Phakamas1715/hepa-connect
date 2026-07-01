@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as ScreeningQueueRouteImport } from './routes/screening-queue'
+import { Route as PositiveIntakeRouteImport } from './routes/positive-intake'
 import { Route as PatientsRouteImport } from './routes/patients'
 import { Route as IntegrationRouteImport } from './routes/integration'
 import { Route as IliReportRouteImport } from './routes/ili-report'
@@ -20,11 +21,13 @@ import { Route as AgentRouteImport } from './routes/agent'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as LineStaffRouteImport } from './routes/line.staff'
 import { Route as LineScreeningRouteImport } from './routes/line.screening'
+import { Route as LinePositiveRouteImport } from './routes/line.positive'
 import { Route as LineLinkRouteImport } from './routes/line.link'
 import { Route as ApiSubmitMophReportRouteImport } from './routes/api/submit-moph-report'
 import { Route as ApiSendNudgeRouteImport } from './routes/api/send-nudge'
 import { Route as ApiScreeningBookingsRouteImport } from './routes/api/screening-bookings'
 import { Route as ApiProductionAutomationRouteImport } from './routes/api/production-automation'
+import { Route as ApiPositiveIntakeRouteImport } from './routes/api/positive-intake'
 import { Route as ApiPatientsRouteImport } from './routes/api/patients'
 import { Route as ApiOpsMonitoringRouteImport } from './routes/api/ops-monitoring'
 import { Route as ApiLineWebhookRouteImport } from './routes/api/line-webhook'
@@ -40,6 +43,11 @@ import { Route as ApiAgentOrchestratorRouteImport } from './routes/api/agent-orc
 const ScreeningQueueRoute = ScreeningQueueRouteImport.update({
   id: '/screening-queue',
   path: '/screening-queue',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PositiveIntakeRoute = PositiveIntakeRouteImport.update({
+  id: '/positive-intake',
+  path: '/positive-intake',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PatientsRoute = PatientsRouteImport.update({
@@ -92,6 +100,11 @@ const LineScreeningRoute = LineScreeningRouteImport.update({
   path: '/line/screening',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LinePositiveRoute = LinePositiveRouteImport.update({
+  id: '/line/positive',
+  path: '/line/positive',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LineLinkRoute = LineLinkRouteImport.update({
   id: '/line/link',
   path: '/line/link',
@@ -115,6 +128,11 @@ const ApiScreeningBookingsRoute = ApiScreeningBookingsRouteImport.update({
 const ApiProductionAutomationRoute = ApiProductionAutomationRouteImport.update({
   id: '/api/production-automation',
   path: '/api/production-automation',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPositiveIntakeRoute = ApiPositiveIntakeRouteImport.update({
+  id: '/api/positive-intake',
+  path: '/api/positive-intake',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPatientsRoute = ApiPatientsRouteImport.update({
@@ -182,6 +200,7 @@ export interface FileRoutesByFullPath {
   '/ili-report': typeof IliReportRoute
   '/integration': typeof IntegrationRoute
   '/patients': typeof PatientsRoute
+  '/positive-intake': typeof PositiveIntakeRoute
   '/screening-queue': typeof ScreeningQueueRoute
   '/api/agent-orchestrator': typeof ApiAgentOrchestratorRoute
   '/api/agent-world-bench': typeof ApiAgentWorldBenchRoute
@@ -194,11 +213,13 @@ export interface FileRoutesByFullPath {
   '/api/line-webhook': typeof ApiLineWebhookRoute
   '/api/ops-monitoring': typeof ApiOpsMonitoringRoute
   '/api/patients': typeof ApiPatientsRoute
+  '/api/positive-intake': typeof ApiPositiveIntakeRoute
   '/api/production-automation': typeof ApiProductionAutomationRoute
   '/api/screening-bookings': typeof ApiScreeningBookingsRoute
   '/api/send-nudge': typeof ApiSendNudgeRoute
   '/api/submit-moph-report': typeof ApiSubmitMophReportRoute
   '/line/link': typeof LineLinkRoute
+  '/line/positive': typeof LinePositiveRoute
   '/line/screening': typeof LineScreeningRoute
   '/line/staff': typeof LineStaffRoute
 }
@@ -211,6 +232,7 @@ export interface FileRoutesByTo {
   '/ili-report': typeof IliReportRoute
   '/integration': typeof IntegrationRoute
   '/patients': typeof PatientsRoute
+  '/positive-intake': typeof PositiveIntakeRoute
   '/screening-queue': typeof ScreeningQueueRoute
   '/api/agent-orchestrator': typeof ApiAgentOrchestratorRoute
   '/api/agent-world-bench': typeof ApiAgentWorldBenchRoute
@@ -223,11 +245,13 @@ export interface FileRoutesByTo {
   '/api/line-webhook': typeof ApiLineWebhookRoute
   '/api/ops-monitoring': typeof ApiOpsMonitoringRoute
   '/api/patients': typeof ApiPatientsRoute
+  '/api/positive-intake': typeof ApiPositiveIntakeRoute
   '/api/production-automation': typeof ApiProductionAutomationRoute
   '/api/screening-bookings': typeof ApiScreeningBookingsRoute
   '/api/send-nudge': typeof ApiSendNudgeRoute
   '/api/submit-moph-report': typeof ApiSubmitMophReportRoute
   '/line/link': typeof LineLinkRoute
+  '/line/positive': typeof LinePositiveRoute
   '/line/screening': typeof LineScreeningRoute
   '/line/staff': typeof LineStaffRoute
 }
@@ -241,6 +265,7 @@ export interface FileRoutesById {
   '/ili-report': typeof IliReportRoute
   '/integration': typeof IntegrationRoute
   '/patients': typeof PatientsRoute
+  '/positive-intake': typeof PositiveIntakeRoute
   '/screening-queue': typeof ScreeningQueueRoute
   '/api/agent-orchestrator': typeof ApiAgentOrchestratorRoute
   '/api/agent-world-bench': typeof ApiAgentWorldBenchRoute
@@ -253,11 +278,13 @@ export interface FileRoutesById {
   '/api/line-webhook': typeof ApiLineWebhookRoute
   '/api/ops-monitoring': typeof ApiOpsMonitoringRoute
   '/api/patients': typeof ApiPatientsRoute
+  '/api/positive-intake': typeof ApiPositiveIntakeRoute
   '/api/production-automation': typeof ApiProductionAutomationRoute
   '/api/screening-bookings': typeof ApiScreeningBookingsRoute
   '/api/send-nudge': typeof ApiSendNudgeRoute
   '/api/submit-moph-report': typeof ApiSubmitMophReportRoute
   '/line/link': typeof LineLinkRoute
+  '/line/positive': typeof LinePositiveRoute
   '/line/screening': typeof LineScreeningRoute
   '/line/staff': typeof LineStaffRoute
 }
@@ -272,6 +299,7 @@ export interface FileRouteTypes {
     | '/ili-report'
     | '/integration'
     | '/patients'
+    | '/positive-intake'
     | '/screening-queue'
     | '/api/agent-orchestrator'
     | '/api/agent-world-bench'
@@ -284,11 +312,13 @@ export interface FileRouteTypes {
     | '/api/line-webhook'
     | '/api/ops-monitoring'
     | '/api/patients'
+    | '/api/positive-intake'
     | '/api/production-automation'
     | '/api/screening-bookings'
     | '/api/send-nudge'
     | '/api/submit-moph-report'
     | '/line/link'
+    | '/line/positive'
     | '/line/screening'
     | '/line/staff'
   fileRoutesByTo: FileRoutesByTo
@@ -301,6 +331,7 @@ export interface FileRouteTypes {
     | '/ili-report'
     | '/integration'
     | '/patients'
+    | '/positive-intake'
     | '/screening-queue'
     | '/api/agent-orchestrator'
     | '/api/agent-world-bench'
@@ -313,11 +344,13 @@ export interface FileRouteTypes {
     | '/api/line-webhook'
     | '/api/ops-monitoring'
     | '/api/patients'
+    | '/api/positive-intake'
     | '/api/production-automation'
     | '/api/screening-bookings'
     | '/api/send-nudge'
     | '/api/submit-moph-report'
     | '/line/link'
+    | '/line/positive'
     | '/line/screening'
     | '/line/staff'
   id:
@@ -330,6 +363,7 @@ export interface FileRouteTypes {
     | '/ili-report'
     | '/integration'
     | '/patients'
+    | '/positive-intake'
     | '/screening-queue'
     | '/api/agent-orchestrator'
     | '/api/agent-world-bench'
@@ -342,11 +376,13 @@ export interface FileRouteTypes {
     | '/api/line-webhook'
     | '/api/ops-monitoring'
     | '/api/patients'
+    | '/api/positive-intake'
     | '/api/production-automation'
     | '/api/screening-bookings'
     | '/api/send-nudge'
     | '/api/submit-moph-report'
     | '/line/link'
+    | '/line/positive'
     | '/line/screening'
     | '/line/staff'
   fileRoutesById: FileRoutesById
@@ -360,6 +396,7 @@ export interface RootRouteChildren {
   IliReportRoute: typeof IliReportRoute
   IntegrationRoute: typeof IntegrationRoute
   PatientsRoute: typeof PatientsRoute
+  PositiveIntakeRoute: typeof PositiveIntakeRoute
   ScreeningQueueRoute: typeof ScreeningQueueRoute
   ApiAgentOrchestratorRoute: typeof ApiAgentOrchestratorRoute
   ApiAgentWorldBenchRoute: typeof ApiAgentWorldBenchRoute
@@ -372,11 +409,13 @@ export interface RootRouteChildren {
   ApiLineWebhookRoute: typeof ApiLineWebhookRoute
   ApiOpsMonitoringRoute: typeof ApiOpsMonitoringRoute
   ApiPatientsRoute: typeof ApiPatientsRoute
+  ApiPositiveIntakeRoute: typeof ApiPositiveIntakeRoute
   ApiProductionAutomationRoute: typeof ApiProductionAutomationRoute
   ApiScreeningBookingsRoute: typeof ApiScreeningBookingsRoute
   ApiSendNudgeRoute: typeof ApiSendNudgeRoute
   ApiSubmitMophReportRoute: typeof ApiSubmitMophReportRoute
   LineLinkRoute: typeof LineLinkRoute
+  LinePositiveRoute: typeof LinePositiveRoute
   LineScreeningRoute: typeof LineScreeningRoute
   LineStaffRoute: typeof LineStaffRoute
 }
@@ -388,6 +427,13 @@ declare module '@tanstack/react-router' {
       path: '/screening-queue'
       fullPath: '/screening-queue'
       preLoaderRoute: typeof ScreeningQueueRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/positive-intake': {
+      id: '/positive-intake'
+      path: '/positive-intake'
+      fullPath: '/positive-intake'
+      preLoaderRoute: typeof PositiveIntakeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/patients': {
@@ -460,6 +506,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LineScreeningRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/line/positive': {
+      id: '/line/positive'
+      path: '/line/positive'
+      fullPath: '/line/positive'
+      preLoaderRoute: typeof LinePositiveRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/line/link': {
       id: '/line/link'
       path: '/line/link'
@@ -493,6 +546,13 @@ declare module '@tanstack/react-router' {
       path: '/api/production-automation'
       fullPath: '/api/production-automation'
       preLoaderRoute: typeof ApiProductionAutomationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/positive-intake': {
+      id: '/api/positive-intake'
+      path: '/api/positive-intake'
+      fullPath: '/api/positive-intake'
+      preLoaderRoute: typeof ApiPositiveIntakeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/patients': {
@@ -584,6 +644,7 @@ const rootRouteChildren: RootRouteChildren = {
   IliReportRoute: IliReportRoute,
   IntegrationRoute: IntegrationRoute,
   PatientsRoute: PatientsRoute,
+  PositiveIntakeRoute: PositiveIntakeRoute,
   ScreeningQueueRoute: ScreeningQueueRoute,
   ApiAgentOrchestratorRoute: ApiAgentOrchestratorRoute,
   ApiAgentWorldBenchRoute: ApiAgentWorldBenchRoute,
@@ -596,11 +657,13 @@ const rootRouteChildren: RootRouteChildren = {
   ApiLineWebhookRoute: ApiLineWebhookRoute,
   ApiOpsMonitoringRoute: ApiOpsMonitoringRoute,
   ApiPatientsRoute: ApiPatientsRoute,
+  ApiPositiveIntakeRoute: ApiPositiveIntakeRoute,
   ApiProductionAutomationRoute: ApiProductionAutomationRoute,
   ApiScreeningBookingsRoute: ApiScreeningBookingsRoute,
   ApiSendNudgeRoute: ApiSendNudgeRoute,
   ApiSubmitMophReportRoute: ApiSubmitMophReportRoute,
   LineLinkRoute: LineLinkRoute,
+  LinePositiveRoute: LinePositiveRoute,
   LineScreeningRoute: LineScreeningRoute,
   LineStaffRoute: LineStaffRoute,
 }
