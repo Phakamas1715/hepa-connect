@@ -1,11 +1,15 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import {
   Activity,
   AlertTriangle,
   ArrowRight,
   CheckCircle2,
+  ClipboardList,
+  Database,
+  Link2,
+  Loader2,
   ShieldAlert,
   Sparkles,
   Target,
@@ -24,11 +28,14 @@ import {
   HBV_CUP_SUMMARY,
   HBV_HDC_PERFORMANCE,
   TARGET_REGISTRY_SOURCE,
+  buildKpiFromPatients,
   buildSubdistrictDashboard,
   allocateKits,
   getHcvTreatmentGapPatients,
+  type Patient,
 } from "@/lib/hepa-data";
 import { HEPA_PRIMARY_CARE_UNITS } from "@/lib/hepa-service-area";
+import { fetchPatients } from "@/lib/supabase";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -155,6 +162,50 @@ function percentForDisplay(value: number, total: number) {
   return total > 0 ? Number(((value / total) * 100).toFixed(2)) : 0;
 }
 
+type PatientRegistryPayload = {
+  patients: Patient[];
+  meta?: {
+    source?: string;
+    preparedCount?: number;
+    googleSheetCount?: number;
+    editedCount?: number;
+    deletedCount?: number;
+    lastGoogleSyncAt?: string;
+    lastGoogleSyncError?: string;
+  };
+};
+
+type ScreeningSummary = {
+  checkedAt: string;
+  totalQuota: number;
+  initialBooked?: number;
+  liveBookings?: number;
+  booked: number;
+  remaining: number;
+  percentage: number;
+  units: Array<{
+    code: string;
+    unitName: string;
+    quota: number;
+    booked: number;
+    remaining: number;
+    percentage?: number;
+  }>;
+  bookings: Array<{
+    id: string;
+    status: "reserved" | "confirmed" | "cancelled";
+    rosterVerified?: boolean;
+    consentAccepted?: boolean;
+  }>;
+};
+
+async function fetchScreeningSummary(): Promise<ScreeningSummary> {
+  const response = await fetch("/api/screening-bookings");
+  const data = await response.json();
+  if (!response.ok) throw new Error(data?.message || "โหลดคิวคัดกรองไม่สำเร็จ");
+  return data;
+}
+
 async function openHcvTreatmentQueue() {
   const response = await fetch("/api/care-gap-queue", { method: "POST" });
   const data = await response.json();
@@ -162,15 +213,41 @@ async function openHcvTreatmentQueue() {
   return data;
 }
 
+function patientSourceLabel(meta?: PatientRegistryPayload["meta"]) {
+  if (!meta?.source) return TARGET_REGISTRY_SOURCE.label;
+  if (meta.source === "google-sheet") return "Google Sheet ทะเบียนผู้ป่วย";
+  if (meta.source === "prepared-list") return "รายชื่อกลางในระบบ";
+  if (meta.source === "supabase") return "Supabase";
+  return meta.source;
+}
+
+function formatCheckedAt(value?: string) {
+  if (!value) return "-";
+  return new Date(value).toLocaleString("th-TH", {
+    dateStyle: "short",
+    timeStyle: "short",
+  });
+}
+
 function Dashboard() {
   const navigate = useNavigate();
   const [kitPool, setKitPool] = useState(2000);
   const [allocated, setAllocated] = useState<ReturnType<typeof allocateKits> | null>(null);
+  const patientsQuery = useQuery<PatientRegistryPayload>({
+    queryKey: ["dashboard-patients"],
+    queryFn: fetchPatients,
+  });
+  const screeningQuery = useQuery({
+    queryKey: ["dashboard-screening-summary"],
+    queryFn: fetchScreeningSummary,
+  });
 
-  const c = KPI.hcvCascade;
+  const patientRows = patientsQuery.data?.patients?.length ? patientsQuery.data.patients : undefined;
+  const liveKpi = useMemo(() => (patientRows ? buildKpiFromPatients(patientRows) : KPI), [patientRows]);
+  const c = liveKpi.hcvCascade;
   const hbv = HBV_CUP_SUMMARY;
   const primaryCareUnitCount = HEPA_PRIMARY_CARE_UNITS.length;
-  const subdistricts = useMemo(() => buildSubdistrictDashboard(), []);
+  const subdistricts = useMemo(() => buildSubdistrictDashboard(patientRows), [patientRows]);
   const totalRisk = useMemo(
     () => subdistricts.reduce((sum, item) => sum + item.riskDensity, 0),
     [subdistricts],
@@ -181,7 +258,13 @@ function Dashboard() {
   );
   const treatmentGap = Math.max(0, c.positive - c.onTreatment);
   const treatmentGapPct = c.positive > 0 ? Math.round((treatmentGap / c.positive) * 100) : 0;
-  const gapPatients = useMemo(() => getHcvTreatmentGapPatients(), []);
+  const gapPatients = useMemo(() => getHcvTreatmentGapPatients(patientRows), [patientRows]);
+  const sourceLabel = patientSourceLabel(patientsQuery.data?.meta);
+  const screening = screeningQuery.data;
+  const rosterVerifiedCount = screening?.bookings.filter((booking) => booking.rosterVerified).length || 0;
+  const pdpaAcceptedCount = screening?.bookings.filter((booking) => booking.consentAccepted).length || 0;
+  const confirmedScreeningCount = screening?.bookings.filter((booking) => booking.status === "confirmed").length || 0;
+  const dashboardIsLive = Boolean(patientsQuery.data);
 
   const openQueue = useMutation({
     mutationFn: openHcvTreatmentQueue,
@@ -211,9 +294,62 @@ function Dashboard() {
       <OfficialPageHeader
         eyebrow="ศูนย์บัญชาการงานไวรัสตับอักเสบ อำเภอน้ำพอง"
         title="แดชบอร์ดผู้บริหารและติดตามผลงาน"
-        description={`สรุปตัวชี้วัดการคัดกรอง การรักษา และการจัดสรรทรัพยากร จาก${TARGET_REGISTRY_SOURCE.label} เพื่อใช้ในการบริหารจัดการและรายงานผลต่อหน่วยงานกำกับ`}
-        badges={["รายชื่อเป้าหมายเป็นหลัก", "ติดตามอัตโนมัติผ่าน LINE", "รายงาน สธ. แบบปิดวงจร"]}
+        description={`สรุปตัวชี้วัดการคัดกรอง การรักษา และการจัดสรรทรัพยากรจาก ${sourceLabel} พร้อมสถานะคิวคัดกรอง LINE เพื่อให้ทุกโมดูลอ้างอิงข้อมูลชุดเดียวกัน`}
+        badges={[
+          dashboardIsLive ? "KPI อ่านจาก API live" : "กำลังใช้ข้อมูลสำรอง",
+          "ติดตามอัตโนมัติผ่าน LINE",
+          "รายงาน สธ. แบบปิดวงจร",
+        ]}
       />
+
+      <Card className="border-teal/20 bg-teal/5">
+        <CardContent className="grid gap-4 p-4 lg:grid-cols-[1.05fr_.95fr]">
+          <div className="flex gap-3">
+            <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-teal/15 text-teal">
+              {patientsQuery.isFetching ? <Loader2 className="h-5 w-5 animate-spin" /> : <Database className="h-5 w-5" />}
+            </div>
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="text-sm font-semibold text-foreground">สถานะความสอดคล้องข้อมูล</h2>
+                <Badge variant="outline" className={dashboardIsLive ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-amber-200 bg-amber-50 text-amber-900"}>
+                  {dashboardIsLive ? "อ่านจาก API เดียวกันแล้ว" : "ใช้ข้อมูล fallback"}
+                </Badge>
+              </div>
+              <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                หน้าแรก, ทะเบียนผู้ป่วย และคิวติดตามใช้ `/api/patients` เป็นแหล่งคำนวณ KPI/Care Gap แล้ว
+                {patientsQuery.data?.meta?.lastGoogleSyncAt
+                  ? ` · Sync Google Sheet ล่าสุด ${formatCheckedAt(patientsQuery.data.meta.lastGoogleSyncAt)}`
+                  : ""}
+              </p>
+              {patientsQuery.data?.meta?.lastGoogleSyncError && (
+                <p className="mt-1 text-xs text-destructive">
+                  Google Sheet sync error: {patientsQuery.data.meta.lastGoogleSyncError}
+                </p>
+              )}
+            </div>
+          </div>
+
+          <div className="grid gap-2 sm:grid-cols-3">
+            <div className="rounded-xl border bg-background/70 p-3">
+              <div className="text-xl font-bold">{(patientsQuery.data?.patients.length || 0).toLocaleString()}</div>
+              <div className="text-[11px] text-muted-foreground">ทะเบียนผู้ป่วย live</div>
+              <div className="mt-1 text-[10px] text-muted-foreground">{sourceLabel}</div>
+            </div>
+            <div className="rounded-xl border bg-background/70 p-3">
+              <div className="text-xl font-bold">{(screening?.totalQuota || 0).toLocaleString()}</div>
+              <div className="text-[11px] text-muted-foreground">โควตาคัดกรอง LINE</div>
+              <div className="mt-1 text-[10px] text-muted-foreground">
+                จองแล้ว {(screening?.booked || 0).toLocaleString()} · คงเหลือ {(screening?.remaining || 0).toLocaleString()}
+              </div>
+            </div>
+            <div className="rounded-xl border bg-background/70 p-3">
+              <div className="text-xl font-bold">{(screening?.units.length || 0).toLocaleString()}</div>
+              <div className="text-[11px] text-muted-foreground">หน่วยบริการในระบบ</div>
+              <div className="mt-1 text-[10px] text-muted-foreground">ไม่รวมยอด รพ.น้ำพองโดยตรง</div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       <InnovationShowcase
         items={[
@@ -244,7 +380,7 @@ function Dashboard() {
           value={hbv.dashboardNhsoScreened.toLocaleString()}
           sub={`ผลงานเทียบเป้าหมาย ${hbv.dashboardPct}%`}
           pct={hbv.dashboardPct}
-          score={KPI.hbv.score}
+          score={liveKpi.hbv.score}
           icon={Target}
           tone="warning"
         />
@@ -263,6 +399,67 @@ function Dashboard() {
           tone="critical"
         />
       </div>
+
+      <Card>
+        <CardHeader>
+          <div className="flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Link2 className="h-5 w-5 text-teal" />
+                ภาพรวมความสัมพันธ์ของโมดูล
+              </CardTitle>
+              <p className="mt-1 text-xs text-muted-foreground">
+                ใช้ตรวจว่าแต่ละ dashboard อ่านข้อมูลจาก pipeline เดียวกัน และยังไม่ปะปนผู้ป่วยจริงกับประชาชนที่จองคัดกรอง
+              </p>
+            </div>
+            <Button variant="outline" size="sm" onClick={() => Promise.all([patientsQuery.refetch(), screeningQuery.refetch()])}>
+              รีเฟรชข้อมูล
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent className="grid gap-3 md:grid-cols-4">
+          <div className="rounded-xl border bg-card p-3">
+            <div className="flex items-center gap-2 text-sm font-semibold">
+              <Database className="h-4 w-4 text-teal" />
+              Patient Registry
+            </div>
+            <div className="mt-2 text-2xl font-bold">{liveKpi.targetPopulation.toLocaleString()}</div>
+            <p className="mt-1 text-xs text-muted-foreground">
+              ใช้คำนวณ KPI, care cascade, ตาราง รพ.สต. และคิวติดตาม
+            </p>
+          </div>
+          <div className="rounded-xl border bg-card p-3">
+            <div className="flex items-center gap-2 text-sm font-semibold">
+              <ClipboardList className="h-4 w-4 text-teal" />
+              Screening Queue
+            </div>
+            <div className="mt-2 text-2xl font-bold">{(screening?.booked || 0).toLocaleString()}</div>
+            <p className="mt-1 text-xs text-muted-foreground">
+              จองจาก LINE แล้ว {screening?.liveBookings || 0} ราย · ยืนยันหน้างาน {confirmedScreeningCount} ราย
+            </p>
+          </div>
+          <div className="rounded-xl border bg-card p-3">
+            <div className="flex items-center gap-2 text-sm font-semibold">
+              <CheckCircle2 className="h-4 w-4 text-teal" />
+              Roster + PDPA
+            </div>
+            <div className="mt-2 text-2xl font-bold">{rosterVerifiedCount.toLocaleString()}</div>
+            <p className="mt-1 text-xs text-muted-foreground">
+              ตรงรายชื่อ Google Sheet · PDPA ครบ {pdpaAcceptedCount.toLocaleString()} ราย
+            </p>
+          </div>
+          <div className="rounded-xl border bg-card p-3">
+            <div className="flex items-center gap-2 text-sm font-semibold">
+              <Activity className="h-4 w-4 text-teal" />
+              Daily/MOPH
+            </div>
+            <div className="mt-2 text-2xl font-bold">{treatmentGap.toLocaleString()}</div>
+            <p className="mt-1 text-xs text-muted-foreground">
+              care gap จากทะเบียน live ใช้เปิดคิว agent/LINE ได้โดยไม่ดึงจากคนละชุด
+            </p>
+          </div>
+        </CardContent>
+      </Card>
 
       <Card className="border-amber-300 bg-amber-50/80">
         <CardHeader>
