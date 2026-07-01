@@ -25,6 +25,7 @@ import { Route as ApiSubmitMophReportRouteImport } from './routes/api/submit-mop
 import { Route as ApiSendNudgeRouteImport } from './routes/api/send-nudge'
 import { Route as ApiScreeningBookingsRouteImport } from './routes/api/screening-bookings'
 import { Route as ApiProductionAutomationRouteImport } from './routes/api/production-automation'
+import { Route as ApiPatientsRouteImport } from './routes/api/patients'
 import { Route as ApiOpsMonitoringRouteImport } from './routes/api/ops-monitoring'
 import { Route as ApiLineWebhookRouteImport } from './routes/api/line-webhook'
 import { Route as ApiKumhosProxyRouteImport } from './routes/api/kumhos-proxy'
@@ -116,6 +117,11 @@ const ApiProductionAutomationRoute = ApiProductionAutomationRouteImport.update({
   path: '/api/production-automation',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPatientsRoute = ApiPatientsRouteImport.update({
+  id: '/api/patients',
+  path: '/api/patients',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiOpsMonitoringRoute = ApiOpsMonitoringRouteImport.update({
   id: '/api/ops-monitoring',
   path: '/api/ops-monitoring',
@@ -187,6 +193,7 @@ export interface FileRoutesByFullPath {
   '/api/kumhos-proxy': typeof ApiKumhosProxyRoute
   '/api/line-webhook': typeof ApiLineWebhookRoute
   '/api/ops-monitoring': typeof ApiOpsMonitoringRoute
+  '/api/patients': typeof ApiPatientsRoute
   '/api/production-automation': typeof ApiProductionAutomationRoute
   '/api/screening-bookings': typeof ApiScreeningBookingsRoute
   '/api/send-nudge': typeof ApiSendNudgeRoute
@@ -215,6 +222,7 @@ export interface FileRoutesByTo {
   '/api/kumhos-proxy': typeof ApiKumhosProxyRoute
   '/api/line-webhook': typeof ApiLineWebhookRoute
   '/api/ops-monitoring': typeof ApiOpsMonitoringRoute
+  '/api/patients': typeof ApiPatientsRoute
   '/api/production-automation': typeof ApiProductionAutomationRoute
   '/api/screening-bookings': typeof ApiScreeningBookingsRoute
   '/api/send-nudge': typeof ApiSendNudgeRoute
@@ -244,6 +252,7 @@ export interface FileRoutesById {
   '/api/kumhos-proxy': typeof ApiKumhosProxyRoute
   '/api/line-webhook': typeof ApiLineWebhookRoute
   '/api/ops-monitoring': typeof ApiOpsMonitoringRoute
+  '/api/patients': typeof ApiPatientsRoute
   '/api/production-automation': typeof ApiProductionAutomationRoute
   '/api/screening-bookings': typeof ApiScreeningBookingsRoute
   '/api/send-nudge': typeof ApiSendNudgeRoute
@@ -274,6 +283,7 @@ export interface FileRouteTypes {
     | '/api/kumhos-proxy'
     | '/api/line-webhook'
     | '/api/ops-monitoring'
+    | '/api/patients'
     | '/api/production-automation'
     | '/api/screening-bookings'
     | '/api/send-nudge'
@@ -302,6 +312,7 @@ export interface FileRouteTypes {
     | '/api/kumhos-proxy'
     | '/api/line-webhook'
     | '/api/ops-monitoring'
+    | '/api/patients'
     | '/api/production-automation'
     | '/api/screening-bookings'
     | '/api/send-nudge'
@@ -330,6 +341,7 @@ export interface FileRouteTypes {
     | '/api/kumhos-proxy'
     | '/api/line-webhook'
     | '/api/ops-monitoring'
+    | '/api/patients'
     | '/api/production-automation'
     | '/api/screening-bookings'
     | '/api/send-nudge'
@@ -359,6 +371,7 @@ export interface RootRouteChildren {
   ApiKumhosProxyRoute: typeof ApiKumhosProxyRoute
   ApiLineWebhookRoute: typeof ApiLineWebhookRoute
   ApiOpsMonitoringRoute: typeof ApiOpsMonitoringRoute
+  ApiPatientsRoute: typeof ApiPatientsRoute
   ApiProductionAutomationRoute: typeof ApiProductionAutomationRoute
   ApiScreeningBookingsRoute: typeof ApiScreeningBookingsRoute
   ApiSendNudgeRoute: typeof ApiSendNudgeRoute
@@ -482,6 +495,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiProductionAutomationRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/patients': {
+      id: '/api/patients'
+      path: '/api/patients'
+      fullPath: '/api/patients'
+      preLoaderRoute: typeof ApiPatientsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/ops-monitoring': {
       id: '/api/ops-monitoring'
       path: '/api/ops-monitoring'
@@ -575,6 +595,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiKumhosProxyRoute: ApiKumhosProxyRoute,
   ApiLineWebhookRoute: ApiLineWebhookRoute,
   ApiOpsMonitoringRoute: ApiOpsMonitoringRoute,
+  ApiPatientsRoute: ApiPatientsRoute,
   ApiProductionAutomationRoute: ApiProductionAutomationRoute,
   ApiScreeningBookingsRoute: ApiScreeningBookingsRoute,
   ApiSendNudgeRoute: ApiSendNudgeRoute,

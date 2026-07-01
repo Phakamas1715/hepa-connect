@@ -1,5 +1,4 @@
 import { createClient } from "@supabase/supabase-js";
-import { PREPARED_PATIENTS } from "@/lib/hepa-data";
 import type { Patient } from "@/lib/hepa-data";
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "YOUR_SUPABASE_URL";
@@ -11,16 +10,21 @@ const hasSupabaseConfig = /^https?:\/\//.test(supabaseUrl) && !supabaseAnonKey.i
 export const supabase = hasSupabaseConfig ? createClient(supabaseUrl, supabaseAnonKey) : null;
 
 export async function fetchPatients() {
-  if (patientSource !== "supabase") return PREPARED_PATIENTS;
-  if (!supabase) return PREPARED_PATIENTS;
+  if (patientSource !== "supabase") {
+    const response = await fetch("/api/patients");
+    const payload = await response.json();
+    if (!response.ok) throw new Error(payload?.message || "โหลดทะเบียนผู้ป่วยไม่สำเร็จ");
+    return payload as { patients: Patient[]; meta?: Record<string, unknown> };
+  }
+  if (!supabase) return { patients: [], meta: { source: "supabase-not-configured" } };
 
   const { data, error } = await supabase.from("patients_care_gap").select("*");
 
   if (error) {
     console.error("Error fetching patients:", error);
-    return PREPARED_PATIENTS;
+    return { patients: [], meta: { source: "supabase-error", error: error.message } };
   }
-  return (data?.length ? data : PREPARED_PATIENTS) as Patient[];
+  return { patients: (data || []) as Patient[], meta: { source: "supabase" } };
 }
 
 export async function sendNudge(recipientId: string, persona: string, messageType: string) {

@@ -5,12 +5,18 @@ import {
   Building2,
   BookOpenCheck,
   CheckCircle2,
+  Edit3,
   Loader2,
   MapPin,
+  Plus,
   QrCode,
+  RefreshCw,
   Search,
   Send,
+  Save,
+  Trash2,
   Users,
+  X,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -107,6 +113,86 @@ async function openHcvQueue() {
   return data;
 }
 
+type PatientForm = Pick<
+  Patient,
+  | "hn"
+  | "name"
+  | "cid"
+  | "birth_date"
+  | "testDate"
+  | "subdistrict"
+  | "village"
+  | "serviceUnitCode"
+  | "hbsag"
+  | "hcvAb"
+  | "hcvVL"
+  | "persona"
+  | "care_status"
+>;
+
+const emptyPatientForm: PatientForm = {
+  hn: "",
+  name: "",
+  cid: "",
+  birth_date: "",
+  testDate: new Date().toISOString().slice(0, 10),
+  subdistrict: "",
+  village: "",
+  serviceUnitCode: "",
+  hbsag: "",
+  hcvAb: "",
+  hcvVL: "",
+  persona: "The Engaged",
+  care_status: "Pending",
+};
+
+function patientToForm(patient: Patient): PatientForm {
+  return {
+    hn: patient.hn,
+    name: patient.name,
+    cid: patient.cid,
+    birth_date: patient.birth_date,
+    testDate: patient.testDate,
+    subdistrict: patient.subdistrict,
+    village: patient.village,
+    serviceUnitCode: patient.serviceUnitCode || "",
+    hbsag: patient.hbsag || "",
+    hcvAb: patient.hcvAb || "",
+    hcvVL: patient.hcvVL || "",
+    persona: patient.persona || "The Engaged",
+    care_status: patient.care_status || "Pending",
+  };
+}
+
+async function savePatient(form: PatientForm) {
+  const response = await fetch("/api/patients", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(form),
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data?.message || "บันทึกข้อมูลผู้ป่วยไม่สำเร็จ");
+  return data;
+}
+
+async function deletePatientByHn(hn: string) {
+  const response = await fetch(`/api/patients?hn=${encodeURIComponent(hn)}`, { method: "DELETE" });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data?.message || "ลบข้อมูลผู้ป่วยไม่สำเร็จ");
+  return data;
+}
+
+async function syncGoogleSheetPatients() {
+  const response = await fetch("/api/patients", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action: "sync_google_sheet" }),
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data?.message || "ซิงก์ Google Sheet ไม่สำเร็จ");
+  return data;
+}
+
 function PatientsPage() {
   const { filter: searchFilter } = Route.useSearch();
   const [query, setQuery] = useState("");
@@ -114,16 +200,21 @@ function PatientsPage() {
     searchFilter || "all",
   );
   const [latestLink, setLatestLink] = useState("");
+  const [editing, setEditing] = useState<PatientForm | null>(null);
+  const [deleteHn, setDeleteHn] = useState("");
   useEffect(() => {
     if (searchFilter) setFilter(searchFilter);
   }, [searchFilter]);
 
   const {
-    data: patients,
+    data: patientResponse,
     isLoading,
     error,
     refetch,
   } = useQuery({ queryKey: ["patients"], queryFn: fetchPatients });
+
+  const patients = patientResponse?.patients || [];
+  const patientMeta = patientResponse?.meta;
 
   const createInvite = useMutation({
     mutationFn: (patient: Patient) =>
@@ -133,6 +224,35 @@ function PatientsPage() {
       toast.success("สร้าง QR ผูก LINE แล้ว");
     },
     onError: (err) => toast.error(err instanceof Error ? err.message : "สร้าง QR ไม่สำเร็จ"),
+  });
+
+  const savePatientMutation = useMutation({
+    mutationFn: savePatient,
+    onSuccess: () => {
+      setEditing(null);
+      refetch();
+      toast.success("บันทึกข้อมูลผู้ป่วยแล้ว");
+    },
+    onError: (err) => toast.error(err instanceof Error ? err.message : "บันทึกข้อมูลผู้ป่วยไม่สำเร็จ"),
+  });
+
+  const deletePatientMutation = useMutation({
+    mutationFn: deletePatientByHn,
+    onSuccess: () => {
+      setDeleteHn("");
+      refetch();
+      toast.success("ลบผู้ป่วยออกจากทะเบียนแล้ว");
+    },
+    onError: (err) => toast.error(err instanceof Error ? err.message : "ลบข้อมูลผู้ป่วยไม่สำเร็จ"),
+  });
+
+  const syncGoogleMutation = useMutation({
+    mutationFn: syncGoogleSheetPatients,
+    onSuccess: (result) => {
+      refetch();
+      toast.success(`ซิงก์ Google Sheet แล้ว ${result.sync?.count ?? 0} ราย`);
+    },
+    onError: (err) => toast.error(err instanceof Error ? err.message : "ซิงก์ Google Sheet ไม่สำเร็จ"),
   });
 
   const moduleStatus = useQuery({
@@ -231,11 +351,102 @@ function PatientsPage() {
         description="อ่านจากรายชื่อกลางเดียวกับแดชบอร์ด จัดลำดับความเร่งด่วนด้วย HEPA-RAAIA สร้าง QR ผูก LINE และจัดคิวข้อความติดตามอัตโนมัติ"
         badges={["รายชื่อกลาง", "AI nudge", "QR ผูก LINE"]}
       >
-        <Button variant="outline" onClick={() => refetch()} className="w-fit gap-2">
-          <CheckCircle2 className="h-4 w-4" />
-          รีเฟรช
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" onClick={() => refetch()} className="w-fit gap-2">
+            <CheckCircle2 className="h-4 w-4" />
+            รีเฟรช
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => syncGoogleMutation.mutate()}
+            disabled={syncGoogleMutation.isPending}
+            className="w-fit gap-2"
+          >
+            {syncGoogleMutation.isPending ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <RefreshCw className="h-4 w-4" />
+            )}
+            ซิงก์ Google Sheet
+          </Button>
+          <Button onClick={() => setEditing(emptyPatientForm)} className="w-fit gap-2">
+            <Plus className="h-4 w-4" />
+            เพิ่มผู้ป่วย
+          </Button>
+        </div>
       </OfficialPageHeader>
+
+      <Card>
+        <CardContent className="flex flex-col gap-2 p-4 text-sm md:flex-row md:items-center md:justify-between">
+          <div>
+            <div className="font-medium">แหล่งข้อมูลทะเบียน</div>
+            <div className="text-muted-foreground">
+              {patientMeta?.source === "google-sheet" ? "Google Sheet" : "รายชื่อที่เตรียมไว้ในระบบ"}
+              {patientMeta?.lastGoogleSyncAt ? ` · ซิงก์ล่าสุด ${new Date(String(patientMeta.lastGoogleSyncAt)).toLocaleString("th-TH")}` : ""}
+              {patientMeta?.lastGoogleSyncError ? ` · ล่าสุด: ${String(patientMeta.lastGoogleSyncError)}` : ""}
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+            <Badge variant="outline">Google {String(patientMeta?.googleSheetCount ?? 0)}</Badge>
+            <Badge variant="outline">แก้ไขในระบบ {String(patientMeta?.editedCount ?? 0)}</Badge>
+            <Badge variant="outline">ลบ/ซ่อน {String(patientMeta?.deletedCount ?? 0)}</Badge>
+          </div>
+        </CardContent>
+      </Card>
+
+      {editing && (
+        <Card className="border-teal/30">
+          <CardHeader>
+            <CardTitle className="flex items-center justify-between text-base">
+              <span>{editing.hn ? `แก้ไขผู้ป่วย ${editing.hn}` : "เพิ่มผู้ป่วยใหม่"}</span>
+              <Button variant="ghost" size="sm" onClick={() => setEditing(null)}>
+                <X className="h-4 w-4" />
+              </Button>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+              <Input value={editing.hn} onChange={(e) => setEditing({ ...editing, hn: e.target.value })} placeholder="HN *" />
+              <Input value={editing.name} onChange={(e) => setEditing({ ...editing, name: e.target.value })} placeholder="ชื่อ-นามสกุล *" />
+              <Input value={editing.cid} onChange={(e) => setEditing({ ...editing, cid: e.target.value })} placeholder="CID" />
+              <Input value={editing.birth_date} onChange={(e) => setEditing({ ...editing, birth_date: e.target.value })} placeholder="วันเกิด YYYY-MM-DD" />
+              <Input value={editing.testDate} onChange={(e) => setEditing({ ...editing, testDate: e.target.value })} placeholder="วันที่ตรวจ YYYY-MM-DD" />
+              <Input value={editing.subdistrict} onChange={(e) => setEditing({ ...editing, subdistrict: e.target.value })} placeholder="ตำบล" />
+              <Input value={editing.village} onChange={(e) => setEditing({ ...editing, village: e.target.value })} placeholder="หมู่บ้าน/หมู่ที่" />
+              <Input value={editing.serviceUnitCode || ""} onChange={(e) => setEditing({ ...editing, serviceUnitCode: e.target.value })} placeholder="รหัสพื้นที่ เช่น KS" />
+              <Input value={editing.hbsag} onChange={(e) => setEditing({ ...editing, hbsag: e.target.value })} placeholder="HBsAg" />
+              <Input value={editing.hcvAb} onChange={(e) => setEditing({ ...editing, hcvAb: e.target.value })} placeholder="HCV Ab" />
+              <Input value={editing.hcvVL} onChange={(e) => setEditing({ ...editing, hcvVL: e.target.value })} placeholder="HCV RNA" />
+              <Input value={editing.care_status || ""} onChange={(e) => setEditing({ ...editing, care_status: e.target.value })} placeholder="สถานะดูแล" />
+              <Select value={editing.persona} onValueChange={(value) => setEditing({ ...editing, persona: value as Patient["persona"] })}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="The Engaged">The Engaged</SelectItem>
+                  <SelectItem value="The Forgetful">The Forgetful</SelectItem>
+                  <SelectItem value="The Fearful">The Fearful</SelectItem>
+                  <SelectItem value="The Denier">The Denier</SelectItem>
+                  <SelectItem value="The Striver">The Striver</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <Button
+                onClick={() => savePatientMutation.mutate(editing)}
+                disabled={savePatientMutation.isPending || !editing.hn || !editing.name}
+                className="gap-2"
+              >
+                {savePatientMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                บันทึก
+              </Button>
+              <Button variant="outline" onClick={() => setEditing(null)}>
+                ยกเลิก
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {filter === "hcv_sofvel" && (
         <Card className="border-destructive/40 bg-destructive/5">
@@ -337,6 +548,41 @@ function PatientsPage() {
                 เมื่อขึ้นใช้งานจริง
               </p>
               <div className="mt-2 break-all text-xs">{latestLink}</div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {deleteHn && (
+        <Card className="border-destructive/40 bg-destructive/5">
+          <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <div className="font-semibold text-destructive">ยืนยันลบผู้ป่วย HN {deleteHn}</div>
+              <p className="mt-1 text-sm text-muted-foreground">
+                รายชื่อนี้จะถูกซ่อนออกจากทะเบียนและแดชบอร์ด แต่ยังสามารถเพิ่มกลับได้ด้วย HN เดิม
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setDeleteHn("")}
+                disabled={deletePatientMutation.isPending}
+              >
+                ยกเลิก
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={() => deletePatientMutation.mutate(deleteHn)}
+                disabled={deletePatientMutation.isPending}
+                className="gap-2"
+              >
+                {deletePatientMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Trash2 className="h-4 w-4" />
+                )}
+                ลบ
+              </Button>
             </div>
           </CardContent>
         </Card>
@@ -528,6 +774,15 @@ function PatientsPage() {
                             size="sm"
                             variant="outline"
                             className="h-8 gap-1.5"
+                            onClick={() => setEditing(patientToForm(patient))}
+                          >
+                            <Edit3 className="h-3.5 w-3.5" />
+                            แก้
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-8 gap-1.5"
                             onClick={() => createInvite.mutate(patient)}
                           >
                             {createInvite.isPending ? (
@@ -545,6 +800,15 @@ function PatientsPage() {
                           >
                             <Send className="h-3.5 w-3.5" />
                             LINE
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-8 gap-1.5 border-destructive/30 text-destructive hover:bg-destructive/10"
+                            onClick={() => setDeleteHn(patient.hn)}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                            ลบ
                           </Button>
                         </div>
                       </td>
