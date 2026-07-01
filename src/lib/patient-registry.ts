@@ -82,8 +82,10 @@ function normalizeResult(value: unknown) {
   const text = cleanText(value);
   if (!text) return "";
   const lower = text.toLowerCase();
-  if (["pos", "positive", "detected", "พบ", "บวก", "+"].includes(lower)) return "Positive";
-  if (["neg", "negative", "not detected", "ไม่พบ", "ลบ", "-"].includes(lower)) return "Negative";
+  if (["detected"].includes(lower)) return "Detected";
+  if (["not detected"].includes(lower)) return "Not Detected";
+  if (["pos", "positive", "พบ", "บวก", "+"].includes(lower)) return "Positive";
+  if (["neg", "negative", "ไม่พบ", "ลบ", "-"].includes(lower)) return "Negative";
   return text;
 }
 
