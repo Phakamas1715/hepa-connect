@@ -53,51 +53,33 @@ export const SCREENING_RISK_LABEL: Record<ScreeningRiskLevel, string> = {
   HIGH: "มีปัจจัยเสี่ยง ควรรับการคัดกรอง",
 };
 
+// Source: /Users/megamac/Downloads/hepBC_data_collection.xlsx, sheet "สรุปการจัดสรร".
+// The source title says 2,000 kits, but the actual row total is 1,997.
+// NPH hospital direct quota (113) is intentionally excluded from LINE screening per ops request.
 const SERVICE_QUOTA: Record<string, number> = {
-  PT: 150,
-  NK: 150,
-  KS: 150,
-  BK: 150,
-  BY: 150,
-  KB: 100,
-  WC: 150,
-  MW: 150,
-  BN: 150,
-  NP: 150,
-  TK: 150,
-  NS: 150,
-  SM: 150,
-  KY: 100,
-  KMW: 100,
-  NW: 100,
-  BL: 100,
-  TM: 100,
-  KNK: 0,
+  PT: 135,
+  NK: 130,
+  KS: 126,
+  BK: 122,
+  BY: 111,
+  KB: 110,
+  WC: 109,
+  MW: 109,
+  BN: 103,
+  NP: 96,
+  TK: 91,
+  NS: 90,
+  SM: 89,
+  KY: 87,
+  KMW: 85,
+  NW: 82,
+  BL: 80,
+  TM: 79,
+  KNK: 50,
   NPGKS: 0,
 };
 
-const INITIAL_BOOKED: Record<string, number> = {
-  PT: 64,
-  NK: 52,
-  KS: 98,
-  BK: 41,
-  BY: 33,
-  KB: 48,
-  WC: 87,
-  MW: 76,
-  BN: 59,
-  NP: 91,
-  TK: 34,
-  NS: 62,
-  SM: 55,
-  KY: 29,
-  KMW: 35,
-  NW: 45,
-  BL: 31,
-  TM: 42,
-  KNK: 0,
-  NPGKS: 0,
-};
+const INITIAL_BOOKED: Record<string, number> = {};
 
 function storePath() {
   return (
@@ -145,7 +127,7 @@ export function getScreeningServiceUnits() {
     unitName: area.unitName,
     unitType: area.unitType,
     subdistrict: area.subdistrict,
-    quota: SERVICE_QUOTA[area.code] ?? (area.unitType === "hospital" ? 100 : 150),
+    quota: SERVICE_QUOTA[area.code] ?? 0,
     initialBooked: INITIAL_BOOKED[area.code] ?? 0,
   }));
   return rows.sort((a, b) => a.unitName.localeCompare(b.unitName, "th"));
@@ -231,6 +213,7 @@ export function createScreeningBooking(input: ScreeningBookingInput) {
   const store = readScreeningStore();
   const unit = getScreeningServiceUnits().find((item) => item.code === input.selectedServiceUnitCode);
   if (!unit) throw new Error("ไม่พบสถานบริการที่เลือก");
+  if (unit.quota <= 0) throw new Error("หน่วยบริการนี้ยังไม่มีโควตาคัดกรอง");
   if (!input.fullName.trim()) throw new Error("กรุณาระบุชื่อ-นามสกุล");
   if (!input.phone.trim()) throw new Error("กรุณาระบุเบอร์โทรศัพท์");
   if (!Number.isFinite(input.birthYear) || input.birthYear < 2400 || input.birthYear > 2600) {
