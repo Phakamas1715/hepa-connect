@@ -6,6 +6,7 @@ import {
   Scripts,
   createRootRouteWithContext,
   useRouter,
+  useRouterState,
 } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
 
@@ -137,6 +138,16 @@ function RootComponent() {
 }
 
 function AppLayout() {
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
+
+  if (pathname.startsWith("/line/")) {
+    return (
+      <main className="min-h-screen bg-background">
+        <Outlet />
+      </main>
+    );
+  }
+
   return (
     <SidebarProvider>
       <AppSidebar />

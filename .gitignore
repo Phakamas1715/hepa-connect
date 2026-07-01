@@ -26,6 +26,9 @@ dist-ssr
 data/agent-world-bench/
 data/agent-world-bench/**
 
+# Runtime queues / local operational stores
+data/screening-bookings.json
+
 # Wrangler / Cloudflare
 .wrangler/
 .dev.vars

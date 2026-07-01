@@ -62,6 +62,7 @@ ssh -i "$KEY_FILE" -o BatchMode=yes -o IdentitiesOnly=yes -o ConnectTimeout=10 \
 echo "== Uploading current git HEAD and deploying on VPS =="
 git archive --format=tar HEAD -- . \
   ':(exclude)data/hepa-agent-store.json' \
+  ':(exclude)data/screening-bookings.json' \
   ':(exclude).env.local' \
   ':(exclude).env.production' |
   ssh -i "$KEY_FILE" -o BatchMode=yes -o IdentitiesOnly=yes "${USER}@${HOST}" \
@@ -76,7 +77,7 @@ git archive --format=tar HEAD -- . \
      sudo systemctl --no-pager --full status hepa-connect | sed -n '1,14p'"
 
 echo "== Public checks =="
-for path in / /patients /agent /line/staff /api/line-webhook; do
+for path in / /patients /agent /line/staff /line/screening /screening-queue /api/line-webhook /api/screening-bookings; do
   code="$(curl -sS -o /dev/null -w '%{http_code}' "${PUBLIC_BASE_URL}${path}" || echo 000)"
   echo "  ${path} -> ${code}"
   if [[ "$code" != "200" ]]; then

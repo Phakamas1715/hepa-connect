@@ -4,6 +4,7 @@ import {
   Bot,
   Cable,
   ClipboardList,
+  CalendarCheck,
   FlaskConical,
   Database,
   LayoutDashboard,
@@ -35,6 +36,7 @@ import { TARGET_REGISTRY_SOURCE } from "@/lib/hepa-data";
 const items = [
   { title: "แดชบอร์ดผู้บริหาร", url: "/", icon: LayoutDashboard, desc: "ตัวชี้วัดและผลงานรายพื้นที่" },
   { title: "ทะเบียนผู้ป่วยค้างติดตาม", url: "/patients", icon: Users, desc: "รายชื่อและสถานะการดูแล" },
+  { title: "คิวจองคัดกรอง", url: "/screening-queue", icon: CalendarCheck, desc: "ประชาชนลงทะเบียนผ่าน LINE" },
   { title: "ระบบติดตามอัจฉริยะ", url: "/agent", icon: Bot, desc: "ผูก LINE และแจ้งเตือนอัตโนมัติ" },
   { title: "หลักฐานนวัตกรรม Agent", url: "/agent-bench", icon: FlaskConical, desc: "ทดสอบความพร้อมระบบ" },
   { title: "รายงานไข้หวัดใหญ่", url: "/ili-report", icon: ClipboardList, desc: "แบบฟอร์ม D506 รายสัปดาห์" },

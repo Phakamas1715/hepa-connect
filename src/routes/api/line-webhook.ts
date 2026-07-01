@@ -61,20 +61,36 @@ function normalizedCommand(text?: string) {
   return (text || "").trim().toLowerCase().replace(/\s+/g, " ");
 }
 
+function isDailyHepbcCommand(text?: string) {
+  return ["report", "daily report", "hepbc", "รายงาน"].includes(normalizedCommand(text));
+}
+
+function triggerDailyHepbc(baseUrl: string) {
+  fetch(`${baseUrl}/api/agent-orchestrator`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action: "run_daily_hepbc" }),
+  }).catch((error) => {
+    console.error("LINE daily Hep-BC trigger failed", error);
+  });
+}
+
 function commandReply(text: string | undefined, baseUrl: string): LineReplyMessage[] {
   const command = normalizedCommand(text);
   const staffLiffId = serverEnv("VITE_STAFF_LIFF_ID");
   const patientLiffId = serverEnv("VITE_PATIENT_LIFF_ID") || serverEnv("VITE_LIFF_ID");
+  const screeningLiffId = serverEnv("VITE_SCREENING_LIFF_ID");
   const staffLink = staffLiffId ? liffUrl(staffLiffId) : `${baseUrl}/line/staff`;
   const agentLink = `${baseUrl}/agent`;
   const patientLink = patientLiffId ? liffUrl(patientLiffId) : `${baseUrl}/line/link`;
+  const screeningLink = screeningLiffId ? liffUrl(screeningLiffId) : `${baseUrl}/line/screening`;
 
   if (["report", "daily report", "hepbc", "รายงาน"].includes(command)) {
     return [
       {
         type: "text",
         text:
-          `รับคำสั่งรายงาน Hep-B/C แล้วครับ\n\n` +
+          `รับคำสั่งรายงาน Hep-B/C แล้ว กำลังรัน HOSxP pull + MOPH auto\n\n` +
           `สถานะใช้งาน:\n` +
           `• Dashboard: ${agentLink}\n` +
           `• เจ้าหน้าที่: ${staffLink}\n\n` +
@@ -105,6 +121,17 @@ function commandReply(text: string | undefined, baseUrl: string): LineReplyMessa
     ];
   }
 
+  if (["screening", "คัดกรอง", "จอง", "จองคิว", "ตรวจฟรี", "ลงทะเบียน"].includes(command)) {
+    return [
+      {
+        type: "text",
+        text:
+          `ลงทะเบียนจองสิทธิ์คัดกรองไวรัสตับอักเสบ B/C\n${screeningLink}\n\n` +
+          `ประชาชนทำแบบประเมิน เลือกหน่วยบริการ และรับรหัสคัดกรอง/QR สำหรับแสดงที่ รพ.สต.`,
+      },
+    ];
+  }
+
   if (["scan", "qr", "สแกน", "แสกน"].includes(command)) {
     return [
       {
@@ -126,6 +153,7 @@ function commandReply(text: string | undefined, baseUrl: string): LineReplyMessa
           `เมนูน้ำพองรักตับ\n\n` +
           `พิมพ์:\n` +
           `• รายงาน หรือ hepbc = ดูทางไปรายงาน\n` +
+          `• คัดกรอง หรือ จอง = ลงทะเบียนจองสิทธิ์ตรวจฟรี\n` +
           `• staff หรือ เจ้าหน้าที่ = ลิงก์ยืนยันเจ้าหน้าที่\n` +
           `• สแกน หรือ qr = วิธีสแกน/ผูก LINE\n\n` +
           `Dashboard: ${agentLink}`,
@@ -189,6 +217,14 @@ export const Route = createFileRoute("/api/line-webhook")({
 
           if (event.type === "message" && event.message?.type === "text") {
             const messages = commandReply(event.message.text, baseUrl);
+            if (isDailyHepbcCommand(event.message.text)) {
+              triggerDailyHepbc(baseUrl);
+              audit(store, {
+                actor: "system",
+                action: "line_daily_hepbc_triggered",
+                detail: eventSummary(event),
+              });
+            }
             const reply = await replyLine(event.replyToken, messages);
             if (!reply.skipped) {
               replies += 1;
