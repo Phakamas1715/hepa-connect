@@ -23,6 +23,8 @@ type Gate = {
   action?: string;
 };
 
+const DEEP_PROBE_TIMEOUT_MS = Number(serverEnv("HEPA_PRODUCTION_DEEP_PROBE_TIMEOUT_MS") || 12_000);
+
 function ready(id: string, name: string, detail: string, required = true, action?: string): Gate {
   return { id, name, state: "ready", detail, required, action };
 }
@@ -288,6 +290,24 @@ function fallbackProbe(detail: string): HealthProbe {
   };
 }
 
+async function withOverallTimeout<T>(
+  promise: Promise<T>,
+  timeoutMs: number,
+  message: string,
+): Promise<T> {
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<T>((_, reject) => {
+        timeout = setTimeout(() => reject(new Error(message)), timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timeout) clearTimeout(timeout);
+  }
+}
+
 function gateFromProbe(
   id: string,
   name: string,
@@ -380,12 +400,38 @@ async function automationStatusFromCache(cache: AutomationHealthCache | null, st
 
 async function automationStatusFast(deep = false) {
   if (deep) {
-    const cache = await refreshAutomationHealthCache();
-    return automationStatusFromCache(cache, false);
+    try {
+      const cache = await withOverallTimeout(
+        refreshAutomationHealthCache(),
+        DEEP_PROBE_TIMEOUT_MS,
+        `deep probe timeout หลัง ${DEEP_PROBE_TIMEOUT_MS}ms`,
+      );
+      return { ...(await automationStatusFromCache(cache, false)), probeTimedOut: false };
+    } catch (error) {
+      const cache = readAutomationHealthCache();
+      scheduleAutomationHealthRefresh(true);
+      return {
+        ...(await automationStatusFromCache(cache, true)),
+        probeTimedOut: true,
+        probeTimeoutMs: DEEP_PROBE_TIMEOUT_MS,
+        probeMessage:
+          error instanceof Error
+            ? error.message
+            : `deep probe timeout หลัง ${DEEP_PROBE_TIMEOUT_MS}ms`,
+      };
+    }
   }
 
   const cache = readAutomationHealthCache();
-  const stale = !cache || !isProbeFresh({ checkedAt: cache.updatedAt, state: "ready", ok: true, detail: "", latencyMs: 0 });
+  const stale =
+    !cache ||
+    !isProbeFresh({
+      checkedAt: cache.updatedAt,
+      state: "ready",
+      ok: true,
+      detail: "",
+      latencyMs: 0,
+    });
   scheduleAutomationHealthRefresh(stale);
   return automationStatusFromCache(cache, stale);
 }
