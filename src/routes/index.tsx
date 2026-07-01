@@ -242,8 +242,13 @@ function Dashboard() {
     queryFn: fetchScreeningSummary,
   });
 
-  const patientRows = patientsQuery.data?.patients?.length ? patientsQuery.data.patients : undefined;
-  const liveKpi = useMemo(() => (patientRows ? buildKpiFromPatients(patientRows) : KPI), [patientRows]);
+  const patientRows = patientsQuery.data?.patients?.length
+    ? patientsQuery.data.patients
+    : undefined;
+  const liveKpi = useMemo(
+    () => (patientRows ? buildKpiFromPatients(patientRows) : KPI),
+    [patientRows],
+  );
   const c = liveKpi.hcvCascade;
   const hbv = HBV_CUP_SUMMARY;
   const primaryCareUnitCount = HEPA_PRIMARY_CARE_UNITS.length;
@@ -261,9 +266,12 @@ function Dashboard() {
   const gapPatients = useMemo(() => getHcvTreatmentGapPatients(patientRows), [patientRows]);
   const sourceLabel = patientSourceLabel(patientsQuery.data?.meta);
   const screening = screeningQuery.data;
-  const rosterVerifiedCount = screening?.bookings.filter((booking) => booking.rosterVerified).length || 0;
-  const pdpaAcceptedCount = screening?.bookings.filter((booking) => booking.consentAccepted).length || 0;
-  const confirmedScreeningCount = screening?.bookings.filter((booking) => booking.status === "confirmed").length || 0;
+  const rosterVerifiedCount =
+    screening?.bookings.filter((booking) => booking.rosterVerified).length || 0;
+  const pdpaAcceptedCount =
+    screening?.bookings.filter((booking) => booking.consentAccepted).length || 0;
+  const confirmedScreeningCount =
+    screening?.bookings.filter((booking) => booking.status === "confirmed").length || 0;
   const dashboardIsLive = Boolean(patientsQuery.data);
 
   const openQueue = useMutation({
@@ -306,17 +314,29 @@ function Dashboard() {
         <CardContent className="grid gap-4 p-4 lg:grid-cols-[1.05fr_.95fr]">
           <div className="flex gap-3">
             <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-teal/15 text-teal">
-              {patientsQuery.isFetching ? <Loader2 className="h-5 w-5 animate-spin" /> : <Database className="h-5 w-5" />}
+              {patientsQuery.isFetching ? (
+                <Loader2 className="h-5 w-5 animate-spin" />
+              ) : (
+                <Database className="h-5 w-5" />
+              )}
             </div>
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
                 <h2 className="text-sm font-semibold text-foreground">สถานะความสอดคล้องข้อมูล</h2>
-                <Badge variant="outline" className={dashboardIsLive ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-amber-200 bg-amber-50 text-amber-900"}>
+                <Badge
+                  variant="outline"
+                  className={
+                    dashboardIsLive
+                      ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                      : "border-amber-200 bg-amber-50 text-amber-900"
+                  }
+                >
                   {dashboardIsLive ? "อ่านจาก API เดียวกันแล้ว" : "ใช้ข้อมูล fallback"}
                 </Badge>
               </div>
               <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                หน้าแรก, ทะเบียนผู้ป่วย และคิวติดตามใช้ `/api/patients` เป็นแหล่งคำนวณ KPI/Care Gap แล้ว
+                หน้าแรก, ทะเบียนผู้ป่วย และคิวติดตามใช้ `/api/patients` เป็นแหล่งคำนวณ KPI/Care Gap
+                แล้ว
                 {patientsQuery.data?.meta?.lastGoogleSyncAt
                   ? ` · Sync Google Sheet ล่าสุด ${formatCheckedAt(patientsQuery.data.meta.lastGoogleSyncAt)}`
                   : ""}
@@ -331,21 +351,30 @@ function Dashboard() {
 
           <div className="grid gap-2 sm:grid-cols-3">
             <div className="rounded-xl border bg-background/70 p-3">
-              <div className="text-xl font-bold">{(patientsQuery.data?.patients.length || 0).toLocaleString()}</div>
+              <div className="text-xl font-bold">
+                {(patientsQuery.data?.patients.length || 0).toLocaleString()}
+              </div>
               <div className="text-[11px] text-muted-foreground">ทะเบียนผู้ป่วย live</div>
               <div className="mt-1 text-[10px] text-muted-foreground">{sourceLabel}</div>
             </div>
             <div className="rounded-xl border bg-background/70 p-3">
-              <div className="text-xl font-bold">{(screening?.totalQuota || 0).toLocaleString()}</div>
+              <div className="text-xl font-bold">
+                {(screening?.totalQuota || 0).toLocaleString()}
+              </div>
               <div className="text-[11px] text-muted-foreground">โควตาคัดกรอง LINE</div>
               <div className="mt-1 text-[10px] text-muted-foreground">
-                จองแล้ว {(screening?.booked || 0).toLocaleString()} · คงเหลือ {(screening?.remaining || 0).toLocaleString()}
+                จองแล้ว {(screening?.booked || 0).toLocaleString()} · คงเหลือ{" "}
+                {(screening?.remaining || 0).toLocaleString()}
               </div>
             </div>
             <div className="rounded-xl border bg-background/70 p-3">
-              <div className="text-xl font-bold">{(screening?.units.length || 0).toLocaleString()}</div>
+              <div className="text-xl font-bold">
+                {(screening?.units.length || 0).toLocaleString()}
+              </div>
               <div className="text-[11px] text-muted-foreground">หน่วยบริการในระบบ</div>
-              <div className="mt-1 text-[10px] text-muted-foreground">ไม่รวมยอด รพ.น้ำพองโดยตรง</div>
+              <div className="mt-1 text-[10px] text-muted-foreground">
+                ไม่รวมยอด รพ.น้ำพองโดยตรง
+              </div>
             </div>
           </div>
         </CardContent>
@@ -355,15 +384,18 @@ function Dashboard() {
         items={[
           {
             title: "รายชื่อเป้าหมายเชิงรุก",
-            detail: "ใช้ทะเบียนกลางที่จัดทำเองเป็นแหล่งข้อมูลหลัก ลดความคลาดเคลื่อนจากการดึงข้อมูลหลายระบบ",
+            detail:
+              "ใช้ทะเบียนกลางที่จัดทำเองเป็นแหล่งข้อมูลหลัก ลดความคลาดเคลื่อนจากการดึงข้อมูลหลายระบบ",
           },
           {
             title: "ติดตามผู้ป่วยอัจฉริยะ",
-            detail: "ระบบ Agent ผูกบัญชี LINE กับ HN และแจ้งเตือนผู้ป่วยที่ยังติดตามไม่ครบโดยอัตโนมัติ",
+            detail:
+              "ระบบ Agent ผูกบัญชี LINE กับ HN และแจ้งเตือนผู้ป่วยที่ยังติดตามไม่ครบโดยอัตโนมัติ",
           },
           {
             title: "รายงานและเชื่อมโยงข้อมูล",
-            detail: "เชื่อม HOSxP, นัดหมาย และรายงานกระทรวงสาธารณสุขในขั้นตอนเดียว พร้อมตรวจสอบความพร้อม",
+            detail:
+              "เชื่อม HOSxP, นัดหมาย และรายงานกระทรวงสาธารณสุขในขั้นตอนเดียว พร้อมตรวจสอบความพร้อม",
           },
         ]}
       />
@@ -409,10 +441,15 @@ function Dashboard() {
                 ภาพรวมความสัมพันธ์ของโมดูล
               </CardTitle>
               <p className="mt-1 text-xs text-muted-foreground">
-                ใช้ตรวจว่าแต่ละ dashboard อ่านข้อมูลจาก pipeline เดียวกัน และยังไม่ปะปนผู้ป่วยจริงกับประชาชนที่จองคัดกรอง
+                ใช้ตรวจว่าแต่ละ dashboard อ่านข้อมูลจาก pipeline เดียวกัน
+                และยังไม่ปะปนผู้ป่วยจริงกับประชาชนที่จองคัดกรอง
               </p>
             </div>
-            <Button variant="outline" size="sm" onClick={() => Promise.all([patientsQuery.refetch(), screeningQuery.refetch()])}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => Promise.all([patientsQuery.refetch(), screeningQuery.refetch()])}
+            >
               รีเฟรชข้อมูล
             </Button>
           </div>
@@ -423,7 +460,9 @@ function Dashboard() {
               <Database className="h-4 w-4 text-teal" />
               Patient Registry
             </div>
-            <div className="mt-2 text-2xl font-bold">{liveKpi.targetPopulation.toLocaleString()}</div>
+            <div className="mt-2 text-2xl font-bold">
+              {liveKpi.targetPopulation.toLocaleString()}
+            </div>
             <p className="mt-1 text-xs text-muted-foreground">
               ใช้คำนวณ KPI, care cascade, ตาราง รพ.สต. และคิวติดตาม
             </p>
@@ -433,9 +472,12 @@ function Dashboard() {
               <ClipboardList className="h-4 w-4 text-teal" />
               Screening Queue
             </div>
-            <div className="mt-2 text-2xl font-bold">{(screening?.booked || 0).toLocaleString()}</div>
+            <div className="mt-2 text-2xl font-bold">
+              {(screening?.booked || 0).toLocaleString()}
+            </div>
             <p className="mt-1 text-xs text-muted-foreground">
-              จองจาก LINE แล้ว {screening?.liveBookings || 0} ราย · ยืนยันหน้างาน {confirmedScreeningCount} ราย
+              จองจาก LINE แล้ว {screening?.liveBookings || 0} ราย · ยืนยันหน้างาน{" "}
+              {confirmedScreeningCount} ราย
             </p>
           </div>
           <div className="rounded-xl border bg-card p-3">
