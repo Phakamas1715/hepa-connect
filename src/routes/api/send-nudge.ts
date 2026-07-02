@@ -1,10 +1,28 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { readAgentStore } from "@/lib/hepa-agent-store";
 import { serverEnv } from "@/lib/server-env";
 
 const LINE_PUSH_URL = "https://api.line.me/v2/bot/message/push";
 
 function isLineRecipientId(value: string) {
   return /^(U|C|R)[0-9a-fA-F]{20,}$/.test(value);
+}
+
+function resolveLineRecipientId(recipientId: string) {
+  if (isLineRecipientId(recipientId)) {
+    return { id: recipientId, source: "direct_line_id" };
+  }
+
+  const store = readAgentStore();
+  const identity = store.identities.find((item) => item.hn === recipientId && isLineRecipientId(item.lineUserId));
+  if (identity) return { id: identity.lineUserId, source: "patient_identity" };
+
+  const appointment = store.appointments.find(
+    (item) => item.hn === recipientId && item.lineUserId && isLineRecipientId(item.lineUserId),
+  );
+  if (appointment?.lineUserId) return { id: appointment.lineUserId, source: "appointment_identity" };
+
+  return { id: recipientId, source: "unresolved" };
 }
 
 function buildFlexMessage(persona: string, messageType: string) {
@@ -192,7 +210,8 @@ export const Route = createFileRoute("/api/send-nudge")({
           const token = serverEnv("LINE_CHANNEL_ACCESS_TOKEN");
           const pushEnabled = serverEnv("LINE_PUSH_ENABLED") === "true";
           const testRecipientId = serverEnv("LINE_TEST_RECIPIENT_ID");
-          const resolvedRecipientId = testRecipientId || recipientId;
+          const resolved = resolveLineRecipientId(String(recipientId));
+          const resolvedRecipientId = testRecipientId || resolved.id;
           const canPush = Boolean(token && pushEnabled && isLineRecipientId(resolvedRecipientId));
 
           if (!canPush) {
@@ -202,11 +221,12 @@ export const Route = createFileRoute("/api/send-nudge")({
                 ? "LINE token พร้อมแล้ว แต่ยังไม่ส่งจริง เพราะยังไม่ได้เปิด LINE_PUSH_ENABLED=true หรือ recipientId ยังไม่ใช่ LINE user/group/room id"
                 : "ยังไม่มี LINE_CHANNEL_ACCESS_TOKEN จึงจำลองการส่งข้อความ",
               recipientId,
-              resolvedRecipientId: testRecipientId ? "LINE_TEST_RECIPIENT_ID" : recipientId,
+              resolvedRecipientId: testRecipientId ? "LINE_TEST_RECIPIENT_ID" : resolved.id,
               persona,
               messageType,
               pushEnabled,
               tokenConfigured: Boolean(token),
+              recipientSource: testRecipientId ? "test_recipient" : resolved.source,
             });
           }
 
@@ -239,7 +259,8 @@ export const Route = createFileRoute("/api/send-nudge")({
             status: "sent",
             message: "ส่ง LINE nudge สำเร็จ",
             recipientId,
-            resolvedRecipientId: testRecipientId ? "LINE_TEST_RECIPIENT_ID" : recipientId,
+            resolvedRecipientId: testRecipientId ? "LINE_TEST_RECIPIENT_ID" : resolved.id,
+            recipientSource: testRecipientId ? "test_recipient" : resolved.source,
             persona,
             messageType,
           });
