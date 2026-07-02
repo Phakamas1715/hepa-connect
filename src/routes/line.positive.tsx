@@ -1,6 +1,14 @@
 import { createFileRoute, useSearch } from "@tanstack/react-router";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { Building2, CheckCircle2, Loader2, ShieldCheck, Smartphone } from "lucide-react";
+import {
+  Building2,
+  Check,
+  CheckCircle2,
+  Loader2,
+  Search,
+  ShieldCheck,
+  Smartphone,
+} from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
@@ -22,6 +30,8 @@ type PositiveSummary = {
   facilities: PositiveFacility[];
   resultOptions: string[];
 };
+
+const DEFAULT_POSITIVE_RESULT = "ไม่แน่ใจ / รอผลยืนยัน";
 
 type PositiveRecord = {
   caseCode: string;
@@ -97,10 +107,12 @@ function LinePositivePage() {
     import.meta.env.VITE_LIFF_ID) as string | undefined;
   const [profile, setProfile] = useState<LineProfile | null>(null);
   const [record, setRecord] = useState<PositiveRecord | null>(null);
+  const [facilityQuery, setFacilityQuery] = useState("");
+  const [facilityOpen, setFacilityOpen] = useState(false);
   const [form, setForm] = useState({
     fullName: "",
     testFacilityCode: "",
-    positiveResult: "ไม่แน่ใจ/รอเจ้าหน้าที่ตรวจสอบ",
+    positiveResult: DEFAULT_POSITIVE_RESULT,
     consentAccepted: false,
   });
   const summary = useQuery({ queryKey: ["positive-intake-summary"], queryFn: fetchSummary });
@@ -127,6 +139,16 @@ function LinePositivePage() {
   const selectedFacility = summary.data?.facilities.find(
     (item) => item.code === form.testFacilityCode,
   );
+  const filteredFacilities = useMemo(() => {
+    const query = facilityQuery.trim().toLocaleLowerCase("th");
+    const facilities = summary.data?.facilities || [];
+    if (!query) return facilities;
+    return facilities.filter(
+      (facility) =>
+        facility.name.toLocaleLowerCase("th").includes(query) ||
+        facility.code.toLocaleLowerCase("th").includes(query),
+    );
+  }, [facilityQuery, summary.data?.facilities]);
   const canSubmit = Boolean(
     form.fullName.trim() && form.testFacilityCode && form.consentAccepted && !summary.isLoading,
   );
@@ -210,9 +232,10 @@ function LinePositivePage() {
                     setForm({
                       fullName: "",
                       testFacilityCode: "",
-                      positiveResult: "ไม่แน่ใจ/รอเจ้าหน้าที่ตรวจสอบ",
+                      positiveResult: DEFAULT_POSITIVE_RESULT,
                       consentAccepted: false,
                     });
+                    setFacilityQuery("");
                   }}
                 >
                   ส่งข้อมูลรายใหม่
@@ -231,29 +254,130 @@ function LinePositivePage() {
                     onChange={(event) => setForm({ ...form, fullName: event.target.value })}
                     placeholder="ชื่อ-นามสกุล *"
                   />
-                  <select
-                    className="h-11 w-full rounded-md border bg-background px-3 text-sm"
-                    value={form.testFacilityCode}
-                    onChange={(event) => setForm({ ...form, testFacilityCode: event.target.value })}
-                  >
-                    <option value="">เลือกสถานบริการที่ตรวจ *</option>
-                    {summary.data?.facilities.map((facility) => (
-                      <option key={facility.code} value={facility.code}>
-                        {facility.name}
-                      </option>
-                    ))}
-                  </select>
-                  <select
-                    className="h-11 w-full rounded-md border bg-background px-3 text-sm"
-                    value={form.positiveResult}
-                    onChange={(event) => setForm({ ...form, positiveResult: event.target.value })}
-                  >
-                    {summary.data?.resultOptions.map((result) => (
-                      <option key={result} value={result}>
-                        {result}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="space-y-1.5">
+                    <label
+                      htmlFor="positive-facility"
+                      className="text-xs font-semibold text-slate-700"
+                    >
+                      สถานบริการที่ตรวจ <span className="text-rose-600">*</span>
+                    </label>
+                    <div className="relative">
+                      <Search className="pointer-events-none absolute left-3 top-3.5 h-4 w-4 text-slate-400" />
+                      <Input
+                        id="positive-facility"
+                        role="combobox"
+                        aria-autocomplete="list"
+                        aria-expanded={facilityOpen}
+                        aria-controls="positive-facility-options"
+                        autoComplete="off"
+                        value={facilityQuery}
+                        onFocus={() => setFacilityOpen(true)}
+                        onBlur={() => window.setTimeout(() => setFacilityOpen(false), 150)}
+                        onChange={(event) => {
+                          const value = event.target.value;
+                          setFacilityQuery(value);
+                          setFacilityOpen(true);
+                          if (value !== selectedFacility?.name) {
+                            setForm((current) => ({ ...current, testFacilityCode: "" }));
+                          }
+                        }}
+                        placeholder="พิมพ์ชื่อ รพ.สต. เพื่อค้นหา"
+                        className="h-11 pl-9"
+                      />
+                      {facilityOpen && (
+                        <div
+                          id="positive-facility-options"
+                          role="listbox"
+                          className="absolute z-20 mt-1 max-h-56 w-full overflow-y-auto rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl"
+                        >
+                          {summary.isLoading ? (
+                            <div className="flex items-center justify-center gap-2 px-3 py-4 text-xs text-slate-500">
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                              กำลังโหลดสถานบริการ
+                            </div>
+                          ) : filteredFacilities.length ? (
+                            filteredFacilities.map((facility) => (
+                              <button
+                                key={facility.code}
+                                type="button"
+                                role="option"
+                                aria-selected={facility.code === form.testFacilityCode}
+                                className="flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-left text-sm hover:bg-emerald-50 focus:bg-emerald-50 focus:outline-none"
+                                onMouseDown={(event) => event.preventDefault()}
+                                onClick={() => {
+                                  setForm((current) => ({
+                                    ...current,
+                                    testFacilityCode: facility.code,
+                                  }));
+                                  setFacilityQuery(facility.name);
+                                  setFacilityOpen(false);
+                                }}
+                              >
+                                <span>
+                                  <span className="block font-semibold text-slate-800">
+                                    {facility.name}
+                                  </span>
+                                  <span className="text-[11px] text-slate-500">
+                                    รหัส {facility.code}
+                                  </span>
+                                </span>
+                                {facility.code === form.testFacilityCode && (
+                                  <Check className="h-4 w-4 shrink-0 text-emerald-600" />
+                                )}
+                              </button>
+                            ))
+                          ) : (
+                            <div className="px-3 py-4 text-center text-xs text-slate-500">
+                              ไม่พบสถานบริการ กรุณาตรวจสอบคำค้นหา
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    {selectedFacility && (
+                      <p className="flex items-center gap-1.5 text-[11px] font-medium text-emerald-700">
+                        <CheckCircle2 className="h-3.5 w-3.5" />
+                        เลือก {selectedFacility.name} แล้ว
+                      </p>
+                    )}
+                  </div>
+
+                  <fieldset className="space-y-2">
+                    <legend className="text-xs font-semibold text-slate-700">
+                      ผลตรวจที่ได้รับแจ้ง
+                    </legend>
+                    <div className="grid gap-2">
+                      {(summary.data?.resultOptions || [DEFAULT_POSITIVE_RESULT]).map((result) => {
+                        const selected = form.positiveResult === result;
+                        return (
+                          <button
+                            key={result}
+                            type="button"
+                            aria-pressed={selected}
+                            onClick={() =>
+                              setForm((current) => ({ ...current, positiveResult: result }))
+                            }
+                            className={`flex min-h-11 items-center gap-3 rounded-xl border px-3 py-2.5 text-left text-sm font-semibold transition ${
+                              selected
+                                ? "border-emerald-500 bg-emerald-50 text-emerald-950 ring-2 ring-emerald-100"
+                                : "border-slate-200 bg-white text-slate-700 hover:border-emerald-300 hover:bg-emerald-50/60"
+                            }`}
+                          >
+                            <span
+                              className={`grid h-5 w-5 shrink-0 place-items-center rounded-full border ${
+                                selected
+                                  ? "border-emerald-600 bg-emerald-600 text-white"
+                                  : "border-slate-300 bg-white"
+                              }`}
+                            >
+                              {selected && <Check className="h-3.5 w-3.5" />}
+                            </span>
+                            {result}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </fieldset>
                   <div className="rounded-lg border border-sky-200 bg-sky-50 p-3 text-xs leading-5 text-sky-900">
                     ระบบใช้ข้อมูลนี้เพื่อให้เจ้าหน้าที่ตรวจสอบผลบวก ประสานสถานบริการที่ตรวจ
                     และจัดคิวติดตามต่อ ไม่ใช่การวินิจฉัยใหม่
