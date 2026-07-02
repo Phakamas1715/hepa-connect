@@ -59,6 +59,8 @@ type SheetUnitSummary = {
   sheetName: string;
   subdistrict?: string;
   count: number;
+  sourceRowCount?: number;
+  duplicateRowsSkipped?: number;
   status: "success" | "failed";
   error?: string;
 };
@@ -457,6 +459,11 @@ function PatientsPage() {
             )}
             <Badge variant="outline">แก้ไขในระบบ {String(patientMeta?.editedCount ?? 0)}</Badge>
             <Badge variant="outline">ลบ/ซ่อน {String(patientMeta?.deletedCount ?? 0)}</Badge>
+            {Number(patientMeta?.googleSheetDuplicateRowsSkipped || 0) > 0 && (
+              <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-900">
+                ข้ามข้อมูลซ้ำ {String(patientMeta?.googleSheetDuplicateRowsSkipped)} แถว
+              </Badge>
+            )}
             <Button
               size="sm"
               variant="outline"
@@ -513,6 +520,11 @@ function PatientsPage() {
                   {unit.subdistrict ? ` · ต.${unit.subdistrict}` : ""}
                 </div>
                 {unit.error && <div className="mt-1 text-[10px]">{unit.error}</div>}
+                {Boolean(unit.duplicateRowsSkipped) && (
+                  <div className="mt-1 text-[10px] text-amber-700">
+                    ข้ามข้อมูลซ้ำ {unit.duplicateRowsSkipped} แถว
+                  </div>
+                )}
               </button>
             ))}
           </div>

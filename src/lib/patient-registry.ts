@@ -9,6 +9,7 @@ type PatientRegistryStore = {
   deletedHns: string[];
   googleSheetPatients: Patient[];
   googleSheetUnits: GoogleSheetUnitSync[];
+  googleSheetDuplicateRowsSkipped?: number;
   lastGoogleSyncAt?: string;
   lastGoogleSyncError?: string;
 };
@@ -18,6 +19,8 @@ export type GoogleSheetUnitSync = {
   sheetName: string;
   subdistrict?: string;
   count: number;
+  sourceRowCount?: number;
+  duplicateRowsSkipped?: number;
   status: "success" | "failed";
   error?: string;
 };
@@ -113,6 +116,7 @@ export function listPatients() {
       googleSheetUnitsWithPatients: store.googleSheetUnits.filter(
         (item) => item.status === "success" && item.count > 0,
       ).length,
+      googleSheetDuplicateRowsSkipped: store.googleSheetDuplicateRowsSkipped || 0,
       editedCount: store.upserts.length,
       deletedCount: store.deletedHns.length,
       lastGoogleSyncAt: store.lastGoogleSyncAt,
@@ -406,25 +410,42 @@ async function syncPatientsFromRosterWorkbook(store: PatientRegistryStore) {
   const results = await Promise.allSettled(
     PATIENT_ROSTER_SHEETS.map((roster) => fetchRosterSheetPatients(workbookId, roster)),
   );
-  const patients = results.flatMap((result) => (result.status === "fulfilled" ? result.value : []));
+  const sourcePatients = results.flatMap((result) =>
+    result.status === "fulfilled" ? result.value : [],
+  );
+  const seenWithinUnit = new Set<string>();
+  const patients = sourcePatients.filter((patient) => {
+    const identity = patient.cid || patient.hn;
+    if (!identity) return true;
+    const key = `${patient.serviceUnitCode || "UNKNOWN"}|${identity}`;
+    if (seenWithinUnit.has(key)) return false;
+    seenWithinUnit.add(key);
+    return true;
+  });
   const units: GoogleSheetUnitSync[] = results.map((result, index) => {
     const roster = PATIENT_ROSTER_SHEETS[index];
-    return result.status === "fulfilled"
-      ? {
-          code: roster.code,
-          sheetName: roster.sheetName,
-          subdistrict: roster.subdistrict,
-          count: result.value.length,
-          status: "success",
-        }
-      : {
-          code: roster.code,
-          sheetName: roster.sheetName,
-          subdistrict: roster.subdistrict,
-          count: 0,
-          status: "failed",
-          error: result.reason instanceof Error ? result.reason.message : String(result.reason),
-        };
+    if (result.status === "fulfilled") {
+      const count = patients.filter((patient) => patient.serviceUnitCode === roster.code).length;
+      return {
+        code: roster.code,
+        sheetName: roster.sheetName,
+        subdistrict: roster.subdistrict,
+        count,
+        sourceRowCount: result.value.length,
+        duplicateRowsSkipped: result.value.length - count,
+        status: "success",
+      };
+    }
+    return {
+      code: roster.code,
+      sheetName: roster.sheetName,
+      subdistrict: roster.subdistrict,
+      count: 0,
+      sourceRowCount: 0,
+      duplicateRowsSkipped: 0,
+      status: "failed",
+      error: result.reason instanceof Error ? result.reason.message : String(result.reason),
+    };
   });
   const failures = results
     .map((result, index) =>
@@ -443,6 +464,7 @@ async function syncPatientsFromRosterWorkbook(store: PatientRegistryStore) {
 
   store.googleSheetPatients = patients;
   store.googleSheetUnits = units;
+  store.googleSheetDuplicateRowsSkipped = sourcePatients.length - patients.length;
   store.lastGoogleSyncAt = nowIso();
   store.lastGoogleSyncError = failures.length
     ? `บางชีตดึงไม่ได้: ${failures.join("; ")}`
@@ -455,6 +477,8 @@ async function syncPatientsFromRosterWorkbook(store: PatientRegistryStore) {
     workbookId,
     sheetCount: PATIENT_ROSTER_SHEETS.length - failures.length,
     failedSheetCount: failures.length,
+    sourceRowCount: sourcePatients.length,
+    duplicateRowsSkipped: sourcePatients.length - patients.length,
     units,
   };
 }
@@ -484,6 +508,7 @@ export async function syncPatientsFromGoogleSheet() {
 
   store.googleSheetPatients = patients;
   store.googleSheetUnits = [];
+  store.googleSheetDuplicateRowsSkipped = 0;
   store.lastGoogleSyncAt = nowIso();
   store.lastGoogleSyncError = undefined;
   writePatientRegistryStore(store);
