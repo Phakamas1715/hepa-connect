@@ -318,6 +318,7 @@ function rosterHeaderIndex(rows: string[][]) {
   return rows.findIndex((row) => {
     const cells = row.map((cell) => cell.trim());
     return (
+      cells.length >= 5 &&
       cells.includes("เลขบัตรประชาชน") &&
       cells.includes("ชื่อ") &&
       (cells.includes("สกุล") || cells.includes("นามสกุล") || cells.includes("ชื่อ-สกุล"))
