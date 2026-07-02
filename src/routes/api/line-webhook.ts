@@ -92,6 +92,17 @@ function triggerDailyHepbc(baseUrl: string) {
   });
 }
 
+function persistWebhookAudit(input: { action: string; detail: string; hn?: string }) {
+  const latestStore = readAgentStore();
+  audit(latestStore, {
+    actor: "system",
+    action: input.action,
+    hn: input.hn,
+    detail: input.detail,
+  });
+  writeAgentStore(latestStore);
+}
+
 function commandReply(text: string | undefined, baseUrl: string): LineReplyMessage[] {
   const command = normalizedCommand(text);
   const staffLiffId = serverEnv("VITE_STAFF_LIFF_ID");
@@ -238,13 +249,11 @@ export const Route = createFileRoute("/api/line-webhook")({
           destination?: string;
         };
         const events = Array.isArray(payload.events) ? payload.events : [];
-        const store = readAgentStore();
         const baseUrl = publicBaseUrl(request);
         let replies = 0;
 
         for (const event of events) {
-          audit(store, {
-            actor: "system",
+          persistWebhookAudit({
             action: "line_webhook_received",
             detail: eventSummary(event),
           });
@@ -283,8 +292,7 @@ export const Route = createFileRoute("/api/line-webhook")({
             }
             if (isDailyHepbcCommand(event.message.text)) {
               triggerDailyHepbc(baseUrl);
-              audit(store, {
-                actor: "system",
+              persistWebhookAudit({
                 action: "line_daily_hepbc_triggered",
                 detail: eventSummary(event),
               });
@@ -292,8 +300,7 @@ export const Route = createFileRoute("/api/line-webhook")({
             const reply = await replyLine(event.replyToken, messages);
             if (!reply.skipped) {
               replies += 1;
-              audit(store, {
-                actor: "system",
+              persistWebhookAudit({
                 action: reply.ok ? "line_command_replied" : "line_command_reply_failed",
                 detail: `${eventSummary(event)} replyStatus=${reply.status || "skipped"}`,
               });
@@ -301,7 +308,6 @@ export const Route = createFileRoute("/api/line-webhook")({
           }
         }
 
-        writeAgentStore(store);
         return Response.json({
           ok: true,
           received: events.length,
