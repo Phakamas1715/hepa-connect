@@ -335,8 +335,8 @@ function Dashboard() {
                 </Badge>
               </div>
               <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                หน้าแรก, ทะเบียนผู้ป่วย และคิวติดตามใช้ `/api/patients` เป็นแหล่งคำนวณ KPI/Care Gap
-                แล้ว
+                หน้าแรกและทะเบียนผู้ป่วยใช้ `/api/patients` เป็นแหล่งคำนวณ KPI ส่วน Care Gap
+                อ่านทะเบียน live ชุดเดียวกันผ่าน `/api/care-gap-queue`
                 {patientsQuery.data?.meta?.lastGoogleSyncAt
                   ? ` · Sync Google Sheet ล่าสุด ${formatCheckedAt(patientsQuery.data.meta.lastGoogleSyncAt)}`
                   : ""}
@@ -401,9 +401,9 @@ function Dashboard() {
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <KpiCard
-          title="เป้าหมาย CUP HBV"
+          title="เป้าหมาย CUP HBV (HDC)"
           value={hbv.targetTotal.toLocaleString()}
-          sub="เป้าหมายรวม รพ. และ รพ.สต. อำเภอน้ำพอง"
+          sub="ข้อมูลอ้างอิง HDC ภายนอก ไม่ใช่ยอดทะเบียนผู้ป่วย live"
           icon={Users}
         />
         <KpiCard
@@ -411,7 +411,6 @@ function Dashboard() {
           value={hbv.dashboardNhsoScreened.toLocaleString()}
           sub={`ผลงานเทียบเป้าหมาย ${hbv.dashboardPct}%`}
           pct={hbv.dashboardPct}
-          score={liveKpi.hbv.score}
           icon={Target}
           tone="warning"
         />

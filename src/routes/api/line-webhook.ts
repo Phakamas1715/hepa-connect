@@ -1,6 +1,11 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { createFileRoute } from "@tanstack/react-router";
-import { audit, readAgentStore, writeAgentStore } from "@/lib/hepa-agent-store";
+import {
+  audit,
+  readAgentStore,
+  respondToAppointmentFromLine,
+  writeAgentStore,
+} from "@/lib/hepa-agent-store";
 import { serverEnv } from "@/lib/server-env";
 
 type LineWebhookEvent = {
@@ -65,6 +70,16 @@ function normalizedCommand(text?: string) {
 
 function isDailyHepbcCommand(text?: string) {
   return ["report", "daily report", "hepbc", "รายงาน"].includes(normalizedCommand(text));
+}
+
+function appointmentResponseCommand(text?: string) {
+  const normalized = (text || "").trim().toUpperCase();
+  const match = normalized.match(/^(ยืนยันนัด|ขอเลื่อนนัด)\s+(APT-NP-\d{6})$/);
+  if (!match) return null;
+  return {
+    response: match[1] === "ยืนยันนัด" ? ("confirm" as const) : ("reschedule" as const),
+    appointmentCode: match[2],
+  };
 }
 
 function triggerDailyHepbc(baseUrl: string) {
@@ -235,7 +250,37 @@ export const Route = createFileRoute("/api/line-webhook")({
           });
 
           if (event.type === "message" && event.message?.type === "text") {
-            const messages = commandReply(event.message.text, baseUrl);
+            const appointmentResponse = appointmentResponseCommand(event.message.text);
+            let messages: LineReplyMessage[];
+            if (appointmentResponse && event.source?.userId) {
+              try {
+                const result = respondToAppointmentFromLine({
+                  ...appointmentResponse,
+                  lineUserId: event.source.userId,
+                });
+                messages = [
+                  {
+                    type: "text",
+                    text:
+                      appointmentResponse.response === "confirm"
+                        ? `ยืนยันนัด ${result.appointment.appointmentCode} เรียบร้อยแล้ว ขอบคุณค่ะ`
+                        : `รับคำขอเลื่อนนัด ${result.appointment.appointmentCode} แล้ว เจ้าหน้าที่จะติดต่อกลับค่ะ`,
+                  },
+                ];
+              } catch (error) {
+                messages = [
+                  {
+                    type: "text",
+                    text:
+                      error instanceof Error
+                        ? error.message
+                        : "ไม่สามารถอัปเดตสถานะนัดหมายได้ กรุณาติดต่อเจ้าหน้าที่",
+                  },
+                ];
+              }
+            } else {
+              messages = commandReply(event.message.text, baseUrl);
+            }
             if (isDailyHepbcCommand(event.message.text)) {
               triggerDailyHepbc(baseUrl);
               audit(store, {

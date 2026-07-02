@@ -58,6 +58,9 @@ export const Route = createFileRoute("/api/ops-monitoring")({
             invites: store.invites.length,
             verifiedIdentities: store.identities.filter((i) => i.status === "verified").length,
             pendingTasks: store.tasks.filter((t) => t.status === "pending").length,
+            activeAppointments: store.appointments.filter(
+              (item) => item.status !== "completed" && item.status !== "cancelled",
+            ).length,
             totalAudit: store.audit.length,
           },
           recentAudit,

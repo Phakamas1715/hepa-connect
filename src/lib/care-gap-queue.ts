@@ -5,6 +5,7 @@ import {
   type Patient,
   type Persona,
 } from "@/lib/hepa-data";
+import { listPatients } from "@/lib/patient-registry";
 import { serverEnv } from "@/lib/server-env";
 
 export { getHcvTreatmentGapPatients, isHcvPositive, needsSofvelTreatment } from "@/lib/hepa-data";
@@ -19,7 +20,8 @@ function sofvelNudgeMessage(patient: Patient) {
 }
 
 export function openHcvTreatmentGapQueue() {
-  const patients = getHcvTreatmentGapPatients();
+  const registry = listPatients();
+  const patients = getHcvTreatmentGapPatients(registry.patients);
   const results: Array<{
     hn: string;
     name: string;
@@ -50,6 +52,7 @@ export function openHcvTreatmentGapQueue() {
     total: patients.length,
     queued,
     blocked,
+    source: registry.meta.source,
     patients: results,
     openedAt: new Date().toISOString(),
   };
@@ -57,7 +60,8 @@ export function openHcvTreatmentGapQueue() {
 
 export function getCareGapModuleStatus() {
   const store = readAgentStore();
-  const gapPatients = getHcvTreatmentGapPatients();
+  const registry = listPatients();
+  const gapPatients = getHcvTreatmentGapPatients(registry.patients);
   const lineToken = !!serverEnv("LINE_CHANNEL_ACCESS_TOKEN");
   const linePush = serverEnv("LINE_PUSH_ENABLED") === "true";
 
@@ -71,7 +75,11 @@ export function getCareGapModuleStatus() {
     {
       id: "agent_queue",
       name: "คิว Agent / LINE",
-      state: lineToken ? (linePush ? ("ready" as const) : ("partial" as const)) : ("blocked" as const),
+      state: lineToken
+        ? linePush
+          ? ("ready" as const)
+          : ("partial" as const)
+        : ("blocked" as const),
       detail: lineToken
         ? linePush
           ? "LINE token พร้อมและเปิดส่งแล้ว"
@@ -101,6 +109,8 @@ export function getCareGapModuleStatus() {
 
   return {
     checkedAt: new Date().toISOString(),
+    registrySource: registry.meta.source,
+    registryCount: registry.patients.length,
     hcvTreatmentGap: gapPatients.length,
     patients: gapPatients.map((patient) => ({
       hn: patient.hn,

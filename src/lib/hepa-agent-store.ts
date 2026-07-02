@@ -28,12 +28,47 @@ export type LineIdentity = {
 export type AgentTask = {
   id: string;
   hn: string;
-  type: "create_invite" | "line_nudge" | "staff_escalation";
-  status: "pending" | "agent_prepared" | "sent" | "verified" | "closed" | "blocked";
+  type: "create_invite" | "line_nudge" | "staff_escalation" | "appointment";
+  status:
+    | "pending"
+    | "agent_prepared"
+    | "scheduled"
+    | "sent"
+    | "verified"
+    | "contacted"
+    | "confirmed"
+    | "completed"
+    | "cancelled"
+    | "closed"
+    | "blocked";
   persona?: string;
   message?: string;
   inviteId?: string;
+  appointmentId?: string;
   lineUserId?: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type AgentAppointmentStatus = "scheduled" | "confirmed" | "completed" | "cancelled";
+
+export type AppointmentNotificationStatus = "pending" | "not_linked" | "sent" | "failed";
+
+export type AgentAppointment = {
+  id: string;
+  appointmentCode: string;
+  hn: string;
+  patientName: string;
+  facilityCode: string;
+  facilityName: string;
+  appointmentDate: string;
+  appointmentTime?: string;
+  note?: string;
+  status: AgentAppointmentStatus;
+  notificationStatus: AppointmentNotificationStatus;
+  notificationSentAt?: string;
+  lineUserId?: string;
+  taskId: string;
   createdAt: string;
   updatedAt: string;
 };
@@ -51,6 +86,7 @@ export type AgentStore = {
   invites: AgentInvite[];
   identities: LineIdentity[];
   tasks: AgentTask[];
+  appointments: AgentAppointment[];
   audit: AuditEvent[];
 };
 
@@ -61,7 +97,7 @@ function storePath() {
 }
 
 function emptyStore(): AgentStore {
-  return { invites: [], identities: [], tasks: [], audit: [] };
+  return { invites: [], identities: [], tasks: [], appointments: [], audit: [] };
 }
 
 function nowIso() {
@@ -265,4 +301,305 @@ export function queueNudge(input: { hn: string; persona?: string; message?: stri
   });
   writeAgentStore(store);
   return { task, identity };
+}
+
+function appointmentCode() {
+  return `APT-NP-${Math.floor(100000 + Math.random() * 900000)}`;
+}
+
+function cleanText(value: unknown) {
+  return String(value ?? "")
+    .trim()
+    .replace(/\s+/g, " ");
+}
+
+function assertAppointmentDate(value: string) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value) || Number.isNaN(new Date(`${value}T00:00:00`).getTime())) {
+    throw new Error("กรุณาระบุวันนัดให้ถูกต้อง");
+  }
+  const today = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Bangkok",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+  if (value < today) throw new Error("วันนัดต้องเป็นวันนี้หรือวันถัดไป");
+}
+
+export function createAppointment(input: {
+  hn: string;
+  patientName: string;
+  facilityCode: string;
+  facilityName: string;
+  appointmentDate: string;
+  appointmentTime?: string;
+  note?: string;
+}) {
+  const store = readAgentStore();
+  const hn = cleanText(input.hn);
+  const patientName = cleanText(input.patientName);
+  const facilityCode = cleanText(input.facilityCode);
+  const facilityName = cleanText(input.facilityName);
+  const appointmentDate = cleanText(input.appointmentDate);
+  const appointmentTime = cleanText(input.appointmentTime);
+  const note = cleanText(input.note);
+
+  if (!hn) throw new Error("กรุณาระบุ HN หรือรหัสเคส");
+  if (!patientName) throw new Error("กรุณาระบุชื่อผู้รับบริการ");
+  if (!facilityCode || !facilityName) throw new Error("กรุณาเลือกสถานที่นัด");
+  assertAppointmentDate(appointmentDate);
+  if (appointmentTime && !/^\d{2}:\d{2}$/.test(appointmentTime)) {
+    throw new Error("กรุณาระบุเวลานัดให้ถูกต้อง");
+  }
+
+  const duplicate = store.appointments.find(
+    (item) =>
+      item.hn === hn &&
+      item.appointmentDate === appointmentDate &&
+      item.facilityCode === facilityCode &&
+      item.status !== "cancelled",
+  );
+  if (duplicate) throw new Error(`มีนัดรายการนี้แล้ว (${duplicate.appointmentCode})`);
+
+  const createdAt = nowIso();
+  const identity = store.identities.find(
+    (item) => item.hn === hn && item.role === "patient" && item.status === "verified",
+  );
+  const appointmentId = id("apt");
+  const task: AgentTask = {
+    id: id("task"),
+    hn,
+    type: "appointment",
+    status: "scheduled",
+    appointmentId,
+    lineUserId: identity?.lineUserId,
+    message: `นัด ${appointmentDate}${appointmentTime ? ` ${appointmentTime} น.` : ""} ที่ ${facilityName}`,
+    createdAt,
+    updatedAt: createdAt,
+  };
+  const appointment: AgentAppointment = {
+    id: appointmentId,
+    appointmentCode: appointmentCode(),
+    hn,
+    patientName,
+    facilityCode,
+    facilityName,
+    appointmentDate,
+    appointmentTime: appointmentTime || undefined,
+    note: note || undefined,
+    status: "scheduled",
+    notificationStatus: identity ? "pending" : "not_linked",
+    lineUserId: identity?.lineUserId,
+    taskId: task.id,
+    createdAt,
+    updatedAt: createdAt,
+  };
+
+  store.appointments.unshift(appointment);
+  store.tasks.unshift(task);
+  audit(store, {
+    actor: "staff",
+    action: "appointment_created",
+    hn,
+    detail: `${appointment.appointmentCode} · ${task.message}`,
+  });
+  writeAgentStore(store);
+  return { appointment, task, identity };
+}
+
+export function updateAppointmentStatus(idOrCode: string, status: AgentAppointmentStatus) {
+  const store = readAgentStore();
+  const appointment = store.appointments.find(
+    (item) => item.id === idOrCode || item.appointmentCode === idOrCode,
+  );
+  if (!appointment) throw new Error("ไม่พบนัดหมาย");
+
+  appointment.status = status;
+  appointment.updatedAt = nowIso();
+  const task = store.tasks.find((item) => item.id === appointment.taskId);
+  if (task) {
+    task.status =
+      status === "completed" ? "completed" : status === "cancelled" ? "cancelled" : status;
+    task.updatedAt = appointment.updatedAt;
+  }
+  audit(store, {
+    actor: "staff",
+    action: "appointment_status_updated",
+    hn: appointment.hn,
+    detail: `${appointment.appointmentCode} · ${status}`,
+  });
+  writeAgentStore(store);
+  return { appointment, task };
+}
+
+export function updateAppointmentNotification(
+  idOrCode: string,
+  input: {
+    status: AppointmentNotificationStatus;
+    lineUserId?: string;
+    detail?: string;
+  },
+) {
+  const store = readAgentStore();
+  const appointment = store.appointments.find(
+    (item) => item.id === idOrCode || item.appointmentCode === idOrCode,
+  );
+  if (!appointment) throw new Error("ไม่พบนัดหมาย");
+
+  appointment.notificationStatus = input.status;
+  appointment.lineUserId = input.lineUserId || appointment.lineUserId;
+  appointment.notificationSentAt =
+    input.status === "sent" ? nowIso() : appointment.notificationSentAt;
+  appointment.updatedAt = nowIso();
+  const task = store.tasks.find((item) => item.id === appointment.taskId);
+  if (task) {
+    task.status =
+      input.status === "sent" ? "sent" : input.status === "failed" ? "blocked" : task.status;
+    task.lineUserId = appointment.lineUserId;
+    task.updatedAt = appointment.updatedAt;
+  }
+  audit(store, {
+    actor: "agent",
+    action: "appointment_notification_updated",
+    hn: appointment.hn,
+    detail: `${appointment.appointmentCode} · ${input.status}${input.detail ? ` · ${input.detail}` : ""}`,
+  });
+  writeAgentStore(store);
+  return { appointment, task };
+}
+
+export function getAppointment(idOrCode: string) {
+  const store = readAgentStore();
+  const appointment = store.appointments.find(
+    (item) => item.id === idOrCode || item.appointmentCode === idOrCode,
+  );
+  if (!appointment) throw new Error("ไม่พบนัดหมาย");
+  return appointment;
+}
+
+export function respondToAppointmentFromLine(input: {
+  appointmentCode: string;
+  lineUserId: string;
+  response: "confirm" | "reschedule";
+}) {
+  const store = readAgentStore();
+  const appointment = store.appointments.find(
+    (item) => item.appointmentCode === input.appointmentCode,
+  );
+  if (!appointment) throw new Error("ไม่พบนัดหมาย");
+  if (!appointment.lineUserId || appointment.lineUserId !== input.lineUserId) {
+    throw new Error("บัญชี LINE ไม่ตรงกับผู้รับนัด");
+  }
+
+  appointment.status = input.response === "confirm" ? "confirmed" : "scheduled";
+  appointment.updatedAt = nowIso();
+  const task = store.tasks.find((item) => item.id === appointment.taskId);
+  if (task) {
+    task.status = input.response === "confirm" ? "confirmed" : "contacted";
+    task.message =
+      input.response === "confirm"
+        ? `ผู้รับบริการยืนยันนัด ${appointment.appointmentCode}`
+        : `ผู้รับบริการขอเลื่อนนัด ${appointment.appointmentCode}`;
+    task.updatedAt = appointment.updatedAt;
+  }
+  audit(store, {
+    actor: "system",
+    action:
+      input.response === "confirm"
+        ? "appointment_confirmed_by_patient"
+        : "appointment_reschedule_requested",
+    hn: appointment.hn,
+    detail: appointment.appointmentCode,
+  });
+  writeAgentStore(store);
+  return { appointment, task };
+}
+
+export function reconcileAgentStoreWithSources(input: {
+  livePatientHns: string[];
+  positiveRecords: Array<{
+    caseCode: string;
+    agentTaskId?: string;
+    status: "new" | "agent_queued" | "contacted" | "closed";
+  }>;
+}) {
+  const store = readAgentStore();
+  const liveHns = new Set(input.livePatientHns);
+  const positiveCodes = new Set(input.positiveRecords.map((item) => item.caseCode));
+  const positiveByTask = new Map(
+    input.positiveRecords
+      .filter((item) => item.agentTaskId)
+      .map((item) => [item.agentTaskId as string, item]),
+  );
+  let positiveTasksUpdated = 0;
+  let orphanTasksClosed = 0;
+  let invitesExpired = 0;
+  let identitiesRevoked = 0;
+
+  for (const task of store.tasks) {
+    const positive = positiveByTask.get(task.id);
+    if (positive) {
+      const nextStatus =
+        positive.status === "closed"
+          ? "closed"
+          : positive.status === "contacted"
+            ? "contacted"
+            : "pending";
+      if (task.status !== nextStatus) {
+        task.status = nextStatus;
+        task.updatedAt = nowIso();
+        positiveTasksUpdated += 1;
+      }
+      continue;
+    }
+
+    const patientTask = task.type === "line_nudge" || task.type === "create_invite";
+    const activeTask = !["closed", "cancelled", "completed"].includes(task.status);
+    if (patientTask && activeTask && !liveHns.has(task.hn) && !positiveCodes.has(task.hn)) {
+      task.status = "closed";
+      task.updatedAt = nowIso();
+      task.message = `${task.message || "งานเดิม"} · ปิดโดยการตรวจทะเบียน: ไม่พบในทะเบียน live`;
+      orphanTasksClosed += 1;
+    }
+  }
+
+  for (const invite of store.invites) {
+    if (invite.status === "active" && !liveHns.has(invite.hn) && !positiveCodes.has(invite.hn)) {
+      invite.status = "expired";
+      invitesExpired += 1;
+    }
+  }
+
+  for (const identity of store.identities) {
+    if (
+      identity.role === "patient" &&
+      identity.status === "verified" &&
+      identity.hn &&
+      !liveHns.has(identity.hn) &&
+      !positiveCodes.has(identity.hn)
+    ) {
+      identity.status = "revoked";
+      identitiesRevoked += 1;
+    }
+  }
+
+  const changed = positiveTasksUpdated + orphanTasksClosed + invitesExpired + identitiesRevoked > 0;
+  if (changed) {
+    audit(store, {
+      actor: "system",
+      action: "agent_store_reconciled",
+      detail:
+        `positiveTasks=${positiveTasksUpdated} orphanTasks=${orphanTasksClosed} ` +
+        `invites=${invitesExpired} identities=${identitiesRevoked}`,
+    });
+    writeAgentStore(store);
+  }
+
+  return {
+    changed,
+    positiveTasksUpdated,
+    orphanTasksClosed,
+    invitesExpired,
+    identitiesRevoked,
+  };
 }

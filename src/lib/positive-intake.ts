@@ -212,11 +212,16 @@ export function updatePositiveIntakeStatus(idOrCode: string, status: PositiveInt
   writeStore(store);
 
   const agentStore = readAgentStore();
+  const task = agentStore.tasks.find((item) => item.id === record.agentTaskId);
+  if (task) {
+    task.status = status === "closed" ? "closed" : status === "contacted" ? "contacted" : "pending";
+    task.updatedAt = record.updatedAt;
+  }
   audit(agentStore, {
     actor: "staff",
     action: "positive_intake_status_updated",
     hn: record.caseCode,
-    detail: `เปลี่ยนสถานะเป็น ${status}`,
+    detail: `เปลี่ยนสถานะเป็น ${status}${task ? ` · ซิงก์ task ${task.id}` : ""}`,
   });
   writeAgentStore(agentStore);
 

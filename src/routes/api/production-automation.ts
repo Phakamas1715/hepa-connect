@@ -10,7 +10,7 @@ import {
 } from "@/lib/automation-health";
 import { getAgentStorePath, readAgentStore } from "@/lib/hepa-agent-store";
 import { serverEnv } from "@/lib/server-env";
-import { PREPARED_PATIENTS } from "@/lib/hepa-data";
+import { listPatients } from "@/lib/patient-registry";
 
 type GateState = "ready" | "partial" | "blocked";
 
@@ -91,18 +91,22 @@ function mophGate(): Gate {
 
 function targetRegistryGate(): Gate {
   const confirmed = serverEnv("HEPA_TARGET_REGISTRY_CONFIRMED") === "true";
+  const registry = listPatients();
+  const count = registry.patients.length;
+  const source =
+    registry.meta.source === "google-sheet" ? "Google Sheet รายชื่อสถานบริการ" : "รายชื่อสำรอง";
   if (confirmed) {
     return ready(
       "target_registry_confirmed",
       "Prepared target registry",
-      `ยืนยันรายชื่อกลางสำหรับ production แล้ว (${PREPARED_PATIENTS.length.toLocaleString()} records ใน runtime นี้)`,
+      `ยืนยันทะเบียน production แล้ว ${count.toLocaleString()} ราย จาก ${source}`,
     );
   }
 
   return partial(
     "target_registry_confirmed",
     "Prepared target registry",
-    `มีรายชื่อกลางในระบบ ${PREPARED_PATIENTS.length.toLocaleString()} records แต่ยังไม่ได้ยืนยันว่าเป็นรายชื่อจริงครบชุด`,
+    `มีทะเบียนในระบบ ${count.toLocaleString()} ราย จาก ${source} แต่ยังไม่ได้ยืนยันว่าเป็นรายชื่อจริงครบชุด`,
     true,
     "นำเข้ารายชื่อจริงทั้งหมดและตั้ง HEPA_TARGET_REGISTRY_CONFIRMED=true หลังตรวจ mapping รพ.สต./ตำบล/หมู่บ้าน",
   );
