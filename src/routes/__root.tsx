@@ -9,6 +9,7 @@ import {
   useRouterState,
 } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
+import { LayoutGrid } from "lucide-react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
@@ -16,7 +17,10 @@ import { AppSidebar } from "@/components/app-sidebar";
 import { OfficialFooter, OFFICIAL_META } from "@/components/official-layout";
 import { Toaster } from "@/components/ui/sonner";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { ModuleLauncher } from "@/components/module-launcher";
+import { getCurrentCategory, getCurrentNavigation } from "@/components/navigation-config";
 
 function NotFoundComponent() {
   return (
@@ -139,6 +143,8 @@ function RootComponent() {
 
 function AppLayout() {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
+  const currentNavigation = getCurrentNavigation(pathname);
+  const currentCategory = getCurrentCategory(pathname);
 
   if (pathname.startsWith("/line/")) {
     return (
@@ -156,18 +162,31 @@ function AppLayout() {
           <SidebarTrigger className="h-9 w-9 rounded-md border border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground" />
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-sm font-bold text-foreground">{OFFICIAL_META.system}</span>
-              <Badge variant="outline" className="hidden h-5 rounded-md text-[10px] sm:inline-flex">
-                {OFFICIAL_META.ministry}
-              </Badge>
+              <span className="truncate text-sm font-bold text-foreground">
+                {currentNavigation?.title || OFFICIAL_META.system}
+              </span>
+              {currentCategory && (
+                <Badge
+                  variant="outline"
+                  className="hidden h-5 rounded-md text-[10px] sm:inline-flex"
+                >
+                  {currentCategory.title}
+                </Badge>
+              )}
             </div>
             <p className="truncate text-[11px] text-muted-foreground">
-              {OFFICIAL_META.hospital} · {OFFICIAL_META.program} · {OFFICIAL_META.fiscalYear}
+              {currentNavigation?.desc ||
+                `${OFFICIAL_META.hospital} · ${OFFICIAL_META.program} · ${OFFICIAL_META.fiscalYear}`}
             </p>
           </div>
-          <Badge className="hidden rounded-md bg-primary/10 text-[10px] text-primary hover:bg-primary/10 md:inline-flex">
-            นวัตกรรมดิจิทัลสุขภาพ
-          </Badge>
+          <ModuleLauncher
+            trigger={
+              <Button variant="outline" size="sm" className="h-9 gap-2 bg-background">
+                <LayoutGrid className="h-4 w-4" />
+                <span className="hidden sm:inline">เมนูงาน</span>
+              </Button>
+            }
+          />
         </header>
         <main className="min-w-0 flex-1">
           <Outlet />

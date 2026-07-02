@@ -1,20 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import {
-  Activity,
-  Bot,
-  Cable,
-  ClipboardList,
-  CalendarCheck,
-  FlaskConical,
-  Database,
-  LayoutDashboard,
-  Moon,
-  Network,
-  Sun,
-  UserCheck,
-  Users,
-  X,
-} from "lucide-react";
+import { Activity, Database, LayoutGrid, Moon, Sun, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -32,64 +17,9 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { OFFICIAL_META } from "@/components/official-layout";
+import { ModuleLauncher } from "@/components/module-launcher";
+import { PRIMARY_NAVIGATION } from "@/components/navigation-config";
 import { TARGET_REGISTRY_SOURCE } from "@/lib/hepa-data";
-
-const items = [
-  {
-    title: "แดชบอร์ดผู้บริหาร",
-    url: "/",
-    icon: LayoutDashboard,
-    desc: "ตัวชี้วัดและผลงานรายพื้นที่",
-  },
-  {
-    title: "ทะเบียนผู้ป่วยค้างติดตาม",
-    url: "/patients",
-    icon: Users,
-    desc: "รายชื่อและสถานะการดูแล",
-  },
-  {
-    title: "คิวจองคัดกรอง",
-    url: "/screening-queue",
-    icon: CalendarCheck,
-    desc: "ประชาชนลงทะเบียนผ่าน LINE",
-  },
-  {
-    title: "ผู้พบเชื้อจาก LINE",
-    url: "/positive-intake",
-    icon: UserCheck,
-    desc: "ตรวจสอบและติดตามผู้แจ้งผล",
-  },
-  {
-    title: "นัดหมายและติดตาม",
-    url: "/agent",
-    icon: Bot,
-    desc: "บัตรนัดและข้อความผ่าน LINE",
-  },
-  {
-    title: "ตรวจสอบความพร้อมระบบ",
-    url: "/agent-bench",
-    icon: FlaskConical,
-    desc: "ทดสอบการเชื่อมต่อและข้อมูล",
-  },
-  {
-    title: "รายงานไข้หวัดใหญ่",
-    url: "/ili-report",
-    icon: ClipboardList,
-    desc: "แบบฟอร์ม D506 รายสัปดาห์",
-  },
-  {
-    title: "สถาปัตยกรรมระบบ",
-    url: "/architecture",
-    icon: Network,
-    desc: "เส้นทางข้อมูลและจุดตรวจสอบ",
-  },
-  {
-    title: "เชื่อมโยงรายงาน สธ.",
-    url: "/integration",
-    icon: Cable,
-    desc: "สถานะเชื่อมต่อและรายงาน",
-  },
-];
 
 export function AppSidebar() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
@@ -141,11 +71,11 @@ export function AppSidebar() {
       <SidebarContent className="px-2 py-3">
         <SidebarGroup className="p-0">
           <SidebarGroupLabel className="px-3 text-[10px] font-semibold uppercase tracking-wider text-sidebar-foreground/45">
-            เมนูหลัก
+            งานประจำ
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu className="gap-1.5">
-              {items.map((item) => {
+              {PRIMARY_NAVIGATION.map((item) => {
                 const active = pathname === item.url;
                 return (
                   <SidebarMenuItem key={item.url}>
@@ -181,6 +111,28 @@ export function AppSidebar() {
               })}
             </SidebarMenu>
           </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup className="mt-3 p-0">
+          <SidebarGroupLabel className="px-3 text-[10px] font-semibold uppercase tracking-wider text-sidebar-foreground/45 group-data-[collapsible=icon]:hidden">
+            เมนูเพิ่มเติม
+          </SidebarGroupLabel>
+          <div className="px-1">
+            <ModuleLauncher
+              onNavigate={closeMobileMenu}
+              trigger={
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-11 w-full justify-start gap-3 border-sidebar-border bg-sidebar-accent/30 px-3 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground group-data-[collapsible=icon]:mx-auto group-data-[collapsible=icon]:h-9 group-data-[collapsible=icon]:w-9 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0"
+                  aria-label="เปิดเมนูโมดูลทั้งหมด"
+                >
+                  <LayoutGrid className="h-4 w-4 shrink-0" />
+                  <span className="group-data-[collapsible=icon]:hidden">โมดูลทั้งหมด</span>
+                </Button>
+              }
+            />
+          </div>
         </SidebarGroup>
 
         <SidebarGroup className="mt-4 p-0 group-data-[collapsible=icon]:hidden">
