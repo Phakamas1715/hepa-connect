@@ -52,11 +52,17 @@ function scoreScenario(
     scenario.assertions.length === 0 ? 1 : passedAssertions / scenario.assertions.length;
 
   const format =
-    typeof payload === "object" && payload !== null && !Array.isArray(payload) ? 1 : assertionRatio > 0 ? 0.5 : 0;
+    typeof payload === "object" && payload !== null && !Array.isArray(payload)
+      ? 1
+      : assertionRatio > 0
+        ? 0.5
+        : 0;
 
   const factuality = assertionRatio;
   const consistency =
-    scenario.action.expectedStatus === undefined || httpStatus === scenario.action.expectedStatus ? 1 : 0;
+    scenario.action.expectedStatus === undefined || httpStatus === scenario.action.expectedStatus
+      ? 1
+      : 0;
   const realism = httpStatus < 500 ? 1 : 0;
   const quality =
     typeof getByPath(payload, "message") === "string" ||
@@ -85,7 +91,7 @@ function scoreScenario(
   };
 }
 
-function authHeadersForScenario(scenario: HepaBenchScenario) {
+function authHeadersForScenario(scenario: HepaBenchScenario): Record<string, string> {
   if (!scenario.action.path.includes("/api/hosxp-sync")) return {};
   const token =
     serverEnv("HEPA_HOSXP_SYNC_TOKEN") ||
