@@ -161,7 +161,7 @@ export function buildAppointmentFlexMessage(appointment: AgentAppointment): Line
             : []),
           {
             type: "text",
-            text: "กรุณามาก่อนเวลานัดประมาณ 15 นาที และนำบัตรประชาชนหรือเอกสารที่เจ้าหน้าที่แจ้งมาแสดง",
+            text: "กรุณามาก่อนเวลานัดประมาณ 30 นาที และนำบัตรประชาชนหรือเอกสารที่เจ้าหน้าที่แจ้งมาแสดง",
             color: "#506765",
             size: "xs",
             wrap: true,
