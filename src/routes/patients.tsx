@@ -6,6 +6,7 @@ import {
   BookOpenCheck,
   CheckCircle2,
   Edit3,
+  Files,
   Loader2,
   MapPin,
   Plus,
@@ -23,6 +24,13 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -44,6 +52,15 @@ import { fetchPatients } from "@/lib/supabase";
 
 type PatientsSearch = {
   filter?: "hcv_sofvel" | "gap" | "high" | "need_qr" | "hbv_hdv";
+};
+
+type SheetUnitSummary = {
+  code: string;
+  sheetName: string;
+  subdistrict?: string;
+  count: number;
+  status: "success" | "failed";
+  error?: string;
 };
 
 export const Route = createFileRoute("/patients")({
@@ -217,6 +234,8 @@ function PatientsPage() {
   const [filter, setFilter] = useState<
     "all" | "gap" | "high" | "need_qr" | "hbv_hdv" | "hcv_sofvel"
   >(searchFilter || "all");
+  const [unitFilter, setUnitFilter] = useState("all");
+  const [rosterSummaryOpen, setRosterSummaryOpen] = useState(false);
   const [latestLink, setLatestLink] = useState("");
   const [editing, setEditing] = useState<PatientForm | null>(null);
   const [deleteHn, setDeleteHn] = useState("");
@@ -233,6 +252,13 @@ function PatientsPage() {
 
   const patients = useMemo(() => patientResponse?.patients || [], [patientResponse?.patients]);
   const patientMeta = patientResponse?.meta;
+  const sheetUnits = useMemo(
+    () =>
+      Array.isArray(patientMeta?.googleSheetUnits)
+        ? (patientMeta.googleSheetUnits as SheetUnitSummary[])
+        : [],
+    [patientMeta],
+  );
 
   const createInvite = useMutation({
     mutationFn: (patient: Patient) =>
@@ -329,9 +355,10 @@ function PatientsPage() {
         (filter === "high" && (raaia.band === "critical" || raaia.band === "high")) ||
         (filter === "need_qr" && raaia.nextAction === "create_line_qr") ||
         (filter === "hbv_hdv" && hbvHdv.flagged);
-      return matchesText && matchesFilter;
+      const matchesUnit = unitFilter === "all" || patient.serviceUnitCode === unitFilter;
+      return matchesText && matchesFilter && matchesUnit;
     });
-  }, [filter, query, scored]);
+  }, [filter, query, scored, unitFilter]);
 
   const stats = useMemo(
     () => ({
@@ -422,11 +449,75 @@ function PatientsPage() {
           </div>
           <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
             <Badge variant="outline">Google {String(patientMeta?.googleSheetCount ?? 0)}</Badge>
+            {sheetUnits.length > 0 && (
+              <Badge variant="outline">
+                อ่านได้ {sheetUnits.filter((item) => item.status === "success").length}/
+                {sheetUnits.length} ชีต
+              </Badge>
+            )}
             <Badge variant="outline">แก้ไขในระบบ {String(patientMeta?.editedCount ?? 0)}</Badge>
             <Badge variant="outline">ลบ/ซ่อน {String(patientMeta?.deletedCount ?? 0)}</Badge>
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 gap-1.5"
+              onClick={() => setRosterSummaryOpen(true)}
+              disabled={!sheetUnits.length}
+            >
+              <Files className="h-3.5 w-3.5" />
+              แยกตาม รพ.สต.
+            </Button>
           </div>
         </CardContent>
       </Card>
+
+      <Dialog open={rosterSummaryOpen} onOpenChange={setRosterSummaryOpen}>
+        <DialogContent className="max-h-[85vh] max-w-3xl overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>รายชื่อแยกตามชีตของแต่ละ รพ.สต.</DialogTitle>
+            <DialogDescription>
+              เลือกสถานบริการเพื่อกรองตารางรายชื่อ ระบบคงรหัสหน่วยบริการจากแท็บต้นทาง
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {sheetUnits.map((unit) => (
+              <button
+                key={unit.code}
+                type="button"
+                disabled={unit.status === "failed"}
+                onClick={() => {
+                  setUnitFilter(unit.code);
+                  setRosterSummaryOpen(false);
+                  requestAnimationFrame(() =>
+                    document
+                      .getElementById("patient-roster-table")
+                      ?.scrollIntoView({ behavior: "smooth", block: "start" }),
+                  );
+                }}
+                className={`rounded-xl border p-3 text-left transition ${
+                  unit.status === "failed"
+                    ? "cursor-not-allowed border-rose-200 bg-rose-50 text-rose-900"
+                    : unit.count > 0
+                      ? "border-primary/25 bg-primary/5 hover:border-primary/50"
+                      : "bg-muted/15 hover:bg-muted/30"
+                }`}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="text-sm font-semibold">{unit.sheetName}</div>
+                  <Badge variant="outline" className="shrink-0">
+                    {unit.status === "failed" ? "อ่านไม่ได้" : `${unit.count} ราย`}
+                  </Badge>
+                </div>
+                <div className="mt-1 text-xs text-muted-foreground">
+                  รหัส {unit.code}
+                  {unit.subdistrict ? ` · ต.${unit.subdistrict}` : ""}
+                </div>
+                {unit.error && <div className="mt-1 text-[10px]">{unit.error}</div>}
+              </button>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {editing && (
         <Card className="border-teal/30">
@@ -725,7 +816,7 @@ function PatientsPage() {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card id="patient-roster-table" className="scroll-mt-20">
         <CardHeader>
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <CardTitle className="text-base">รายชื่อผู้ป่วย</CardTitle>
@@ -739,6 +830,19 @@ function PatientsPage() {
                   className="pl-9 sm:w-64"
                 />
               </div>
+              <Select value={unitFilter} onValueChange={setUnitFilter}>
+                <SelectTrigger className="sm:w-52">
+                  <SelectValue placeholder="ทุก รพ.สต." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">ทุก รพ.สต.</SelectItem>
+                  {sheetUnits.map((unit) => (
+                    <SelectItem key={unit.code} value={unit.code}>
+                      {unit.sheetName} ({unit.count})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <Select value={filter} onValueChange={(value) => setFilter(value as typeof filter)}>
                 <SelectTrigger className="sm:w-44">
                   <SelectValue />

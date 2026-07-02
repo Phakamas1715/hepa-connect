@@ -8,8 +8,18 @@ type PatientRegistryStore = {
   upserts: Patient[];
   deletedHns: string[];
   googleSheetPatients: Patient[];
+  googleSheetUnits: GoogleSheetUnitSync[];
   lastGoogleSyncAt?: string;
   lastGoogleSyncError?: string;
+};
+
+export type GoogleSheetUnitSync = {
+  code: string;
+  sheetName: string;
+  subdistrict?: string;
+  count: number;
+  status: "success" | "failed";
+  error?: string;
 };
 
 const PERSONAS: Persona[] = [
@@ -49,7 +59,10 @@ const PATIENT_ROSTER_SHEETS: Array<{
 ];
 
 function registryPath() {
-  return serverEnv("HEPA_PATIENT_REGISTRY_PATH") || resolve(process.cwd(), "data", "patient-registry.json");
+  return (
+    serverEnv("HEPA_PATIENT_REGISTRY_PATH") ||
+    resolve(process.cwd(), "data", "patient-registry.json")
+  );
 }
 
 function nowIso() {
@@ -57,7 +70,7 @@ function nowIso() {
 }
 
 function emptyStore(): PatientRegistryStore {
-  return { upserts: [], deletedHns: [], googleSheetPatients: [] };
+  return { upserts: [], deletedHns: [], googleSheetPatients: [], googleSheetUnits: [] };
 }
 
 export function readPatientRegistryStore(): PatientRegistryStore {
@@ -94,6 +107,12 @@ export function listPatients() {
       source: store.googleSheetPatients.length ? "google-sheet" : "prepared-list",
       preparedCount: PREPARED_PATIENTS.length,
       googleSheetCount: store.googleSheetPatients.length,
+      googleSheetUnits: store.googleSheetUnits,
+      googleSheetUnitCount: store.googleSheetUnits.filter((item) => item.status === "success")
+        .length,
+      googleSheetUnitsWithPatients: store.googleSheetUnits.filter(
+        (item) => item.status === "success" && item.count > 0,
+      ).length,
       editedCount: store.upserts.length,
       deletedCount: store.deletedHns.length,
       lastGoogleSyncAt: store.lastGoogleSyncAt,
@@ -136,36 +155,48 @@ export function normalizePatient(input: Record<string, unknown>, existing?: Pati
     name: cleanText(input.name ?? input.fullName ?? input.patientName ?? existing?.name),
     cid: cleanText(input.cid ?? input.idNumber ?? existing?.cid),
     birth_date: cleanText(input.birth_date ?? input.birthDate ?? existing?.birth_date),
-    testDate: cleanText(input.testDate ?? input.test_date ?? existing?.testDate) || nowIso().slice(0, 10),
+    testDate:
+      cleanText(input.testDate ?? input.test_date ?? existing?.testDate) || nowIso().slice(0, 10),
     subdistrict: cleanText(input.subdistrict ?? input.tambon ?? existing?.subdistrict),
     village: cleanText(input.village ?? input.moo ?? existing?.village),
-    rapid_hbv_result: normalizeResult(input.rapid_hbv_result ?? input.rapidHbv ?? existing?.rapid_hbv_result),
-    rapid_hcv_result: normalizeResult(input.rapid_hcv_result ?? input.rapidHcv ?? existing?.rapid_hcv_result),
+    rapid_hbv_result: normalizeResult(
+      input.rapid_hbv_result ?? input.rapidHbv ?? existing?.rapid_hbv_result,
+    ),
+    rapid_hcv_result: normalizeResult(
+      input.rapid_hcv_result ?? input.rapidHcv ?? existing?.rapid_hcv_result,
+    ),
     hbsag: normalizeResult(input.hbsag ?? input.HBsAg ?? existing?.hbsag),
     hcvAb: normalizeResult(input.hcvAb ?? input.hcv_ab ?? input["HCV Ab"] ?? existing?.hcvAb),
     hcvVL: normalizeResult(input.hcvVL ?? input.hcv_vl ?? input["HCV RNA"] ?? existing?.hcvVL),
     persona: PERSONAS.includes(persona) ? persona : existing?.persona || "The Engaged",
     last_nudge_date: cleanText(input.last_nudge_date ?? existing?.last_nudge_date) || undefined,
     nudge_count: Number(input.nudge_count ?? existing?.nudge_count ?? 0) || 0,
-    care_status: cleanText(input.care_status ?? input.careStatus ?? existing?.care_status) || "Pending",
+    care_status:
+      cleanText(input.care_status ?? input.careStatus ?? existing?.care_status) || "Pending",
     moph_sync_status: cleanText(input.moph_sync_status ?? existing?.moph_sync_status) || undefined,
     reported,
     txId: cleanText(input.txId ?? existing?.txId) || undefined,
     reportedAt: cleanText(input.reportedAt ?? existing?.reportedAt) || undefined,
-    moph_transaction_id: cleanText(input.moph_transaction_id ?? existing?.moph_transaction_id) || undefined,
+    moph_transaction_id:
+      cleanText(input.moph_transaction_id ?? existing?.moph_transaction_id) || undefined,
     moph_last_sync: cleanText(input.moph_last_sync ?? existing?.moph_last_sync) || undefined,
-    fiscalYear: cleanText(input.fiscalYear ?? input.fiscal_year ?? existing?.fiscalYear) || undefined,
+    fiscalYear:
+      cleanText(input.fiscalYear ?? input.fiscal_year ?? existing?.fiscalYear) || undefined,
     hbsab: normalizeResult(input.hbsab ?? input.HBsAb ?? existing?.hbsab) || undefined,
     created_at: existing?.created_at || nowIso(),
     updated_at: nowIso(),
     status: cleanText(input.status ?? existing?.status) || "active",
-    serviceUnitCode: cleanText(input.serviceUnitCode ?? input.service_unit_code ?? existing?.serviceUnitCode),
+    serviceUnitCode: cleanText(
+      input.serviceUnitCode ?? input.service_unit_code ?? existing?.serviceUnitCode,
+    ),
   };
 }
 
 export function upsertPatient(input: Record<string, unknown>) {
   const store = readPatientRegistryStore();
-  const existing = listPatients().patients.find((patient) => patient.hn === cleanText(input.hn ?? input.HN));
+  const existing = listPatients().patients.find(
+    (patient) => patient.hn === cleanText(input.hn ?? input.HN),
+  );
   const patient = normalizePatient(input, existing);
 
   store.deletedHns = store.deletedHns.filter((hn) => hn !== patient.hn);
@@ -243,7 +274,12 @@ function pick(row: Record<string, string>, keys: string[]) {
   return "";
 }
 
-function stableRosterHn(input: { serviceUnitCode: string; rowNumber: number; cid?: string; name?: string }) {
+function stableRosterHn(input: {
+  serviceUnitCode: string;
+  rowNumber: number;
+  cid?: string;
+  name?: string;
+}) {
   const seed = `${input.serviceUnitCode}|${input.rowNumber}|${input.cid || ""}|${input.name || ""}`;
   const digest = createHash("sha256").update(seed).digest("hex").slice(0, 8).toUpperCase();
   return `${input.serviceUnitCode}-${String(input.rowNumber).padStart(4, "0")}-${digest}`;
@@ -300,7 +336,8 @@ function mapRosterRow(input: {
     cid,
     birth_date: pick(input.row, ["วันเกิด", "birth_date", "birthDate"]),
     testDate: pick(input.row, ["วันที่ตรวจ", "testDate", "test_date"]) || nowIso().slice(0, 10),
-    subdistrict: pick(input.row, ["ตำบล", "subdistrict", "tambon"]) || input.subdistrict || input.sourceSheet,
+    subdistrict:
+      pick(input.row, ["ตำบล", "subdistrict", "tambon"]) || input.subdistrict || input.sourceSheet,
     village: pick(input.row, ["หมู่", "หมู่ที่", "village", "moo"]),
     serviceUnitCode: input.serviceUnitCode,
     rapid_hbv_result: pick(input.row, ["Rapid HBV", "rapid_hbv_result"]),
@@ -326,7 +363,10 @@ function rosterHeaderIndex(rows: string[][]) {
   });
 }
 
-async function fetchRosterSheetPatients(workbookId: string, roster: (typeof PATIENT_ROSTER_SHEETS)[number]) {
+async function fetchRosterSheetPatients(
+  workbookId: string,
+  roster: (typeof PATIENT_ROSTER_SHEETS)[number],
+) {
   const csvUrl = `https://docs.google.com/spreadsheets/d/${workbookId}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(roster.sheetName)}`;
   const response = await fetch(csvUrl);
   if (!response.ok) throw new Error(`${roster.sheetName}: HTTP ${response.status}`);
@@ -340,7 +380,9 @@ async function fetchRosterSheetPatients(workbookId: string, roster: (typeof PATI
     .slice(headerIndex + 1)
     .map((cells, index) => ({
       rowNumber: headerIndex + index + 2,
-      row: Object.fromEntries(headers.map((header, cellIndex) => [header, cells[cellIndex]?.trim() || ""])),
+      row: Object.fromEntries(
+        headers.map((header, cellIndex) => [header, cells[cellIndex]?.trim() || ""]),
+      ),
     }))
     .filter(({ row }) => {
       const hasName = Boolean(pick(row, ["ชื่อ", "name", "ชื่อ-สกุล", "ชื่อ-นามสกุล"]));
@@ -365,6 +407,25 @@ async function syncPatientsFromRosterWorkbook(store: PatientRegistryStore) {
     PATIENT_ROSTER_SHEETS.map((roster) => fetchRosterSheetPatients(workbookId, roster)),
   );
   const patients = results.flatMap((result) => (result.status === "fulfilled" ? result.value : []));
+  const units: GoogleSheetUnitSync[] = results.map((result, index) => {
+    const roster = PATIENT_ROSTER_SHEETS[index];
+    return result.status === "fulfilled"
+      ? {
+          code: roster.code,
+          sheetName: roster.sheetName,
+          subdistrict: roster.subdistrict,
+          count: result.value.length,
+          status: "success",
+        }
+      : {
+          code: roster.code,
+          sheetName: roster.sheetName,
+          subdistrict: roster.subdistrict,
+          count: 0,
+          status: "failed",
+          error: result.reason instanceof Error ? result.reason.message : String(result.reason),
+        };
+  });
   const failures = results
     .map((result, index) =>
       result.status === "rejected"
@@ -374,14 +435,18 @@ async function syncPatientsFromRosterWorkbook(store: PatientRegistryStore) {
     .filter(Boolean);
 
   if (!patients.length) {
+    store.googleSheetUnits = units;
     store.lastGoogleSyncError = `Roster workbook failed: ${failures.join("; ")}`;
     writePatientRegistryStore(store);
     throw new Error(`ดึงรายชื่อจากชีต รพ.สต. ไม่สำเร็จ: ${failures.join("; ")}`);
   }
 
   store.googleSheetPatients = patients;
+  store.googleSheetUnits = units;
   store.lastGoogleSyncAt = nowIso();
-  store.lastGoogleSyncError = failures.length ? `บางชีตดึงไม่ได้: ${failures.join("; ")}` : undefined;
+  store.lastGoogleSyncError = failures.length
+    ? `บางชีตดึงไม่ได้: ${failures.join("; ")}`
+    : undefined;
   writePatientRegistryStore(store);
   return {
     count: patients.length,
@@ -390,14 +455,16 @@ async function syncPatientsFromRosterWorkbook(store: PatientRegistryStore) {
     workbookId,
     sheetCount: PATIENT_ROSTER_SHEETS.length - failures.length,
     failedSheetCount: failures.length,
+    units,
   };
 }
 
 export async function syncPatientsFromGoogleSheet() {
   const url = googleSheetCsvUrl();
   const store = readPatientRegistryStore();
+  const mode = serverEnv("PATIENT_GOOGLE_SHEET_MODE") || "service-roster-workbook";
 
-  if (!url) return syncPatientsFromRosterWorkbook(store);
+  if (mode !== "single-sheet" || !url) return syncPatientsFromRosterWorkbook(store);
 
   const response = await fetch(url);
   if (!response.ok) {
@@ -416,6 +483,7 @@ export async function syncPatientsFromGoogleSheet() {
     .filter((patient) => patient.hn);
 
   store.googleSheetPatients = patients;
+  store.googleSheetUnits = [];
   store.lastGoogleSyncAt = nowIso();
   store.lastGoogleSyncError = undefined;
   writePatientRegistryStore(store);
