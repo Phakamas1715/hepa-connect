@@ -29,6 +29,8 @@ type PositiveRecord = {
   lineUserId?: string;
   lineDisplayName?: string;
   agentTaskId?: string;
+  patientIdentityStatus?: "verified" | "blocked";
+  patientIdentityReason?: string;
   createdAt: string;
 };
 
@@ -205,9 +207,24 @@ function PositiveIntakePage() {
                     <td className="px-3 py-2">{record.testFacilityName}</td>
                     <td className="px-3 py-2">{record.positiveResult}</td>
                     <td className="px-3 py-2 text-xs text-muted-foreground">
-                      {record.lineUserId
-                        ? record.lineDisplayName || record.lineUserId.slice(0, 10)
-                        : "ยังไม่ผูก"}
+                      <div>
+                        {record.lineUserId
+                          ? record.lineDisplayName || record.lineUserId.slice(0, 10)
+                          : "ยังไม่ผูก"}
+                      </div>
+                      {record.patientIdentityStatus === "verified" && (
+                        <Badge
+                          variant="outline"
+                          className="mt-1 border-emerald-200 bg-emerald-50 text-[10px] text-emerald-900"
+                        >
+                          พร้อมรับบัตรนัด
+                        </Badge>
+                      )}
+                      {record.patientIdentityStatus === "blocked" && (
+                        <div className="mt-1 max-w-48 text-[10px] leading-4 text-amber-700">
+                          {record.patientIdentityReason || "ต้องตรวจสอบ LINE identity"}
+                        </div>
+                      )}
                     </td>
                     <td className="px-3 py-2">
                       <Badge

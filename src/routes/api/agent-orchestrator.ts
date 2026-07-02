@@ -21,7 +21,7 @@ import { HEPA_SERVICE_AREAS } from "@/lib/hepa-service-area";
 import { getScreenedPassedResults, type ScreenedTestResult } from "@/lib/kumhos-client";
 import type { HepCaseInput } from "@/lib/moph-hepbc-reporter";
 import { listPatients } from "@/lib/patient-registry";
-import { getPositiveIntakeSummary } from "@/lib/positive-intake";
+import { getPositiveIntakeSummary, linkPositivePatientIdentity } from "@/lib/positive-intake";
 import { serverEnv } from "@/lib/server-env";
 
 const LINE_PUSH_URL = "https://api.line.me/v2/bot/message/push";
@@ -204,6 +204,52 @@ export const Route = createFileRoute("/api/agent-orchestrator")({
               message: body.message ? String(body.message) : undefined,
             });
             return Response.json({ status: "success", ...result });
+          }
+
+          if (action === "link_positive_patient_identity") {
+            const caseCode = String(body.caseCode || "").trim();
+            const positiveSummary = getPositiveIntakeSummary();
+            const record = positiveSummary.records.find((item) => item.caseCode === caseCode);
+            if (!record) {
+              return Response.json(
+                { status: "error", message: "ไม่พบเคสผู้พบเชื้อ" },
+                { status: 404 },
+              );
+            }
+            if (!record.lineUserId) {
+              return Response.json(
+                { status: "error", message: "เคสนี้ไม่มี LINE userId จาก LIFF" },
+                { status: 409 },
+              );
+            }
+
+            const { identityLink } = linkPositivePatientIdentity(record.caseCode);
+            if (identityLink.status === "blocked") {
+              return Response.json(
+                { status: "error", message: identityLink.reason, identityLink },
+                { status: 409 },
+              );
+            }
+
+            const pendingAppointments = readAgentStore().appointments.filter(
+              (item) =>
+                item.hn === caseCode &&
+                item.status !== "completed" &&
+                item.status !== "cancelled" &&
+                item.notificationStatus !== "sent",
+            );
+            const notifications = [];
+            if (body.sendPendingAppointments === true) {
+              for (const appointment of pendingAppointments) {
+                notifications.push(await sendAppointmentLine(appointment));
+              }
+            }
+            return Response.json({
+              status: "success",
+              identityLink,
+              pendingAppointments: pendingAppointments.length,
+              notifications,
+            });
           }
 
           if (action === "create_appointment") {

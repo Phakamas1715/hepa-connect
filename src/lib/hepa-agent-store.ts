@@ -274,6 +274,128 @@ export function verifyStaffIdentity(input: { lineUserId: string; displayName?: s
   return { identity: store.identities[0] };
 }
 
+export function verifyPositivePatientIdentity(input: {
+  lineUserId: string;
+  caseCode: string;
+  displayName?: string;
+  consentAt: string;
+}) {
+  const store = readAgentStore();
+  const lineUserId = input.lineUserId.trim();
+  const caseCode = input.caseCode.trim();
+  if (!lineUserId || !caseCode) {
+    throw new Error("ต้องระบุ LINE userId และรหัสเคส");
+  }
+  if (!/^U[0-9a-fA-F]{20,}$/.test(lineUserId)) {
+    throw new Error("LINE userId ไม่ถูกต้อง");
+  }
+
+  const existingByLine = store.identities.find((item) => item.lineUserId === lineUserId);
+  if (existingByLine && existingByLine.role !== "patient") {
+    audit(store, {
+      actor: "system",
+      action: "positive_patient_identity_blocked",
+      hn: caseCode,
+      detail: `ไม่เปลี่ยน identity role=${existingByLine.role} เป็น patient`,
+    });
+    writeAgentStore(store);
+    return {
+      status: "blocked" as const,
+      reason: `บัญชี LINE นี้เป็น ${existingByLine.role} จึงไม่สามารถใช้เป็นผู้ป่วย`,
+      identity: existingByLine,
+      appointmentsLinked: 0,
+    };
+  }
+
+  if (existingByLine?.role === "patient" && existingByLine.hn && existingByLine.hn !== caseCode) {
+    audit(store, {
+      actor: "system",
+      action: "positive_patient_identity_blocked",
+      hn: caseCode,
+      detail: `LINE patient ถูกผูกกับ ${existingByLine.hn} แล้ว`,
+    });
+    writeAgentStore(store);
+    return {
+      status: "blocked" as const,
+      reason: "บัญชี LINE ผู้ป่วยนี้ถูกผูกกับเคสอื่นแล้ว กรุณาให้เจ้าหน้าที่ตรวจสอบ",
+      identity: existingByLine,
+      appointmentsLinked: 0,
+    };
+  }
+
+  const verifiedAt = nowIso();
+  const existingByCase = store.identities.find(
+    (item) => item.hn === caseCode && item.role === "patient",
+  );
+  if (existingByCase && existingByCase.lineUserId !== lineUserId) {
+    existingByCase.status = "revoked";
+  }
+
+  const identity: LineIdentity =
+    existingByLine?.role === "patient"
+      ? existingByLine
+      : {
+          lineUserId,
+          role: "patient",
+          hn: caseCode,
+          displayName: input.displayName,
+          verifiedAt,
+          consentAt: input.consentAt,
+          status: "verified",
+        };
+  identity.hn = caseCode;
+  identity.displayName = input.displayName || identity.displayName;
+  identity.verifiedAt = verifiedAt;
+  identity.consentAt = input.consentAt;
+  identity.status = "verified";
+
+  store.identities = [
+    identity,
+    ...store.identities.filter((item) => item.lineUserId !== lineUserId),
+  ];
+
+  let appointmentsLinked = 0;
+  for (const appointment of store.appointments) {
+    if (
+      appointment.hn === caseCode &&
+      appointment.status !== "completed" &&
+      appointment.status !== "cancelled"
+    ) {
+      appointment.lineUserId = lineUserId;
+      if (appointment.notificationStatus === "not_linked") {
+        appointment.notificationStatus = "pending";
+      }
+      appointment.updatedAt = verifiedAt;
+      const task = store.tasks.find((item) => item.id === appointment.taskId);
+      if (task) {
+        task.lineUserId = lineUserId;
+        task.updatedAt = verifiedAt;
+      }
+      appointmentsLinked += 1;
+    }
+  }
+
+  for (const task of store.tasks) {
+    if (task.hn === caseCode && task.type === "staff_escalation") {
+      task.lineUserId = lineUserId;
+      task.updatedAt = verifiedAt;
+    }
+  }
+
+  audit(store, {
+    actor: "system",
+    action: "positive_patient_identity_verified",
+    hn: caseCode,
+    detail: `สร้าง patient identity จาก Positive LIFF · appointments=${appointmentsLinked}`,
+  });
+  writeAgentStore(store);
+  return {
+    status: "verified" as const,
+    identity,
+    appointmentsLinked,
+  };
+}
+
 export function queueNudge(input: { hn: string; persona?: string; message?: string }) {
   const store = readAgentStore();
   const identity = store.identities.find(

@@ -1,7 +1,12 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { randomBytes } from "node:crypto";
 import { dirname, resolve } from "node:path";
-import { audit, readAgentStore, writeAgentStore } from "@/lib/hepa-agent-store";
+import {
+  audit,
+  readAgentStore,
+  verifyPositivePatientIdentity,
+  writeAgentStore,
+} from "@/lib/hepa-agent-store";
 import { HEPA_PRIMARY_CARE_UNITS } from "@/lib/hepa-service-area";
 import { serverEnv } from "@/lib/server-env";
 
@@ -31,6 +36,8 @@ export type PositiveIntakeRecord = {
   lineUserId?: string;
   lineDisplayName?: string;
   agentTaskId?: string;
+  patientIdentityStatus?: "verified" | "blocked";
+  patientIdentityReason?: string;
   createdAt: string;
   updatedAt: string;
 };
@@ -149,6 +156,26 @@ export function getPositiveIntakeSummary() {
   };
 }
 
+export function linkPositivePatientIdentity(caseCode: string) {
+  const store = readStore();
+  const record = store.records.find((item) => item.caseCode === cleanText(caseCode));
+  if (!record) throw new Error("ไม่พบเคสผู้พบเชื้อ");
+  if (!record.lineUserId) throw new Error("เคสนี้ไม่มี LINE userId จาก LIFF");
+
+  const identityLink = verifyPositivePatientIdentity({
+    lineUserId: record.lineUserId,
+    caseCode: record.caseCode,
+    displayName: record.lineDisplayName,
+    consentAt: record.consentAcceptedAt,
+  });
+  record.patientIdentityStatus = identityLink.status;
+  record.patientIdentityReason =
+    identityLink.status === "blocked" ? identityLink.reason : undefined;
+  record.updatedAt = nowIso();
+  writeStore(store);
+  return { record, identityLink };
+}
+
 export function createPositiveIntake(input: PositiveIntakeInput) {
   assertValidInput(input);
   const store = readStore();
@@ -200,7 +227,28 @@ export function createPositiveIntake(input: PositiveIntakeInput) {
 
   store.records.unshift(record);
   writeStore(store);
-  return { record, task };
+
+  let identityLink:
+    | ReturnType<typeof verifyPositivePatientIdentity>
+    | { status: "blocked"; reason: string; appointmentsLinked: 0 }
+    | undefined;
+  if (record.lineUserId) {
+    try {
+      identityLink = linkPositivePatientIdentity(record.caseCode).identityLink;
+    } catch (error) {
+      identityLink = {
+        status: "blocked",
+        reason: error instanceof Error ? error.message : "สร้าง patient identity ไม่สำเร็จ",
+        appointmentsLinked: 0,
+      };
+    }
+    record.patientIdentityStatus = identityLink.status;
+    record.patientIdentityReason =
+      identityLink.status === "blocked" ? identityLink.reason : undefined;
+    writeStore(store);
+  }
+
+  return { record, task, identityLink };
 }
 
 export function updatePositiveIntakeStatus(idOrCode: string, status: PositiveIntakeStatus) {
