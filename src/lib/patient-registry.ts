@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { PREPARED_PATIENTS, type Patient, type Persona } from "@/lib/hepa-data";
@@ -17,6 +18,34 @@ const PERSONAS: Persona[] = [
   "The Denier",
   "The Engaged",
   "The Striver",
+];
+
+const DEFAULT_PATIENT_ROSTER_SHEET_ID = "1vvx-UIaeoMQn1e4prFKOw0xY0ggpTx6AR8-y900ADXM";
+
+const PATIENT_ROSTER_SHEETS: Array<{
+  code: string;
+  sheetName: string;
+  subdistrict?: string;
+}> = [
+  { code: "PT", sheetName: "รพ.สต.พังทุย", subdistrict: "พังทุย" },
+  { code: "NK", sheetName: "รพ.สต.หนองกุง", subdistrict: "หนองกุง" },
+  { code: "KS", sheetName: "รพ.สต.กุดน้ำใส", subdistrict: "กุดน้ำใส" },
+  { code: "BK", sheetName: "รพ.สต.บ้านขาม", subdistrict: "บ้านขาม" },
+  { code: "BY", sheetName: "รพ.สต.บัวใหญ่", subdistrict: "บัวใหญ่" },
+  { code: "KB", sheetName: "รพ.สต.บ้านคำบง", subdistrict: "สะอาด" },
+  { code: "WC", sheetName: "รพ.สต.วังชัย", subdistrict: "วังชัย" },
+  { code: "MW", sheetName: "รพ.สต.ม่วงหวาน", subdistrict: "ม่วงหวาน" },
+  { code: "BN", sheetName: "รพ.สต.บัวเงิน", subdistrict: "บัวเงิน" },
+  { code: "NP", sheetName: "รพ.สต.น้ำพอง", subdistrict: "น้ำพอง" },
+  { code: "TK", sheetName: "รพ.สต.ท่ากระเสริม", subdistrict: "ท่ากระเสริม" },
+  { code: "NS", sheetName: "รพ.สต.นาศรี", subdistrict: "สะอาด" },
+  { code: "SM", sheetName: "รพ.สต.ทรายมูล", subdistrict: "ทรายมูล" },
+  { code: "KY", sheetName: "รพ.สต.โคกใหญ่", subdistrict: "บัวเงิน" },
+  { code: "KMW", sheetName: "รพ.สต.คำแก่นคูณ (เขตม่วงหวาน)", subdistrict: "ม่วงหวาน" },
+  { code: "NW", sheetName: "รพ.สต.บ้านหนองหว้า", subdistrict: "ทรายมูล" },
+  { code: "BL", sheetName: "รพ.สต.บ้านเหล่าใหญ่", subdistrict: "บ้านขาม" },
+  { code: "TM", sheetName: "รพ.สต.บ้านท่ามะเดื่อ", subdistrict: "ท่ากระเสริม" },
+  { code: "KNK", sheetName: "รพ.สต.คำแก่นคูณ (เขตหนองกุง)", subdistrict: "หนองกุง" },
 ];
 
 function registryPath() {
@@ -82,8 +111,8 @@ function normalizeResult(value: unknown) {
   const text = cleanText(value);
   if (!text) return "";
   const lower = text.toLowerCase();
-  if (["detected"].includes(lower)) return "Detected";
-  if (["not detected"].includes(lower)) return "Not Detected";
+  if (lower === "detected") return "Detected";
+  if (lower === "not detected") return "Not Detected";
   if (["pos", "positive", "พบ", "บวก", "+"].includes(lower)) return "Positive";
   if (["neg", "negative", "ไม่พบ", "ลบ", "-"].includes(lower)) return "Negative";
   return text;
@@ -165,6 +194,15 @@ function googleSheetCsvUrl() {
   return `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=${gid}`;
 }
 
+function patientRosterWorkbookId() {
+  return (
+    serverEnv("GOOGLE_SHEET_ID") ||
+    serverEnv("PATIENT_GOOGLE_SHEET_ID") ||
+    serverEnv("HEPA_SCREENING_ROSTER_SHEET_ID") ||
+    DEFAULT_PATIENT_ROSTER_SHEET_ID
+  );
+}
+
 function parseCsv(text: string) {
   const rows: string[][] = [];
   let row: string[] = [];
@@ -205,6 +243,12 @@ function pick(row: Record<string, string>, keys: string[]) {
   return "";
 }
 
+function stableRosterHn(input: { serviceUnitCode: string; rowNumber: number; cid?: string; name?: string }) {
+  const seed = `${input.serviceUnitCode}|${input.rowNumber}|${input.cid || ""}|${input.name || ""}`;
+  const digest = createHash("sha256").update(seed).digest("hex").slice(0, 8).toUpperCase();
+  return `${input.serviceUnitCode}-${String(input.rowNumber).padStart(4, "0")}-${digest}`;
+}
+
 function mapSheetRow(row: Record<string, string>) {
   return normalizePatient({
     hn: pick(row, ["hn", "HN", "เลข HN", "รหัสผู้ป่วย"]),
@@ -228,15 +272,131 @@ function mapSheetRow(row: Record<string, string>) {
   });
 }
 
+function mapRosterRow(input: {
+  row: Record<string, string>;
+  serviceUnitCode: string;
+  sourceSheet: string;
+  rowNumber: number;
+  subdistrict?: string;
+}) {
+  const firstName = pick(input.row, ["ชื่อ", "firstname", "firstName"]);
+  const lastName = pick(input.row, ["สกุล", "นามสกุล", "lastname", "lastName"]);
+  const fullName =
+    pick(input.row, ["name", "ชื่อ-สกุล", "ชื่อ-นามสกุล", "patient_name"]) ||
+    [firstName, lastName].filter(Boolean).join(" ");
+  const cid = pick(input.row, ["เลขบัตรประชาชน", "cid", "CID", "idNumber"]);
+  const hn =
+    pick(input.row, ["hn", "HN", "เลข HN", "รหัสผู้ป่วย"]) ||
+    stableRosterHn({
+      serviceUnitCode: input.serviceUnitCode,
+      rowNumber: input.rowNumber,
+      cid,
+      name: fullName,
+    });
+
+  return normalizePatient({
+    hn,
+    name: fullName,
+    cid,
+    birth_date: pick(input.row, ["วันเกิด", "birth_date", "birthDate"]),
+    testDate: pick(input.row, ["วันที่ตรวจ", "testDate", "test_date"]) || nowIso().slice(0, 10),
+    subdistrict: pick(input.row, ["ตำบล", "subdistrict", "tambon"]) || input.subdistrict || input.sourceSheet,
+    village: pick(input.row, ["หมู่", "หมู่ที่", "village", "moo"]),
+    serviceUnitCode: input.serviceUnitCode,
+    rapid_hbv_result: pick(input.row, ["Rapid HBV", "rapid_hbv_result"]),
+    rapid_hcv_result: pick(input.row, ["Rapid HCV", "rapid_hcv_result"]),
+    hbsag: pick(input.row, ["HBsAg", "hbsag"]),
+    hcvAb: pick(input.row, ["HCV Ab", "hcvAb", "hcv_ab"]),
+    hcvVL: pick(input.row, ["HCV RNA", "hcvVL", "hcv_vl"]),
+    care_status: pick(input.row, ["สถานะ", "care_status", "careStatus"]) || "Roster",
+    fiscalYear: pick(input.row, ["ปีงบ", "fiscalYear"]),
+    status: "active",
+  });
+}
+
+function rosterHeaderIndex(rows: string[][]) {
+  return rows.findIndex((row) => {
+    const cells = row.map((cell) => cell.trim());
+    return (
+      cells.includes("เลขบัตรประชาชน") &&
+      cells.includes("ชื่อ") &&
+      (cells.includes("สกุล") || cells.includes("นามสกุล") || cells.includes("ชื่อ-สกุล"))
+    );
+  });
+}
+
+async function fetchRosterSheetPatients(workbookId: string, roster: (typeof PATIENT_ROSTER_SHEETS)[number]) {
+  const csvUrl = `https://docs.google.com/spreadsheets/d/${workbookId}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(roster.sheetName)}`;
+  const response = await fetch(csvUrl);
+  if (!response.ok) throw new Error(`${roster.sheetName}: HTTP ${response.status}`);
+
+  const rows = parseCsv(await response.text());
+  const headerIndex = rosterHeaderIndex(rows);
+  if (headerIndex < 0) throw new Error(`${roster.sheetName}: ไม่พบหัวตารางรายชื่อ`);
+
+  const headers = rows[headerIndex].map((item) => item.trim());
+  return rows
+    .slice(headerIndex + 1)
+    .map((cells, index) => ({
+      rowNumber: headerIndex + index + 2,
+      row: Object.fromEntries(headers.map((header, cellIndex) => [header, cells[cellIndex]?.trim() || ""])),
+    }))
+    .filter(({ row }) => {
+      const hasName = Boolean(pick(row, ["ชื่อ", "name", "ชื่อ-สกุล", "ชื่อ-นามสกุล"]));
+      const hasCid = Boolean(pick(row, ["เลขบัตรประชาชน", "cid", "CID"]));
+      const hasPhone = Boolean(pick(row, ["เบอร์โทรศัพท์", "phone"]));
+      return hasName || hasCid || hasPhone;
+    })
+    .map(({ row, rowNumber }) =>
+      mapRosterRow({
+        row,
+        rowNumber,
+        serviceUnitCode: roster.code,
+        sourceSheet: roster.sheetName,
+        subdistrict: roster.subdistrict,
+      }),
+    );
+}
+
+async function syncPatientsFromRosterWorkbook(store: PatientRegistryStore) {
+  const workbookId = patientRosterWorkbookId();
+  const results = await Promise.allSettled(
+    PATIENT_ROSTER_SHEETS.map((roster) => fetchRosterSheetPatients(workbookId, roster)),
+  );
+  const patients = results.flatMap((result) => (result.status === "fulfilled" ? result.value : []));
+  const failures = results
+    .map((result, index) =>
+      result.status === "rejected"
+        ? `${PATIENT_ROSTER_SHEETS[index].sheetName}: ${result.reason instanceof Error ? result.reason.message : String(result.reason)}`
+        : "",
+    )
+    .filter(Boolean);
+
+  if (!patients.length) {
+    store.lastGoogleSyncError = `Roster workbook failed: ${failures.join("; ")}`;
+    writePatientRegistryStore(store);
+    throw new Error(`ดึงรายชื่อจากชีต รพ.สต. ไม่สำเร็จ: ${failures.join("; ")}`);
+  }
+
+  store.googleSheetPatients = patients;
+  store.lastGoogleSyncAt = nowIso();
+  store.lastGoogleSyncError = failures.length ? `บางชีตดึงไม่ได้: ${failures.join("; ")}` : undefined;
+  writePatientRegistryStore(store);
+  return {
+    count: patients.length,
+    syncedAt: store.lastGoogleSyncAt,
+    source: "service-roster-workbook",
+    workbookId,
+    sheetCount: PATIENT_ROSTER_SHEETS.length - failures.length,
+    failedSheetCount: failures.length,
+  };
+}
+
 export async function syncPatientsFromGoogleSheet() {
   const url = googleSheetCsvUrl();
   const store = readPatientRegistryStore();
 
-  if (!url) {
-    store.lastGoogleSyncError = "Missing GOOGLE_SHEET_CSV_URL or GOOGLE_SHEET_ID";
-    writePatientRegistryStore(store);
-    throw new Error("ยังไม่ได้ตั้งค่า GOOGLE_SHEET_CSV_URL หรือ GOOGLE_SHEET_ID ใน .env");
-  }
+  if (!url) return syncPatientsFromRosterWorkbook(store);
 
   const response = await fetch(url);
   if (!response.ok) {
@@ -258,5 +418,5 @@ export async function syncPatientsFromGoogleSheet() {
   store.lastGoogleSyncAt = nowIso();
   store.lastGoogleSyncError = undefined;
   writePatientRegistryStore(store);
-  return { count: patients.length, syncedAt: store.lastGoogleSyncAt };
+  return { count: patients.length, syncedAt: store.lastGoogleSyncAt, source: "single-sheet" };
 }
