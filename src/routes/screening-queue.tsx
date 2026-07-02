@@ -15,6 +15,8 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ConfirmAction } from "@/components/confirm-action";
+import { WorkflowSteps } from "@/components/workflow-steps";
 import { Input } from "@/components/ui/input";
 import { OfficialPageHeader } from "@/components/official-layout";
 
@@ -103,6 +105,18 @@ function statusClass(status: Booking["status"]) {
   return "border-sky-200 bg-sky-50 text-sky-900";
 }
 
+function statusLabel(status: Booking["status"]) {
+  if (status === "confirmed") return "ยืนยันสิทธิ์แล้ว";
+  if (status === "cancelled") return "ยกเลิกแล้ว";
+  return "รอตรวจสอบ";
+}
+
+function riskLabel(level: Booking["riskLevel"]) {
+  if (level === "HIGH") return "เร่งด่วน";
+  if (level === "MEDIUM") return "ควรเข้ารับการตรวจ";
+  return "ติดตามตามปกติ";
+}
+
 function ScreeningQueuePage() {
   const [query, setQuery] = useState("");
   const [unit, setUnit] = useState("all");
@@ -141,8 +155,8 @@ function ScreeningQueuePage() {
       <OfficialPageHeader
         eyebrow="คิวคัดกรองจาก LINE"
         title="คิวจองสิทธิ์คัดกรองจาก LINE"
-        description="รายการประชาชนที่ประเมินความเสี่ยงและจองสิทธิ์คัดกรองไวรัสตับอักเสบ B/C ผ่าน LINE โดยตรวจรายชื่อ รพ.สต. และบันทึกความยินยอม PDPA ก่อนเข้าคิว"
-        badges={["ตรวจรายชื่อจาก Google Sheet", "บันทึกฝั่งระบบ", "พร้อมตรวจหน้างาน"]}
+        description="รายการประชาชนที่ประเมินความเสี่ยงและจองสิทธิ์คัดกรองไวรัสตับอักเสบ B/C ผ่าน LINE พร้อมตรวจรายชื่อหน่วยบริการและบันทึกความยินยอมก่อนเข้าคิว"
+        badges={["ตรวจสอบกับรายชื่อกลาง", "บันทึกความยินยอม", "พร้อมให้บริการหน้างาน"]}
       >
         <Button
           variant="outline"
@@ -158,6 +172,16 @@ function ScreeningQueuePage() {
           รีเฟรช
         </Button>
       </OfficialPageHeader>
+
+      <WorkflowSteps
+        title="เส้นทางรับบริการคัดกรอง"
+        steps={[
+          { title: "รับการจองผ่าน LINE", detail: "บันทึกข้อมูลและความยินยอม" },
+          { title: "ตรวจสอบรายชื่อ", detail: "เทียบกับรายชื่อกลางของหน่วยบริการ" },
+          { title: "ยืนยันสิทธิ์", detail: "เจ้าหน้าที่ตรวจวันและสถานที่รับบริการ" },
+          { title: "เข้ารับการคัดกรอง", detail: "บันทึกผลและส่งต่อเมื่อพบความเสี่ยง" },
+        ]}
+      />
 
       <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         {[
@@ -224,7 +248,7 @@ function ScreeningQueuePage() {
                   <th className="px-3 py-2">ความเสี่ยง</th>
                   <th className="px-3 py-2">LINE</th>
                   <th className="px-3 py-2">รายชื่อ</th>
-                  <th className="px-3 py-2">PDPA</th>
+                  <th className="px-3 py-2">ความยินยอม</th>
                   <th className="px-3 py-2">สถานะ</th>
                   <th className="px-3 py-2 text-right">จัดการ</th>
                 </tr>
@@ -253,7 +277,7 @@ function ScreeningQueuePage() {
                     </td>
                     <td className="px-3 py-2">
                       <Badge variant="outline" className={riskClass(booking.riskLevel)}>
-                        {booking.riskLevel}
+                        {riskLabel(booking.riskLevel)}
                       </Badge>
                       <div className="mt-1 max-w-64 text-[10px] leading-4 text-muted-foreground">
                         {booking.recommendation}
@@ -313,7 +337,7 @@ function ScreeningQueuePage() {
                     </td>
                     <td className="px-3 py-2">
                       <Badge variant="outline" className={statusClass(booking.status)}>
-                        {booking.status}
+                        {statusLabel(booking.status)}
                       </Badge>
                     </td>
                     <td className="px-3 py-2 text-right">
@@ -326,14 +350,15 @@ function ScreeningQueuePage() {
                         >
                           ยืนยัน
                         </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
+                        <ConfirmAction
+                          trigger="ยกเลิก"
+                          title={`ยืนยันยกเลิกสิทธิ์ของ ${booking.fullName}`}
+                          description={`สิทธิ์หมายเลข ${booking.bookingCode} จะถูกยกเลิกและไม่อยู่ในคิวรอรับบริการ`}
+                          confirmLabel="ยืนยันยกเลิกสิทธิ์"
+                          destructive
                           disabled={mutation.isPending || booking.status === "cancelled"}
-                          onClick={() => mutation.mutate({ id: booking.id, status: "cancelled" })}
-                        >
-                          ยกเลิก
-                        </Button>
+                          onConfirm={() => mutation.mutate({ id: booking.id, status: "cancelled" })}
+                        />
                       </div>
                     </td>
                   </tr>

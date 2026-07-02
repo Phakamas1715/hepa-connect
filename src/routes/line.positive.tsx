@@ -40,6 +40,8 @@ type PositiveRecord = {
   positiveResult: string;
   consentAcceptedAt: string;
   agentTaskId?: string;
+  patientIdentityStatus?: "verified" | "blocked";
+  patientIdentityReason?: string;
 };
 
 declare global {
@@ -106,6 +108,7 @@ function LinePositivePage() {
     import.meta.env.VITE_PATIENT_LIFF_ID ||
     import.meta.env.VITE_LIFF_ID) as string | undefined;
   const [profile, setProfile] = useState<LineProfile | null>(null);
+  const [profileError, setProfileError] = useState("");
   const [record, setRecord] = useState<PositiveRecord | null>(null);
   const [facilityQuery, setFacilityQuery] = useState("");
   const [facilityOpen, setFacilityOpen] = useState(false);
@@ -120,20 +123,27 @@ function LinePositivePage() {
   useEffect(() => {
     if (!liffId) return;
     getLiffProfile(liffId)
-      .then(setProfile)
+      .then((nextProfile) => {
+        setProfile(nextProfile);
+        setProfileError("");
+      })
       .catch((error) => {
         if (!(error instanceof Error) || error.message !== "กำลังเปิด LINE login") {
-          toast.error(error instanceof Error ? error.message : "อ่าน LINE profile ไม่สำเร็จ");
+          const message = error instanceof Error ? error.message : "อ่านบัญชี LINE ไม่สำเร็จ";
+          setProfileError(message);
+          toast.error(message);
         }
       });
   }, [liffId]);
 
+  const allowTestIdentity = import.meta.env.DEV && !liffId;
+  const identityUnavailable = !liffId && !allowTestIdentity;
   const resolvedLine = useMemo(
     () => ({
-      lineUserId: profile?.userId || search.lineUserId,
-      lineDisplayName: profile?.displayName || search.displayName,
+      lineUserId: profile?.userId || (allowTestIdentity ? search.lineUserId : undefined),
+      lineDisplayName: profile?.displayName || (allowTestIdentity ? search.displayName : undefined),
     }),
-    [profile, search.displayName, search.lineUserId],
+    [allowTestIdentity, profile, search.displayName, search.lineUserId],
   );
 
   const selectedFacility = summary.data?.facilities.find(
@@ -150,7 +160,11 @@ function LinePositivePage() {
     );
   }, [facilityQuery, summary.data?.facilities]);
   const canSubmit = Boolean(
-    form.fullName.trim() && form.testFacilityCode && form.consentAccepted && !summary.isLoading,
+    form.fullName.trim() &&
+    form.testFacilityCode &&
+    form.consentAccepted &&
+    resolvedLine.lineUserId &&
+    !summary.isLoading,
   );
 
   const submit = useMutation({
@@ -191,7 +205,9 @@ function LinePositivePage() {
                 </p>
               </div>
             </div>
-            <Badge className="bg-emerald-700/60 text-[9px] hover:bg-emerald-700/60">LIFF</Badge>
+            <Badge className="bg-emerald-700/60 text-[9px] hover:bg-emerald-700/60">
+              ผ่าน LINE
+            </Badge>
           </div>
         </div>
 
@@ -221,9 +237,17 @@ function LinePositivePage() {
                   </div>
                 </div>
                 <div className="rounded-lg border border-emerald-200 bg-white p-3 text-xs leading-5">
-                  ระบบสร้างงานให้ Agent/เจ้าหน้าที่ติดตามต่อแล้ว
+                  {record.patientIdentityStatus === "verified"
+                    ? "บัญชี LINE พร้อมรับข้อความติดตามและบัตรนัดแล้ว "
+                    : "ระบบส่งข้อมูลเข้าคิวเจ้าหน้าที่แล้ว "}
                   เจ้าหน้าที่จะตรวจสอบข้อมูลและติดต่อกลับตามขั้นตอนของหน่วยบริการ
                 </div>
+                {record.patientIdentityStatus === "blocked" && (
+                  <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900">
+                    บัญชี LINE ยังรับบัตรนัดไม่ได้:{" "}
+                    {record.patientIdentityReason || "เจ้าหน้าที่ต้องตรวจสอบการเชื่อมบัญชี"}
+                  </div>
+                )}
                 <Button
                   variant="outline"
                   className="w-full bg-white"
@@ -244,6 +268,38 @@ function LinePositivePage() {
             </Card>
           ) : (
             <>
+              <div
+                className={`rounded-xl border p-3 text-xs leading-5 ${
+                  profile
+                    ? "border-emerald-200 bg-emerald-50 text-emerald-900"
+                    : profileError
+                      ? "border-rose-200 bg-rose-50 text-rose-900"
+                      : "border-sky-200 bg-sky-50 text-sky-900"
+                }`}
+              >
+                <div className="font-bold">
+                  {profile
+                    ? `ยืนยันบัญชี LINE แล้ว${profile.displayName ? `: ${profile.displayName}` : ""}`
+                    : identityUnavailable
+                      ? "ยังไม่พร้อมเปิดรับข้อมูล"
+                      : profileError
+                        ? "ยังยืนยันบัญชี LINE ไม่สำเร็จ"
+                        : "กำลังยืนยันบัญชี LINE"}
+                </div>
+                {!profile && (
+                  <div className="mt-1">
+                    {identityUnavailable
+                      ? "ระบบยังไม่ได้ตั้งค่าช่องทาง LINE สำหรับแบบฟอร์มนี้ กรุณาติดต่อเจ้าหน้าที่"
+                      : profileError ||
+                        "หากระบบเปิดหน้าเข้าสู่ระบบ LINE กรุณาอนุญาต แล้วกลับมากรอกแบบฟอร์มนี้"}
+                  </div>
+                )}
+              </div>
+              {summary.isError && (
+                <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs leading-5 text-rose-900">
+                  โหลดรายชื่อสถานบริการไม่สำเร็จ กรุณาปิดแล้วเปิดแบบฟอร์มอีกครั้ง
+                </div>
+              )}
               <Card>
                 <CardHeader>
                   <CardTitle className="text-base">ข้อมูลผู้พบเชื้อ</CardTitle>
@@ -387,7 +443,7 @@ function LinePositivePage() {
 
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-base">ความยินยอม PDPA</CardTitle>
+                  <CardTitle className="text-base">ความยินยอมให้ใช้ข้อมูลส่วนบุคคล</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <label className="flex items-start gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-xs leading-5 text-emerald-950">
@@ -413,6 +469,11 @@ function LinePositivePage() {
                     {submit.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
                     ส่งข้อมูลให้ทีมดูแล
                   </Button>
+                  {!resolvedLine.lineUserId && (
+                    <p className="text-center text-xs leading-5 text-rose-700">
+                      ต้องยืนยันบัญชี LINE ก่อนจึงจะส่งข้อมูลได้
+                    </p>
+                  )}
                 </CardContent>
               </Card>
             </>

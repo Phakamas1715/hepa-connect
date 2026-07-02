@@ -7,6 +7,7 @@ import {
   CheckCircle2,
   Clock3,
   Copy,
+  Info,
   Link2,
   Loader2,
   MapPin,
@@ -21,6 +22,8 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ConfirmAction } from "@/components/confirm-action";
+import { WorkflowSteps } from "@/components/workflow-steps";
 import { Input } from "@/components/ui/input";
 import { OfficialPageHeader } from "@/components/official-layout";
 import { HBV_HDV_MONITORING_INSIGHT } from "@/lib/hepa-clinical-evidence";
@@ -29,10 +32,10 @@ import { HEPA_SERVICE_AREAS } from "@/lib/hepa-service-area";
 export const Route = createFileRoute("/agent")({
   head: () => ({
     meta: [
-      { title: "ตัวจัดการ Agent — HEPA-GLUE Engine" },
+      { title: "นัดหมายและติดตามผู้ป่วย — HEPA-GLUE Engine" },
       {
         name: "description",
-        content: "สร้าง QR ผูก LINE, จัดคิวติดตามผู้ป่วย และบันทึกการทำงานของ agent",
+        content: "สร้าง QR ผูก LINE จัดคิวติดตามผู้ป่วย และบันทึกการทำงานย้อนหลัง",
       },
     ],
   }),
@@ -153,6 +156,50 @@ function notificationStatusLabel(status: Store["appointments"][number]["notifica
   return "พร้อมส่ง";
 }
 
+function inviteStatusLabel(status: string) {
+  if (status === "used") return "ใช้แล้ว";
+  if (status === "expired") return "หมดอายุ";
+  if (status === "revoked") return "ยกเลิกแล้ว";
+  return "รอผู้ป่วยยืนยัน";
+}
+
+function identityRoleLabel(role: string) {
+  return role === "patient" ? "ผู้ป่วย" : role === "staff" ? "เจ้าหน้าที่" : role;
+}
+
+function taskStatusLabel(status: string) {
+  if (status === "pending") return "รอดำเนินการ";
+  if (status === "blocked") return "ต้องแก้ไข";
+  if (status === "contacted") return "ติดต่อแล้ว";
+  if (status === "sent") return "ส่งแล้ว";
+  if (status === "closed") return "ปิดงาน";
+  return status;
+}
+
+function maskLineUserId(value: string) {
+  if (value.length < 10) return value;
+  return `${value.slice(0, 5)}••••${value.slice(-4)}`;
+}
+
+function auditActionLabel(action: string) {
+  const labels: Record<string, string> = {
+    create_invite: "สร้างลิงก์ยืนยัน LINE",
+    create_line_invite: "สร้างลิงก์ยืนยัน LINE",
+    verify_invite: "ผู้ป่วยยืนยันบัญชี LINE",
+    verify_line_identity: "ผู้ป่วยยืนยันบัญชี LINE",
+    verify_staff: "เจ้าหน้าที่ยืนยันบัญชี LINE",
+    queue_line_nudge: "จัดคิวข้อความติดตาม",
+    send_line_nudge: "ส่งข้อความติดตาม",
+    create_appointment: "สร้างนัดหมาย",
+    appointment_notification_sent: "ส่งบัตรนัด",
+    appointment_status_updated: "อัปเดตสถานะนัด",
+    positive_intake_created: "รับข้อมูลผู้แจ้งผลตรวจ",
+    positive_intake_status_updated: "อัปเดตสถานะผู้แจ้งผล",
+    positive_patient_identity_verified: "เชื่อมบัญชีผู้ป่วยสำเร็จ",
+  };
+  return labels[action] || "บันทึกการทำงานของระบบ";
+}
+
 function AgentPage() {
   const [hn, setHn] = useState("");
   const [patientName, setPatientName] = useState("");
@@ -163,7 +210,7 @@ function AgentPage() {
     facilityCode: "NPH",
     appointmentDate: "",
     appointmentTime: "09:00",
-    note: "",
+    note: "นัดตรวจผลซ้ำเพื่อยืนยันผล กรุณานำบัตรนัดมายื่นที่จุดลงทะเบียน",
   });
   const { data, refetch, isFetching } = useQuery({
     queryKey: ["agent-store"],
@@ -175,11 +222,21 @@ function AgentPage() {
   });
 
   const createInvite = useMutation({
-    mutationFn: () => postAgent("create_invite", { hn, patientName }),
+    mutationFn: (person?: { hn: string; patientName: string }) =>
+      postAgent("create_invite", {
+        hn: person?.hn || hn,
+        patientName: person?.patientName || patientName,
+      }),
     onSuccess: (result) => {
       setLatestLink(result.link);
       toast.success("สร้างลิงก์ผูก LINE แล้ว");
       refetch();
+      requestAnimationFrame(() =>
+        document.getElementById("line-link-workflow")?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        }),
+      );
     },
     onError: (error) => toast.error(error instanceof Error ? error.message : "สร้างลิงก์ไม่สำเร็จ"),
   });
@@ -224,7 +281,7 @@ function AgentPage() {
         hn: "",
         patientName: "",
         appointmentDate: "",
-        note: "",
+        note: "นัดตรวจผลซ้ำเพื่อยืนยันผล กรุณานำบัตรนัดมายื่นที่จุดลงทะเบียน",
       }));
       refetch();
     },
@@ -255,7 +312,7 @@ function AgentPage() {
     onSuccess: (result) => {
       const summary = result.reconciliation;
       toast.success(
-        `ซิงก์แล้ว: งานผู้พบเชื้อ ${summary.positiveTasksUpdated} · ปิดงานเดิม ${summary.orphanTasksClosed}`,
+        `ตรวจข้อมูลแล้ว: อัปเดตคิวผู้พบเชื้อ ${summary.positiveTasksUpdated} ราย · ปิดรายการเดิม ${summary.orphanTasksClosed} ราย`,
       );
       refetch();
     },
@@ -281,7 +338,13 @@ function AgentPage() {
     data?.tasks.filter((item) => !["closed", "cancelled", "completed"].includes(item.status))
       .length || 0;
   const activeAppointments =
-    data?.appointments.filter((item) => !["cancelled", "completed"].includes(item.status)) || [];
+    data?.appointments
+      .filter((item) => !["cancelled", "completed"].includes(item.status))
+      .sort((a, b) =>
+        `${a.appointmentDate}${a.appointmentTime || ""}`.localeCompare(
+          `${b.appointmentDate}${b.appointmentTime || ""}`,
+        ),
+      ) || [];
   const today = new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Bangkok",
     year: "numeric",
@@ -292,10 +355,10 @@ function AgentPage() {
   return (
     <div className="page-shell">
       <OfficialPageHeader
-        eyebrow="ระบบติดตามผู้ป่วยผ่าน LINE"
-        title="การผูกบัญชี LINE และแจ้งเตือนอัตโนมัติ"
-        description="เครื่องมือสำหรับเจ้าหน้าที่โรงพยาบาล สร้าง QR ผูกบัญชี LINE กับหมายเลข HN จัดคิวแจ้งเตือนผู้ป่วยที่ยังติดตามไม่ครบ และบันทึกการทำงานทุกขั้นตอนเพื่อตรวจสอบย้อนหลัง"
-        badges={["ติดตามตามทะเบียนผู้ป่วย", "บันทึกการทำงานครบถ้วน", "ใช้งานร่วมกับ LIFF"]}
+        eyebrow="นัดหมายและติดตามผ่าน LINE"
+        title="จัดการบัตรนัดและการติดต่อผู้ป่วย"
+        description="เลือกผู้รับบริการเพื่อสร้างบัตรนัด ส่งข้อความ และตรวจสถานะการตอบรับ หากยังไม่เชื่อมบัญชี LINE ระบบจะแนะนำขั้นตอนให้เจ้าหน้าที่ดำเนินการต่อ"
+        badges={["ใช้รายชื่อกลางของระบบ", "แยกบัญชีผู้ป่วยและเจ้าหน้าที่", "ตรวจสอบย้อนหลังได้"]}
       >
         <Button
           variant="outline"
@@ -308,12 +371,34 @@ function AgentPage() {
           ) : (
             <RefreshCcw className="h-4 w-4" />
           )}
-          ตรวจและซิงก์ข้อมูล
+          ตรวจความสอดคล้องของข้อมูล
         </Button>
       </OfficialPageHeader>
 
+      <WorkflowSteps
+        title="เส้นทางการนัดหมายและติดตาม"
+        steps={[
+          { title: "เลือกผู้รับบริการ", detail: "ค้นหาจากทะเบียนหรือรหัสเคส" },
+          { title: "ตรวจบัญชี LINE", detail: "สร้าง QR หากยังไม่เชื่อมบัญชี" },
+          { title: "สร้างและส่งบัตรนัด", detail: "ระบุวัน เวลา และสถานบริการ" },
+          { title: "ติดตามผล", detail: "ยืนยันนัด บันทึกมาตามนัด หรือยกเลิก" },
+        ]}
+      />
+
+      {(data === undefined || carePeople.isLoading) && (
+        <div className="flex items-center gap-2 rounded-xl border bg-card p-4 text-sm text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          กำลังโหลดข้อมูลนัดหมายและบัญชี LINE
+        </div>
+      )}
+      {(carePeople.isError || (!data && !isFetching)) && (
+        <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
+          โหลดข้อมูลบางส่วนไม่สำเร็จ กรุณากด “ตรวจความสอดคล้องของข้อมูล” หรือลองเปิดหน้านี้ใหม่
+        </div>
+      )}
+
       <section className="grid gap-6 lg:grid-cols-[.9fr_1.1fr]">
-        <Card className="metric-card">
+        <Card id="line-link-workflow" className="metric-card scroll-mt-20">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
               <QrCode className="h-5 w-5 text-teal" />
@@ -342,7 +427,7 @@ function AgentPage() {
             <div className="flex flex-wrap gap-2">
               <Button
                 disabled={!hn || createInvite.isPending}
-                onClick={() => createInvite.mutate()}
+                onClick={() => createInvite.mutate(undefined)}
                 className="gap-2"
               >
                 {createInvite.isPending ? (
@@ -387,7 +472,7 @@ function AgentPage() {
                   <div className="min-w-0 flex-1">
                     <div className="text-sm font-semibold">สร้างลิงก์สำเร็จ</div>
                     <div className="mt-1 text-xs leading-5 text-emerald-800">
-                      ใช้ QR นี้สำหรับผูก LINE กับ HN ตามสิทธิ์ที่ผู้ป่วยยืนยันใน LIFF
+                      ให้ผู้ป่วยเปิด QR นี้ผ่าน LINE และกดยืนยัน ระบบจึงจะส่งข้อความและบัตรนัดได้
                     </div>
                     <div className="mt-2 break-all text-xs">{latestLink}</div>
                     <Button
@@ -404,8 +489,8 @@ function AgentPage() {
               </div>
             )}
             <div className="rounded-lg border bg-muted/20 p-3 text-xs leading-5 text-muted-foreground">
-              ขั้นตอนมาตรฐาน: เลือก HN → สร้าง QR → ผู้ป่วยยืนยันใน LINE →
-              ระบบบันทึกการเชื่อมบัญชีสำหรับการติดตาม
+              ขั้นตอน: ระบุ HN → สร้าง QR → ให้ผู้ป่วยสแกนและยืนยันใน LINE →
+              กลับมาตรวจสถานะก่อนส่งข้อความ
             </div>
           </CardContent>
         </Card>
@@ -418,19 +503,19 @@ function AgentPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="grid gap-3 sm:grid-cols-2">
-            <div className="rounded-2xl border bg-background/60 p-3">
+            <div className="rounded-lg border bg-background/60 p-3">
               <div className="text-2xl font-bold">{data?.invites.length || 0}</div>
               <div className="text-xs text-muted-foreground">คำเชิญทั้งหมด</div>
             </div>
-            <div className="rounded-2xl border bg-background/60 p-3">
+            <div className="rounded-lg border bg-background/60 p-3">
               <div className="text-2xl font-bold">{data?.identities.length || 0}</div>
               <div className="text-xs text-muted-foreground">บัญชี LINE ที่ผูกแล้ว</div>
             </div>
-            <div className="rounded-2xl border bg-background/60 p-3">
+            <div className="rounded-lg border bg-background/60 p-3">
               <div className="text-2xl font-bold">{activeTaskCount}</div>
               <div className="text-xs text-muted-foreground">งานที่รอดำเนินการ</div>
             </div>
-            <div className="rounded-2xl border bg-background/60 p-3">
+            <div className="rounded-lg border bg-background/60 p-3">
               <div className="text-2xl font-bold">{activeAppointments.length}</div>
               <div className="text-xs text-muted-foreground">นัดหมายที่กำลังติดตาม</div>
             </div>
@@ -447,7 +532,7 @@ function AgentPage() {
             </CardTitle>
             <p className="text-xs leading-5 text-muted-foreground">
               เจ้าหน้าที่เลือกผู้รับบริการ วัน เวลา และสถานที่นัด ระบบจะส่งบัตรนัดเฉพาะบัญชี LINE
-              ที่ยืนยันเป็นผู้ป่วยแล้ว
+              ที่ยืนยันเป็นผู้ป่วยแล้ว ช่องที่มีเครื่องหมาย * จำเป็นต้องกรอก
             </p>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -460,7 +545,9 @@ function AgentPage() {
             </datalist>
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-muted-foreground">HN หรือรหัสเคส</label>
+                <label className="text-xs font-medium text-muted-foreground">
+                  HN หรือรหัสเคส *
+                </label>
                 <Input
                   list="agent-care-people"
                   value={appointmentForm.hn}
@@ -470,7 +557,7 @@ function AgentPage() {
               </div>
               <div className="space-y-1.5">
                 <label className="text-xs font-medium text-muted-foreground">
-                  ชื่อผู้รับบริการ
+                  ชื่อผู้รับบริการ *
                 </label>
                 <Input
                   value={appointmentForm.patientName}
@@ -485,7 +572,7 @@ function AgentPage() {
               </div>
             </div>
             <div className="space-y-1.5">
-              <label className="text-xs font-medium text-muted-foreground">สถานที่นัด</label>
+              <label className="text-xs font-medium text-muted-foreground">สถานที่นัด *</label>
               <select
                 className="h-10 w-full rounded-md border bg-background px-3 text-sm"
                 value={appointmentForm.facilityCode}
@@ -505,7 +592,7 @@ function AgentPage() {
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-muted-foreground">วันนัด</label>
+                <label className="text-xs font-medium text-muted-foreground">วันนัด *</label>
                 <Input
                   type="date"
                   min={today}
@@ -590,7 +677,7 @@ function AgentPage() {
             </p>
           </CardHeader>
           <CardContent className="space-y-3">
-            {data?.appointments.slice(0, 8).map((appointment) => (
+            {activeAppointments.slice(0, 8).map((appointment) => (
               <div key={appointment.id} className="rounded-xl border p-3">
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div>
@@ -614,8 +701,28 @@ function AgentPage() {
                     {appointment.facilityName}
                   </div>
                 </div>
-                <div className="mt-2 text-[11px] text-muted-foreground">
-                  LINE: {notificationStatusLabel(appointment.notificationStatus)}
+                <div
+                  className={`mt-3 flex items-start gap-2 rounded-lg border p-2.5 text-xs ${
+                    appointment.notificationStatus === "sent"
+                      ? "border-emerald-200 bg-emerald-50 text-emerald-900"
+                      : appointment.notificationStatus === "failed"
+                        ? "border-rose-200 bg-rose-50 text-rose-900"
+                        : appointment.notificationStatus === "not_linked"
+                          ? "border-amber-200 bg-amber-50 text-amber-900"
+                          : "border-sky-200 bg-sky-50 text-sky-900"
+                  }`}
+                >
+                  <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                  <div>
+                    <div className="font-semibold">
+                      {notificationStatusLabel(appointment.notificationStatus)}
+                    </div>
+                    {appointment.notificationStatus === "not_linked" && (
+                      <div className="mt-0.5">
+                        ต้องให้ผู้ป่วยสแกน QR และยืนยันบัญชี LINE ก่อนส่งบัตรนัด
+                      </div>
+                    )}
+                  </div>
                 </div>
                 {appointment.note && (
                   <div className="mt-2 rounded-lg bg-amber-50 p-2 text-xs text-amber-900">
@@ -624,19 +731,49 @@ function AgentPage() {
                 )}
                 {!["completed", "cancelled"].includes(appointment.status) && (
                   <div className="mt-3 flex flex-wrap gap-1.5">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      disabled={appointmentAction.isPending}
-                      onClick={() =>
-                        appointmentAction.mutate({
-                          action: "send_appointment",
-                          id: appointment.id,
-                        })
-                      }
-                    >
-                      {appointment.notificationStatus === "sent" ? "ส่งบัตรนัดซ้ำ" : "ส่ง LINE"}
-                    </Button>
+                    {appointment.notificationStatus === "not_linked" ? (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={createInvite.isPending}
+                        onClick={() =>
+                          createInvite.mutate({
+                            hn: appointment.hn,
+                            patientName: appointment.patientName,
+                          })
+                        }
+                      >
+                        สร้าง QR ผูก LINE
+                      </Button>
+                    ) : appointment.notificationStatus === "sent" ? (
+                      <ConfirmAction
+                        trigger="ส่งบัตรนัดซ้ำ"
+                        title={`ส่งบัตรนัดให้ ${appointment.patientName} อีกครั้ง`}
+                        description={`ระบบจะส่งบัตรนัด ${appointment.appointmentCode} ซ้ำไปยังบัญชี LINE ของผู้ป่วย`}
+                        confirmLabel="ยืนยันส่งซ้ำ"
+                        disabled={appointmentAction.isPending}
+                        onConfirm={() =>
+                          appointmentAction.mutate({
+                            action: "send_appointment",
+                            id: appointment.id,
+                          })
+                        }
+                      />
+                    ) : (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={appointmentAction.isPending}
+                        onClick={() =>
+                          appointmentAction.mutate({
+                            action: "send_appointment",
+                            id: appointment.id,
+                          })
+                        }
+                      >
+                        ส่งบัตรนัด
+                      </Button>
+                    )}
                     <Button
                       size="sm"
                       variant="outline"
@@ -651,39 +788,40 @@ function AgentPage() {
                     >
                       ยืนยันนัด
                     </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
+                    <ConfirmAction
+                      trigger="มาตามนัดแล้ว"
+                      title={`ยืนยันการมาตามนัดของ ${appointment.patientName}`}
+                      description="นัดหมายนี้จะถูกบันทึกว่าเสร็จสิ้นและออกจากรายการที่กำลังติดตาม"
+                      confirmLabel="ยืนยันมาตามนัด"
                       disabled={appointmentAction.isPending}
-                      onClick={() =>
+                      onConfirm={() =>
                         appointmentAction.mutate({
                           action: "update_appointment",
                           id: appointment.id,
                           status: "completed",
                         })
                       }
-                    >
-                      มาตามนัดแล้ว
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
+                    />
+                    <ConfirmAction
+                      trigger="ยกเลิกนัด"
+                      title={`ยืนยันยกเลิกนัดของ ${appointment.patientName}`}
+                      description={`นัดหมาย ${appointment.appointmentCode} จะถูกยกเลิกและออกจากรายการที่กำลังติดตาม`}
+                      confirmLabel="ยืนยันยกเลิกนัด"
+                      destructive
                       disabled={appointmentAction.isPending}
-                      onClick={() =>
+                      onConfirm={() =>
                         appointmentAction.mutate({
                           action: "update_appointment",
                           id: appointment.id,
                           status: "cancelled",
                         })
                       }
-                    >
-                      ยกเลิก
-                    </Button>
+                    />
                   </div>
                 )}
               </div>
             ))}
-            {!data?.appointments.length && <EmptyLine text="ยังไม่มีนัดหมาย" />}
+            {!activeAppointments.length && <EmptyLine text="ยังไม่มีนัดหมายที่ต้องติดตาม" />}
           </CardContent>
         </Card>
       </section>
@@ -732,7 +870,7 @@ function AgentPage() {
             <div>
               <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-sky-900/70">
                 <Activity className="h-3.5 w-3.5" />
-                marker ที่ควรดูร่วมกัน
+                ตัวชี้วัดที่ควรพิจารณาร่วมกัน
               </div>
               <div className="flex flex-wrap gap-2">
                 {HBV_HDV_MONITORING_INSIGHT.markers.map((marker) => (
@@ -756,21 +894,21 @@ function AgentPage() {
       <section className="grid gap-6 xl:grid-cols-3">
         <Card className="metric-card">
           <CardHeader>
-            <CardTitle className="text-base">คำเชิญล่าสุด</CardTitle>
+            <CardTitle className="text-base">ลิงก์ยืนยันล่าสุด</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
             {data?.invites.slice(0, 8).map((item) => (
               <div key={item.id} className="rounded-lg border p-3 text-sm">
                 <div className="flex items-center justify-between gap-2">
                   <span className="font-mono text-xs">{item.hn}</span>
-                  <Badge variant="outline">{item.status}</Badge>
+                  <Badge variant="outline">{inviteStatusLabel(item.status)}</Badge>
                 </div>
                 <div className="mt-1 text-xs text-muted-foreground">
                   หมดอายุ {new Date(item.expiresAt).toLocaleString("th-TH")}
                 </div>
               </div>
             ))}
-            {!data?.invites.length && <EmptyLine text="ยังไม่มีคำเชิญ" />}
+            {!data?.invites.length && <EmptyLine text="ยังไม่มีลิงก์ยืนยัน" />}
           </CardContent>
         </Card>
 
@@ -783,9 +921,11 @@ function AgentPage() {
               <div key={item.lineUserId} className="rounded-lg border p-3 text-sm">
                 <div className="flex items-center justify-between gap-2">
                   <span className="font-mono text-xs">{item.hn || "-"}</span>
-                  <Badge variant="outline">{item.role}</Badge>
+                  <Badge variant="outline">{identityRoleLabel(item.role)}</Badge>
                 </div>
-                <div className="mt-1 truncate text-xs text-muted-foreground">{item.lineUserId}</div>
+                <div className="mt-1 truncate text-xs text-muted-foreground">
+                  {item.displayName || maskLineUserId(item.lineUserId)}
+                </div>
               </div>
             ))}
             {!data?.identities.length && <EmptyLine text="ยังไม่มีการผูก LINE" />}
@@ -794,7 +934,7 @@ function AgentPage() {
 
         <Card className="metric-card">
           <CardHeader>
-            <CardTitle className="text-base">งานของ Agent</CardTitle>
+            <CardTitle className="text-base">งานติดตามอัตโนมัติ</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
             {isFetching && <div className="text-xs text-muted-foreground">กำลังอัปเดต...</div>}
@@ -802,7 +942,7 @@ function AgentPage() {
               <div key={item.id} className="rounded-lg border p-3 text-sm">
                 <div className="flex items-center justify-between gap-2">
                   <span className="font-mono text-xs">{item.hn}</span>
-                  <Badge variant="outline">{item.status}</Badge>
+                  <Badge variant="outline">{taskStatusLabel(item.status)}</Badge>
                 </div>
                 <div className="mt-1 text-xs text-muted-foreground">{item.message}</div>
               </div>
@@ -828,7 +968,7 @@ function AgentPage() {
               <div className="text-xs text-muted-foreground">
                 {new Date(item.at).toLocaleString("th-TH")}
               </div>
-              <div className="font-mono text-xs">{item.action}</div>
+              <div className="text-xs font-medium">{auditActionLabel(item.action)}</div>
               <div className="text-xs text-muted-foreground">{item.detail}</div>
             </div>
           ))}

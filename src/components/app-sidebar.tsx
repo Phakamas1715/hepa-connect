@@ -54,13 +54,23 @@ const items = [
     desc: "ประชาชนลงทะเบียนผ่าน LINE",
   },
   {
-    title: "คิวผู้พบเชื้อ",
+    title: "ผู้พบเชื้อจาก LINE",
     url: "/positive-intake",
     icon: UserCheck,
-    desc: "ผลบวกยืนยันผ่าน LIFF",
+    desc: "ตรวจสอบและติดตามผู้แจ้งผล",
   },
-  { title: "ติดตามผ่าน LINE", url: "/agent", icon: Bot, desc: "ผูกบัญชีและส่งข้อความติดตาม" },
-  { title: "ตรวจสอบ Agent", url: "/agent-bench", icon: FlaskConical, desc: "ทดสอบความพร้อมระบบ" },
+  {
+    title: "นัดหมายและติดตาม",
+    url: "/agent",
+    icon: Bot,
+    desc: "บัตรนัดและข้อความผ่าน LINE",
+  },
+  {
+    title: "ตรวจสอบความพร้อมระบบ",
+    url: "/agent-bench",
+    icon: FlaskConical,
+    desc: "ทดสอบการเชื่อมต่อและข้อมูล",
+  },
   {
     title: "รายงานไข้หวัดใหญ่",
     url: "/ili-report",
@@ -187,10 +197,10 @@ export function AppSidebar() {
                   {TARGET_REGISTRY_SOURCE.label}
                 </div>
                 <div className="mt-1 text-[11px] leading-5 text-sidebar-foreground/60">
-                  แดชบอร์ดและ Care Gap ใช้รายชื่อชุดเดียวกัน
+                  แดชบอร์ดและทะเบียนติดตามใช้รายชื่อชุดเดียวกัน
                 </div>
                 <Badge className="mt-2 h-5 border-sidebar-primary/30 bg-sidebar-primary/15 px-1.5 text-[10px] text-sidebar-primary hover:bg-sidebar-primary/15">
-                  ไม่ใช้ตัวเลขจาก dashboard ภายนอก
+                  แหล่งข้อมูลหลักของระบบ
                 </Badge>
               </div>
             </div>

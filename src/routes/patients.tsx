@@ -36,6 +36,7 @@ import {
   HBV_HDV_MONITORING_INSIGHT,
 } from "@/lib/hepa-clinical-evidence";
 import { OfficialPageHeader } from "@/components/official-layout";
+import { WorkflowSteps } from "@/components/workflow-steps";
 import { hasCareGap, needsSofvelTreatment, type Patient } from "@/lib/hepa-data";
 import { calculateHepaRaaia, type HepaRaaiaScore } from "@/lib/hepa-raaia";
 import { HEPA_SERVICE_AREAS, resolveHepaServiceArea } from "@/lib/hepa-service-area";
@@ -52,7 +53,7 @@ export const Route = createFileRoute("/patients")({
   }),
   head: () => ({
     meta: [
-      { title: "ทะเบียน Care Gap — HEPA-GLUE Engine" },
+      { title: "ทะเบียนผู้ป่วยค้างติดตาม — HEPA-GLUE Engine" },
       {
         name: "description",
         content: "ทะเบียนผู้ป่วยไวรัสตับอักเสบ B/C พร้อมคะแนนความเร่งด่วนและ QR ผูก LINE",
@@ -71,11 +72,27 @@ const bandColor: Record<HepaRaaiaScore["band"], string> = {
 
 const actionLabel: Record<HepaRaaiaScore["nextAction"], string> = {
   create_line_qr: "สร้าง QR ผูก LINE",
-  send_line_nudge: "ส่ง LINE nudge",
+  send_line_nudge: "ส่งข้อความติดตามผ่าน LINE",
   staff_call: "โทรตามโดยเจ้าหน้าที่",
   vhv_followup: "ส่งต่อ อสม.",
   routine_followup: "ติดตามตามรอบ",
 };
+
+function personaLabel(value?: Patient["persona"]) {
+  const labels: Record<string, string> = {
+    "The Engaged": "ร่วมมือดี",
+    "The Forgetful": "มักลืมนัด",
+    "The Fearful": "กังวลต่อการรักษา",
+    "The Denier": "ยังไม่ยอมรับผล",
+    "The Striver": "มีข้อจำกัดในการเข้าถึง",
+  };
+  return labels[value || ""] || "ยังไม่ประเมิน";
+}
+
+function maskCid(value?: string) {
+  if (!value) return "-";
+  return value.length > 4 ? `*********${value.slice(-4)}` : value;
+}
 
 function ResultBadge({ value }: { value?: string }) {
   if (value === "Positive" || value === "Detected")
@@ -97,7 +114,7 @@ async function postAgent(action: string, payload: Record<string, unknown>) {
     body: JSON.stringify({ action, ...payload }),
   });
   const data = await response.json();
-  if (!response.ok) throw new Error(data?.message || "agent action failed");
+  if (!response.ok) throw new Error(data?.message || "ดำเนินการติดตามไม่สำเร็จ");
   return data;
 }
 
@@ -190,7 +207,7 @@ async function syncGoogleSheetPatients() {
     body: JSON.stringify({ action: "sync_google_sheet" }),
   });
   const data = await response.json();
-  if (!response.ok) throw new Error(data?.message || "ซิงก์ Google Sheet ไม่สำเร็จ");
+  if (!response.ok) throw new Error(data?.message || "อัปเดตข้อมูลจาก Google Sheet ไม่สำเร็จ");
   return data;
 }
 
@@ -252,10 +269,10 @@ function PatientsPage() {
     mutationFn: syncGoogleSheetPatients,
     onSuccess: (result) => {
       refetch();
-      toast.success(`ซิงก์ Google Sheet แล้ว ${result.sync?.count ?? 0} ราย`);
+      toast.success(`อัปเดตข้อมูลจาก Google Sheet แล้ว ${result.sync?.count ?? 0} ราย`);
     },
     onError: (err) =>
-      toast.error(err instanceof Error ? err.message : "ซิงก์ Google Sheet ไม่สำเร็จ"),
+      toast.error(err instanceof Error ? err.message : "อัปเดตข้อมูลจาก Google Sheet ไม่สำเร็จ"),
   });
 
   const moduleStatus = useQuery({
@@ -278,8 +295,8 @@ function PatientsPage() {
     onSuccess: (result) =>
       toast.success(
         result.task?.status === "blocked"
-          ? "ยังไม่มี LINE identity ให้สร้าง QR ก่อน"
-          : "จัดคิว LINE แล้ว",
+          ? "ยังไม่เชื่อมบัญชี LINE กรุณาสร้าง QR ให้ผู้ป่วยก่อน"
+          : "จัดคิวข้อความ LINE แล้ว",
       ),
     onError: (err) => toast.error(err instanceof Error ? err.message : "จัดคิวไม่สำเร็จ"),
   });
@@ -348,9 +365,9 @@ function PatientsPage() {
     <div className="page-shell">
       <OfficialPageHeader
         eyebrow="ทะเบียนผู้ป่วยค้างติดตาม"
-        title="จัดลำดับผู้ป่วยและเปิดคิวติดตาม LINE"
-        description="อ่านจากรายชื่อกลางเดียวกับแดชบอร์ด จัดลำดับความเร่งด่วน สร้าง QR ผูก LINE และจัดคิวข้อความติดตามให้เจ้าหน้าที่ตรวจสอบได้"
-        badges={["รายชื่อกลาง", "คิวติดตาม LINE", "QR ผูก LINE"]}
+        title="จัดลำดับและติดตามการดูแลผู้ป่วย"
+        description="ใช้รายชื่อกลางของระบบเพื่อจัดลำดับความเร่งด่วน เชื่อมบัญชี LINE และจัดคิวข้อความติดตามให้เจ้าหน้าที่ดำเนินงานต่อได้ทันที"
+        badges={["ใช้รายชื่อกลาง", "ติดตามผ่าน LINE", "ตรวจสอบย้อนหลังได้"]}
       >
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" onClick={() => refetch()} className="w-fit gap-2">
@@ -368,7 +385,7 @@ function PatientsPage() {
             ) : (
               <RefreshCw className="h-4 w-4" />
             )}
-            ซิงก์ Google Sheet
+            อัปเดตจาก Google Sheet
           </Button>
           <Button onClick={() => setEditing(emptyPatientForm)} className="w-fit gap-2">
             <Plus className="h-4 w-4" />
@@ -376,6 +393,16 @@ function PatientsPage() {
           </Button>
         </div>
       </OfficialPageHeader>
+
+      <WorkflowSteps
+        title="เส้นทางติดตามผู้ป่วย"
+        steps={[
+          { title: "ตรวจสอบรายชื่อกลาง", detail: "อัปเดตจากหน่วยบริการและ Google Sheet" },
+          { title: "จัดลำดับความเร่งด่วน", detail: "พิจารณาผลตรวจและสถานะการดูแล" },
+          { title: "เชื่อมบัญชี LINE", detail: "สร้าง QR สำหรับผู้ที่ยังไม่เชื่อมบัญชี" },
+          { title: "ติดตามจนจบกระบวนการ", detail: "ส่งข้อความ นัดหมาย และบันทึกผล" },
+        ]}
+      />
 
       <Card>
         <CardContent className="flex flex-col gap-2 p-4 text-sm md:flex-row md:items-center md:justify-between">
@@ -386,7 +413,7 @@ function PatientsPage() {
                 ? "Google Sheet"
                 : "รายชื่อที่เตรียมไว้ในระบบ"}
               {patientMeta?.lastGoogleSyncAt
-                ? ` · ซิงก์ล่าสุด ${new Date(String(patientMeta.lastGoogleSyncAt)).toLocaleString("th-TH")}`
+                ? ` · อัปเดตล่าสุด ${new Date(String(patientMeta.lastGoogleSyncAt)).toLocaleString("th-TH")}`
                 : ""}
               {patientMeta?.lastGoogleSyncError
                 ? ` · ล่าสุด: ${String(patientMeta.lastGoogleSyncError)}`
@@ -483,11 +510,11 @@ function PatientsPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="The Engaged">The Engaged</SelectItem>
-                  <SelectItem value="The Forgetful">The Forgetful</SelectItem>
-                  <SelectItem value="The Fearful">The Fearful</SelectItem>
-                  <SelectItem value="The Denier">The Denier</SelectItem>
-                  <SelectItem value="The Striver">The Striver</SelectItem>
+                  <SelectItem value="The Engaged">ร่วมมือดี</SelectItem>
+                  <SelectItem value="The Forgetful">มักลืมนัด</SelectItem>
+                  <SelectItem value="The Fearful">กังวลต่อการรักษา</SelectItem>
+                  <SelectItem value="The Denier">ยังไม่ยอมรับผล</SelectItem>
+                  <SelectItem value="The Striver">มีข้อจำกัดในการเข้าถึง</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -568,11 +595,11 @@ function PatientsPage() {
       <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-7">
         {[
           { label: "รายชื่อทั้งหมด", value: stats.total },
-          { label: "Care Gap", value: stats.gaps },
+          { label: "ค้างติดตาม", value: stats.gaps },
           { label: "เสี่ยงสูง", value: stats.high },
           { label: "ควรสร้าง QR", value: stats.needQr },
-          { label: "HBV/HDV review", value: stats.hbvHdvReview },
-          { label: "Mapped Area", value: stats.mapped },
+          { label: "ควรทบทวน HBV/HDV", value: stats.hbvHdvReview },
+          { label: "ระบุพื้นที่แล้ว", value: stats.mapped },
           { label: "เขตรับผิดชอบ", value: stats.areas },
         ].map((item) => (
           <Card key={item.label}>
@@ -582,9 +609,9 @@ function PatientsPage() {
                   <div className="text-2xl font-bold">{item.value}</div>
                   <div className="text-xs text-muted-foreground">{item.label}</div>
                 </div>
-                {item.label === "Mapped Area" ? (
+                {item.label === "ระบุพื้นที่แล้ว" ? (
                   <MapPin className="h-5 w-5 text-teal" />
-                ) : item.label === "HBV/HDV review" ? (
+                ) : item.label === "ควรทบทวน HBV/HDV" ? (
                   <BookOpenCheck className="h-5 w-5 text-teal" />
                 ) : item.label === "เขตรับผิดชอบ" ? (
                   <Building2 className="h-5 w-5 text-teal" />
@@ -608,8 +635,8 @@ function PatientsPage() {
             <div className="min-w-0">
               <div className="font-semibold">QR สำหรับให้ผู้ป่วยสแกน</div>
               <p className="mt-1 text-sm leading-6">
-                ผู้ป่วยสแกนแล้วกดยืนยัน ระบบรู้ HN จาก token และดึง LINE userId ผ่าน LIFF
-                เมื่อขึ้นใช้งานจริง
+                ให้ผู้ป่วยเปิด QR ผ่าน LINE และกดยืนยัน ระบบจะเชื่อมบัญชีกับ HN
+                โดยไม่ต้องให้เจ้าหน้าที่พิมพ์รหัสบัญชี LINE
               </p>
               <div className="mt-2 break-all text-xs">{latestLink}</div>
             </div>
@@ -661,8 +688,8 @@ function PatientsPage() {
                 ใช้งาน HBV/HDV monitoring ในทะเบียน
               </CardTitle>
               <p className="mt-2 max-w-4xl text-sm leading-6 text-sky-900/80">
-                ระบบจะติด tag ให้ผู้ป่วยที่มี HBV positive เพื่อให้เจ้าหน้าที่พิจารณาติดตาม marker
-                ร่วมกัน ไม่ใช่การสั่งตรวจหรือรักษาอัตโนมัติ
+                ระบบจะแสดงเครื่องหมายกำกับผู้ที่มีผล HBV เป็นบวก เพื่อให้เจ้าหน้าที่พิจารณา
+                ตัวชี้วัดที่เกี่ยวข้องร่วมกัน ไม่ใช่การสั่งตรวจหรือรักษาอัตโนมัติ
               </p>
             </div>
             <Button
@@ -671,7 +698,7 @@ function PatientsPage() {
               onClick={() => setFilter("hbv_hdv")}
             >
               <BookOpenCheck className="h-4 w-4" />
-              ดู HBV/HDV review
+              ดูรายการที่ควรทบทวน
             </Button>
           </div>
         </CardHeader>
@@ -740,10 +767,10 @@ function PatientsPage() {
                   <th className="px-3 py-2">HBsAg</th>
                   <th className="px-3 py-2">HCV Ab</th>
                   <th className="px-3 py-2">HCV RNA</th>
-                  <th className="px-3 py-2">Persona</th>
+                  <th className="px-3 py-2">รูปแบบการติดตาม</th>
                   <th className="px-3 py-2">คะแนนเร่งด่วน</th>
                   <th className="px-3 py-2">HBV/HDV</th>
-                  <th className="px-3 py-2">Action</th>
+                  <th className="px-3 py-2">ขั้นตอนถัดไป</th>
                   <th className="px-3 py-2 text-right">ทำงาน</th>
                 </tr>
               </thead>
@@ -757,7 +784,9 @@ function PatientsPage() {
                       </td>
                       <td className="px-3 py-2">
                         <div className="font-medium text-foreground">{patient.name}</div>
-                        <div className="text-[10px] text-muted-foreground">CID {patient.cid}</div>
+                        <div className="text-[10px] text-muted-foreground">
+                          เลขประชาชน {maskCid(patient.cid)}
+                        </div>
                       </td>
                       <td className="px-3 py-2 text-xs text-muted-foreground">
                         {patient.village} / {patient.subdistrict}
@@ -789,7 +818,7 @@ function PatientsPage() {
                             className="border-warning/50 bg-warning/20 text-warning-foreground"
                             variant="outline"
                           >
-                            ยังไม่พบ mapping
+                            ยังไม่ระบุหน่วยรับผิดชอบ
                           </Badge>
                         )}
                       </td>
@@ -803,11 +832,11 @@ function PatientsPage() {
                         <ResultBadge value={patient.hcvVL} />
                       </td>
                       <td className="px-3 py-2">
-                        <Badge variant="outline">{patient.persona}</Badge>
+                        <Badge variant="outline">{personaLabel(patient.persona)}</Badge>
                       </td>
                       <td className="px-3 py-2">
                         <Badge variant="outline" className={bandColor[raaia.band]}>
-                          Score {raaia.score}
+                          คะแนน {raaia.score}
                         </Badge>
                         <div className="mt-1 text-[10px] text-muted-foreground">
                           {raaia.explanation}
@@ -831,7 +860,7 @@ function PatientsPage() {
                             </div>
                           </div>
                         ) : (
-                          <span className="text-xs text-muted-foreground">routine</span>
+                          <span className="text-xs text-muted-foreground">ติดตามตามปกติ</span>
                         )}
                       </td>
                       <td className="px-3 py-2 text-xs text-muted-foreground">
@@ -846,7 +875,7 @@ function PatientsPage() {
                             onClick={() => setEditing(patientToForm(patient))}
                           >
                             <Edit3 className="h-3.5 w-3.5" />
-                            แก้
+                            แก้ไข
                           </Button>
                           <Button
                             size="sm"
@@ -859,7 +888,7 @@ function PatientsPage() {
                             ) : (
                               <QrCode className="h-3.5 w-3.5" />
                             )}
-                            QR
+                            สร้าง QR
                           </Button>
                           <Button
                             size="sm"
@@ -868,7 +897,7 @@ function PatientsPage() {
                             onClick={() => queueNudge.mutate(patient)}
                           >
                             <Send className="h-3.5 w-3.5" />
-                            LINE
+                            จัดคิว LINE
                           </Button>
                           <Button
                             size="sm"

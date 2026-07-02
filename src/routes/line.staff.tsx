@@ -41,10 +41,14 @@ async function postAgent(action: string, payload: Record<string, unknown>) {
 async function loadLiffSdk() {
   if (window.liff) return;
   await new Promise<void>((resolve, reject) => {
-    const existing = document.querySelector<HTMLScriptElement>('script[src="https://static.line-scdn.net/liff/edge/2/sdk.js"]');
+    const existing = document.querySelector<HTMLScriptElement>(
+      'script[src="https://static.line-scdn.net/liff/edge/2/sdk.js"]',
+    );
     if (existing) {
       existing.addEventListener("load", () => resolve(), { once: true });
-      existing.addEventListener("error", () => reject(new Error("โหลด LIFF SDK ไม่สำเร็จ")), { once: true });
+      existing.addEventListener("error", () => reject(new Error("โหลด LIFF SDK ไม่สำเร็จ")), {
+        once: true,
+      });
       return;
     }
     const script = document.createElement("script");
@@ -68,11 +72,19 @@ async function getLiffProfile(liffId: string): Promise<LineProfile> {
 }
 
 function LineStaffPage() {
-  const search = useSearch({ from: "/line/staff" }) as { lineUserId?: string; displayName?: string };
+  const search = useSearch({ from: "/line/staff" }) as {
+    lineUserId?: string;
+    displayName?: string;
+  };
   const liffId = import.meta.env.VITE_STAFF_LIFF_ID as string | undefined;
   const [profile, setProfile] = useState<LineProfile | null>(null);
-  const [manualLineUserId, setManualLineUserId] = useState(search.lineUserId || "");
-  const [manualDisplayName, setManualDisplayName] = useState(search.displayName || "");
+  const allowTestIdentity = import.meta.env.DEV && !liffId;
+  const [manualLineUserId, setManualLineUserId] = useState(
+    allowTestIdentity ? search.lineUserId || "" : "",
+  );
+  const [manualDisplayName, setManualDisplayName] = useState(
+    allowTestIdentity ? search.displayName || "" : "",
+  );
 
   useEffect(() => {
     if (!liffId) return;
@@ -87,10 +99,10 @@ function LineStaffPage() {
 
   const resolvedLine = useMemo(
     () => ({
-      lineUserId: profile?.userId || manualLineUserId.trim(),
-      displayName: profile?.displayName || manualDisplayName.trim(),
+      lineUserId: profile?.userId || (allowTestIdentity ? manualLineUserId.trim() : ""),
+      displayName: profile?.displayName || (allowTestIdentity ? manualDisplayName.trim() : ""),
     }),
-    [manualDisplayName, manualLineUserId, profile],
+    [allowTestIdentity, manualDisplayName, manualLineUserId, profile],
   );
 
   const mutation = useMutation({
@@ -122,7 +134,9 @@ function LineStaffPage() {
                 <CheckCircle2 className="h-5 w-5" />
                 บันทึกเจ้าหน้าที่สำเร็จ
               </div>
-              <p className="mt-2 text-sm leading-6">ระบบบันทึก LINE นี้เป็นบัญชีเจ้าหน้าที่เรียบร้อยแล้ว</p>
+              <p className="mt-2 text-sm leading-6">
+                ระบบบันทึก LINE นี้เป็นบัญชีเจ้าหน้าที่เรียบร้อยแล้ว
+              </p>
             </div>
           ) : (
             <>
@@ -130,9 +144,9 @@ function LineStaffPage() {
                 <div className="flex items-start gap-3">
                   <Smartphone className="mt-1 h-5 w-5 text-teal" />
                   <div>
-                    <div className="font-semibold">ขั้นตอนเจ้าหน้าที่: เปิด LIFF แล้วกดยืนยัน</div>
+                    <div className="font-semibold">ยืนยันบัญชี LINE สำหรับเจ้าหน้าที่</div>
                     <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                      ระบบจะอ่าน LINE userId จาก LIFF และบันทึกเป็นบัญชีเจ้าหน้าที่ โดยไม่ผูกกับ HN ผู้ป่วย
+                      บัญชีนี้ใช้รับการแจ้งเตือนงานของเจ้าหน้าที่ และจะไม่เชื่อมกับข้อมูลผู้ป่วย
                     </p>
                   </div>
                 </div>
@@ -143,34 +157,58 @@ function LineStaffPage() {
                   <Smartphone className="mt-0.5 h-4 w-4 text-teal" />
                   <div className="text-sm">
                     <div className="font-semibold">
-                      {profile ? "อ่าน LINE profile แล้ว" : liffId ? "รอ LINE login" : "โหมดทดสอบ"}
+                      {profile
+                        ? "ยืนยันบัญชี LINE แล้ว"
+                        : liffId
+                          ? "กำลังยืนยันบัญชี LINE"
+                          : allowTestIdentity
+                            ? "โหมดทดสอบ"
+                            : "ยังไม่พร้อมให้บริการ"}
                     </div>
                     <div className="mt-1 text-xs leading-5 text-muted-foreground">
                       {profile
-                        ? `LINE: ${profile.displayName || profile.userId}`
+                        ? `บัญชี LINE: ${profile.displayName || "ยืนยันแล้ว"}`
                         : liffId
-                          ? "ถ้าเปิดใน LINE ระบบจะขออนุญาตและดึง userId ให้อัตโนมัติ"
-                          : "ยังไม่ได้ตั้งค่า LIFF ID จึงแสดงช่องทดสอบสำหรับเจ้าหน้าที่"}
+                          ? "ระบบจะขออนุญาตเชื่อมบัญชี LINE โดยอัตโนมัติ"
+                          : allowTestIdentity
+                            ? "ใช้สำหรับทดสอบในเครื่องเท่านั้น"
+                            : "กรุณาติดต่อผู้ดูแลระบบ เนื่องจากยังไม่ได้ตั้งค่าช่องทาง LINE"}
                     </div>
                   </div>
                 </div>
               </div>
 
-              {!liffId && !profile && (
+              {allowTestIdentity && !profile && (
                 <div className="space-y-3 rounded-lg border border-dashed p-3">
-                  <div className="text-xs font-semibold text-muted-foreground">ช่องทดสอบสำหรับ local เท่านั้น</div>
+                  <div className="text-xs font-semibold text-muted-foreground">
+                    ช่องทดสอบสำหรับ local เท่านั้น
+                  </div>
                   <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-muted-foreground">LINE userId จาก webhook/test tool</label>
-                    <Input value={manualLineUserId} onChange={(event) => setManualLineUserId(event.target.value)} placeholder="Uxxxxxxxxxxxxxxxxxxxx" />
+                    <label className="text-xs font-medium text-muted-foreground">
+                      LINE userId จาก webhook/test tool
+                    </label>
+                    <Input
+                      value={manualLineUserId}
+                      onChange={(event) => setManualLineUserId(event.target.value)}
+                      placeholder="Uxxxxxxxxxxxxxxxxxxxx"
+                    />
                   </div>
                   <div className="space-y-1.5">
                     <label className="text-xs font-medium text-muted-foreground">ชื่อใน LINE</label>
-                    <Input value={manualDisplayName} onChange={(event) => setManualDisplayName(event.target.value)} placeholder="ไม่บังคับ" />
+                    <Input
+                      value={manualDisplayName}
+                      onChange={(event) => setManualDisplayName(event.target.value)}
+                      placeholder="ไม่บังคับ"
+                    />
                   </div>
                 </div>
               )}
 
-              <Button className="w-full gap-2" disabled={!canConfirm} onClick={() => mutation.mutate()}>
+              <Button
+                className="w-full gap-2"
+                disabled={!canConfirm}
+                onClick={() => mutation.mutate()}
+              >
                 {mutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
                 ยืนยันเจ้าหน้าที่
               </Button>

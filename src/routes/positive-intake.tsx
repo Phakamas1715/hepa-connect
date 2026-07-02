@@ -13,6 +13,8 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ConfirmAction } from "@/components/confirm-action";
+import { WorkflowSteps } from "@/components/workflow-steps";
 import { Input } from "@/components/ui/input";
 import { OfficialPageHeader } from "@/components/official-layout";
 
@@ -86,7 +88,7 @@ function statusClass(status: PositiveIntakeStatus) {
 function statusLabel(status: PositiveIntakeStatus) {
   if (status === "closed") return "ปิดงาน";
   if (status === "contacted") return "ติดต่อแล้ว";
-  if (status === "agent_queued") return "เข้า Agent แล้ว";
+  if (status === "agent_queued") return "เข้าคิวติดตามแล้ว";
   return "รายการใหม่";
 }
 
@@ -120,9 +122,9 @@ function PositiveIntakePage() {
     <div className="page-shell">
       <OfficialPageHeader
         eyebrow="คิวผู้พบเชื้อจาก LINE"
-        title="รายการผู้พบเชื้อที่ยืนยันข้อมูลผ่าน LIFF"
-        description="ประชาชนหรือผู้ป่วยที่ทราบผลบวกสแกน QR จาก LINE แล้วแจ้งชื่อ-นามสกุล สถานบริการที่ตรวจ และยินยอม PDPA ระบบจะสร้างงานให้ Agent/เจ้าหน้าที่ติดตามต่อ"
-        badges={["รับข้อมูลผ่าน LIFF", "บันทึก PDPA", "สร้างงานให้ Agent อัตโนมัติ"]}
+        title="รายการผู้แจ้งผลตรวจผ่าน LINE"
+        description="ตรวจสอบข้อมูลผู้แจ้งผล สถานบริการที่ตรวจ ความยินยอม และสถานะการติดต่อ โดยระบบจะส่งรายการใหม่เข้าคิวติดตามให้อัตโนมัติ"
+        badges={["ยืนยันบัญชี LINE", "บันทึกความยินยอม", "สร้างคิวติดตามอัตโนมัติ"]}
       >
         <Button
           variant="outline"
@@ -139,11 +141,21 @@ function PositiveIntakePage() {
         </Button>
       </OfficialPageHeader>
 
+      <WorkflowSteps
+        title="เส้นทางดูแลผู้แจ้งผลตรวจ"
+        steps={[
+          { title: "รับข้อมูลจาก LINE", detail: "ผู้รับบริการยืนยันตัวตนและความยินยอม" },
+          { title: "ตรวจสอบข้อมูล", detail: "ตรวจชื่อ ผลตรวจ และสถานบริการ" },
+          { title: "ติดต่อและนัดหมาย", detail: "ประสานการตรวจยืนยันหรือการรักษา" },
+          { title: "บันทึกผลการติดตาม", detail: "อัปเดตสถานะและปิดงานเมื่อเสร็จสิ้น" },
+        ]}
+      />
+
       <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         {[
           { label: "ทั้งหมด", value: intake.data?.total ?? 0, icon: ClipboardList },
           { label: "กำลังติดตาม", value: intake.data?.active ?? 0, icon: ShieldCheck },
-          { label: "เข้า Agent แล้ว", value: intake.data?.agentQueued ?? 0, icon: CheckCircle2 },
+          { label: "เข้าคิวติดตามแล้ว", value: intake.data?.agentQueued ?? 0, icon: CheckCircle2 },
           { label: "ติดต่อแล้ว", value: intake.data?.contacted ?? 0, icon: CheckCircle2 },
           { label: "ปิดงาน", value: intake.data?.closed ?? 0, icon: CheckCircle2 },
         ].map((item) => (
@@ -188,8 +200,7 @@ function PositiveIntakePage() {
                   <th className="px-3 py-2">สถานบริการที่ตรวจ</th>
                   <th className="px-3 py-2">ผลที่แจ้ง</th>
                   <th className="px-3 py-2">LINE</th>
-                  <th className="px-3 py-2">PDPA</th>
-                  <th className="px-3 py-2">Agent</th>
+                  <th className="px-3 py-2">ความยินยอม</th>
                   <th className="px-3 py-2">สถานะ</th>
                   <th className="px-3 py-2 text-right">จัดการ</th>
                 </tr>
@@ -222,7 +233,7 @@ function PositiveIntakePage() {
                       )}
                       {record.patientIdentityStatus === "blocked" && (
                         <div className="mt-1 max-w-48 text-[10px] leading-4 text-amber-700">
-                          {record.patientIdentityReason || "ต้องตรวจสอบ LINE identity"}
+                          {record.patientIdentityReason || "ต้องตรวจสอบการเชื่อมบัญชี LINE"}
                         </div>
                       )}
                     </td>
@@ -236,9 +247,6 @@ function PositiveIntakePage() {
                       <div className="mt-1 text-[10px] text-muted-foreground">
                         {new Date(record.consentAcceptedAt).toLocaleString("th-TH")}
                       </div>
-                    </td>
-                    <td className="px-3 py-2 text-xs text-muted-foreground">
-                      {record.agentTaskId || "-"}
                     </td>
                     <td className="px-3 py-2">
                       <Badge variant="outline" className={statusClass(record.status)}>
@@ -255,21 +263,22 @@ function PositiveIntakePage() {
                         >
                           ติดต่อแล้ว
                         </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
+                        <ConfirmAction
+                          trigger="ปิดงาน"
+                          title={`ยืนยันปิดรายการของ ${record.fullName}`}
+                          description="รายการนี้จะออกจากคิวที่กำลังติดตาม แต่ข้อมูลและประวัติการดำเนินงานยังคงเก็บไว้เพื่อตรวจสอบย้อนหลัง"
+                          confirmLabel="ยืนยันปิดงาน"
+                          destructive
                           disabled={mutation.isPending || record.status === "closed"}
-                          onClick={() => mutation.mutate({ id: record.id, status: "closed" })}
-                        >
-                          ปิดงาน
-                        </Button>
+                          onConfirm={() => mutation.mutate({ id: record.id, status: "closed" })}
+                        />
                       </div>
                     </td>
                   </tr>
                 ))}
                 {filtered.length === 0 && (
                   <tr>
-                    <td colSpan={9} className="px-3 py-8 text-center text-sm text-muted-foreground">
+                    <td colSpan={8} className="px-3 py-8 text-center text-sm text-muted-foreground">
                       ยังไม่มีรายการตามเงื่อนไขนี้
                     </td>
                   </tr>

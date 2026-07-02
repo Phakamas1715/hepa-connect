@@ -304,9 +304,9 @@ function Dashboard() {
         title="แดชบอร์ดผู้บริหารและติดตามผลงาน"
         description={`สรุปตัวชี้วัดการคัดกรอง การรักษา และการจัดสรรทรัพยากรจาก ${sourceLabel} พร้อมสถานะคิวคัดกรอง LINE เพื่อให้ทุกโมดูลอ้างอิงข้อมูลชุดเดียวกัน`}
         badges={[
-          dashboardIsLive ? "KPI อ่านจาก API ปัจจุบัน" : "กำลังใช้ข้อมูลสำรอง",
+          dashboardIsLive ? "ข้อมูลปัจจุบันจากระบบ" : "กำลังใช้ข้อมูลสำรอง",
           "ติดตามผ่าน LINE",
-          "รายงาน สธ. พร้อม audit",
+          "มีประวัติตรวจสอบย้อนหลัง",
         ]}
       />
 
@@ -331,19 +331,19 @@ function Dashboard() {
                       : "border-amber-200 bg-amber-50 text-amber-900"
                   }
                 >
-                  {dashboardIsLive ? "อ่านจาก API เดียวกันแล้ว" : "ใช้ข้อมูลสำรอง"}
+                  {dashboardIsLive ? "ทุกหน้าจอใช้ข้อมูลชุดเดียวกัน" : "ใช้ข้อมูลสำรอง"}
                 </Badge>
               </div>
               <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                หน้าแรกและทะเบียนผู้ป่วยใช้ `/api/patients` เป็นแหล่งคำนวณ KPI ส่วน Care Gap
-                อ่านทะเบียน live ชุดเดียวกันผ่าน `/api/care-gap-queue`
+                หน้าแรก ทะเบียนผู้ป่วย และคิวติดตามคำนวณจากรายชื่อกลางชุดเดียวกัน
                 {patientsQuery.data?.meta?.lastGoogleSyncAt
-                  ? ` · Sync Google Sheet ล่าสุด ${formatCheckedAt(patientsQuery.data.meta.lastGoogleSyncAt)}`
+                  ? ` · อัปเดตจาก Google Sheet ล่าสุด ${formatCheckedAt(patientsQuery.data.meta.lastGoogleSyncAt)}`
                   : ""}
               </p>
               {patientsQuery.data?.meta?.lastGoogleSyncError && (
                 <p className="mt-1 text-xs text-destructive">
-                  Google Sheet sync error: {patientsQuery.data.meta.lastGoogleSyncError}
+                  อัปเดตข้อมูลจาก Google Sheet ไม่สำเร็จ:{" "}
+                  {patientsQuery.data.meta.lastGoogleSyncError}
                 </p>
               )}
             </div>
@@ -354,7 +354,7 @@ function Dashboard() {
               <div className="text-xl font-bold">
                 {(patientsQuery.data?.patients.length || 0).toLocaleString()}
               </div>
-              <div className="text-[11px] text-muted-foreground">ทะเบียนผู้ป่วย live</div>
+              <div className="text-[11px] text-muted-foreground">ทะเบียนผู้ป่วยปัจจุบัน</div>
               <div className="mt-1 text-[10px] text-muted-foreground">{sourceLabel}</div>
             </div>
             <div className="rounded-xl border bg-background/70 p-3">
@@ -439,8 +439,7 @@ function Dashboard() {
                 ภาพรวมความสัมพันธ์ของโมดูล
               </CardTitle>
               <p className="mt-1 text-xs text-muted-foreground">
-                ใช้ตรวจว่าแต่ละ dashboard อ่านข้อมูลจาก pipeline เดียวกัน
-                และยังไม่ปะปนผู้ป่วยจริงกับประชาชนที่จองคัดกรอง
+                แสดงให้เห็นว่าแต่ละส่วนใช้ข้อมูลชุดใด และแยกรายชื่อผู้ป่วยออกจากผู้จองคัดกรอง
               </p>
             </div>
             <Button
@@ -456,19 +455,19 @@ function Dashboard() {
           <div className="rounded-xl border bg-card p-3">
             <div className="flex items-center gap-2 text-sm font-semibold">
               <Database className="h-4 w-4 text-teal" />
-              Patient Registry
+              ทะเบียนผู้ป่วย
             </div>
             <div className="mt-2 text-2xl font-bold">
               {liveKpi.targetPopulation.toLocaleString()}
             </div>
             <p className="mt-1 text-xs text-muted-foreground">
-              ใช้คำนวณ KPI, care cascade, ตาราง รพ.สต. และคิวติดตาม
+              ใช้คำนวณตัวชี้วัด ลำดับการดูแล ตารางหน่วยบริการ และคิวติดตาม
             </p>
           </div>
           <div className="rounded-xl border bg-card p-3">
             <div className="flex items-center gap-2 text-sm font-semibold">
               <ClipboardList className="h-4 w-4 text-teal" />
-              Screening Queue
+              คิวจองคัดกรอง
             </div>
             <div className="mt-2 text-2xl font-bold">
               {(screening?.booked || 0).toLocaleString()}
@@ -481,21 +480,21 @@ function Dashboard() {
           <div className="rounded-xl border bg-card p-3">
             <div className="flex items-center gap-2 text-sm font-semibold">
               <CheckCircle2 className="h-4 w-4 text-teal" />
-              Roster + PDPA
+              รายชื่อและความยินยอม
             </div>
             <div className="mt-2 text-2xl font-bold">{rosterVerifiedCount.toLocaleString()}</div>
             <p className="mt-1 text-xs text-muted-foreground">
-              ตรงรายชื่อ Google Sheet · PDPA ครบ {pdpaAcceptedCount.toLocaleString()} ราย
+              ตรงกับรายชื่อกลาง · บันทึกความยินยอมครบ {pdpaAcceptedCount.toLocaleString()} ราย
             </p>
           </div>
           <div className="rounded-xl border bg-card p-3">
             <div className="flex items-center gap-2 text-sm font-semibold">
               <Activity className="h-4 w-4 text-teal" />
-              Daily/MOPH
+              การติดตามและรายงาน
             </div>
             <div className="mt-2 text-2xl font-bold">{treatmentGap.toLocaleString()}</div>
             <p className="mt-1 text-xs text-muted-foreground">
-              care gap จากทะเบียน live ใช้เปิดคิว agent/LINE ได้โดยไม่ดึงจากคนละชุด
+              รายการค้างติดตามจากทะเบียนปัจจุบัน พร้อมเปิดคิวข้อความ LINE จากข้อมูลชุดเดียวกัน
             </p>
           </div>
         </CardContent>
@@ -507,7 +506,7 @@ function Dashboard() {
             <div>
               <CardTitle className="flex items-center gap-2 text-base text-amber-950">
                 <AlertTriangle className="h-5 w-5 text-amber-700" />
-                HBV HDC Reconciliation
+                ตรวจสอบความสอดคล้องของข้อมูล HBV และ HDC
               </CardTitle>
               <p className="mt-1 text-xs leading-5 text-amber-900/80">
                 ผลงาน HDC กระจุกอยู่ที่โรงพยาบาลน้ำพอง ขณะที่ รพ.สต. ส่วนใหญ่ยังเป็น 0 จึงควรตรวจ
@@ -611,7 +610,7 @@ function Dashboard() {
             </h3>
             <p className="mt-1 text-sm text-muted-foreground">
               การปิดช่องว่างนี้เป็นงานที่มีผลสูงสุดต่อเป้าหมายปีงบ 2569 ให้ใช้คิวติดตาม
-              จากโมดูลทะเบียน Care Gap ซึ่งอ่านจากรายชื่อกลางเดียวกับแดชบอร์ด
+              จากทะเบียนผู้ป่วยค้างติดตาม ซึ่งอ่านจากรายชื่อกลางเดียวกับแดชบอร์ด
             </p>
           </div>
           <Button

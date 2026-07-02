@@ -135,6 +135,9 @@ function assertValidInput(input: PositiveIntakeInput) {
   if (input.consentAccepted !== true) {
     throw new Error("กรุณายินยอมการใช้ข้อมูลส่วนบุคคลตาม PDPA ก่อนส่งข้อมูล");
   }
+  if (!/^U[0-9a-f]{32}$/i.test(cleanText(input.lineUserId))) {
+    throw new Error("กรุณาเปิดแบบฟอร์มผ่าน LINE เพื่อยืนยันบัญชีก่อนส่งข้อมูล");
+  }
 }
 
 export function getPositiveIntakeSummary() {

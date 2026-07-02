@@ -56,10 +56,14 @@ async function inspectInvite(token?: string): Promise<InvitePreview> {
 async function loadLiffSdk() {
   if (window.liff) return;
   await new Promise<void>((resolve, reject) => {
-    const existing = document.querySelector<HTMLScriptElement>('script[src="https://static.line-scdn.net/liff/edge/2/sdk.js"]');
+    const existing = document.querySelector<HTMLScriptElement>(
+      'script[src="https://static.line-scdn.net/liff/edge/2/sdk.js"]',
+    );
     if (existing) {
       existing.addEventListener("load", () => resolve(), { once: true });
-      existing.addEventListener("error", () => reject(new Error("โหลด LIFF SDK ไม่สำเร็จ")), { once: true });
+      existing.addEventListener("error", () => reject(new Error("โหลด LIFF SDK ไม่สำเร็จ")), {
+        once: true,
+      });
       return;
     }
     const script = document.createElement("script");
@@ -94,10 +98,17 @@ function LineLinkPage() {
     lineUserId?: string;
     displayName?: string;
   };
-  const liffId = (import.meta.env.VITE_PATIENT_LIFF_ID || import.meta.env.VITE_LIFF_ID) as string | undefined;
+  const liffId = (import.meta.env.VITE_PATIENT_LIFF_ID || import.meta.env.VITE_LIFF_ID) as
+    | string
+    | undefined;
   const [profile, setProfile] = useState<LineProfile | null>(null);
-  const [manualLineUserId, setManualLineUserId] = useState(search.lineUserId || "");
-  const [manualDisplayName, setManualDisplayName] = useState(search.displayName || "");
+  const allowTestIdentity = import.meta.env.DEV && !liffId;
+  const [manualLineUserId, setManualLineUserId] = useState(
+    allowTestIdentity ? search.lineUserId || "" : "",
+  );
+  const [manualDisplayName, setManualDisplayName] = useState(
+    allowTestIdentity ? search.displayName || "" : "",
+  );
 
   const invite = useQuery({
     queryKey: ["line-invite", search.token],
@@ -118,10 +129,10 @@ function LineLinkPage() {
 
   const resolvedLine = useMemo(
     () => ({
-      lineUserId: profile?.userId || manualLineUserId.trim(),
-      displayName: profile?.displayName || manualDisplayName.trim(),
+      lineUserId: profile?.userId || (allowTestIdentity ? manualLineUserId.trim() : ""),
+      displayName: profile?.displayName || (allowTestIdentity ? manualDisplayName.trim() : ""),
     }),
-    [manualDisplayName, manualLineUserId, profile],
+    [allowTestIdentity, manualDisplayName, manualLineUserId, profile],
   );
 
   const mutation = useMutation({
@@ -138,7 +149,9 @@ function LineLinkPage() {
   });
 
   const done = mutation.isSuccess;
-  const canConfirm = Boolean(search.token && invite.data?.hn && resolvedLine.lineUserId && !mutation.isPending);
+  const canConfirm = Boolean(
+    search.token && invite.data?.hn && resolvedLine.lineUserId && !mutation.isPending,
+  );
 
   return (
     <div className="mx-auto grid min-h-screen max-w-xl place-items-center px-4 py-8">
@@ -166,9 +179,10 @@ function LineLinkPage() {
                 <div className="flex items-start gap-3">
                   <ScanLine className="mt-1 h-5 w-5 text-teal" />
                   <div>
-                    <div className="font-semibold">ขั้นตอนผู้ป่วย: สแกน QR แล้วกดยืนยัน</div>
+                    <div className="font-semibold">ยืนยันบัญชี LINE สำหรับรับการติดตาม</div>
                     <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                      HN มาจากลิงก์ invite ส่วน LINE userId จะมาจาก LIFF หลังยืนยันสิทธิ์ใน LINE
+                      กรุณาตรวจสอบข้อมูลด้านล่าง แล้วกดยืนยันเพื่อรับข้อความติดตามและบัตรนัดผ่าน
+                      LINE
                     </p>
                   </div>
                 </div>
@@ -189,7 +203,7 @@ function LineLinkPage() {
               {invite.data && (
                 <div className="grid gap-2 rounded-lg border bg-card p-3 text-sm">
                   <div className="flex items-center justify-between gap-3">
-                    <span className="text-muted-foreground">HN จาก invite</span>
+                    <span className="text-muted-foreground">หมายเลขผู้รับบริการ</span>
                     <span className="font-mono font-semibold">{maskHn(invite.data.hn)}</span>
                   </div>
                   {invite.data.patientName && (
@@ -210,34 +224,58 @@ function LineLinkPage() {
                   <Smartphone className="mt-0.5 h-4 w-4 text-teal" />
                   <div className="text-sm">
                     <div className="font-semibold">
-                      {profile ? "อ่าน LINE profile แล้ว" : liffId ? "รอ LINE login" : "โหมดทดสอบ"}
+                      {profile
+                        ? "ยืนยันบัญชี LINE แล้ว"
+                        : liffId
+                          ? "กำลังยืนยันบัญชี LINE"
+                          : allowTestIdentity
+                            ? "โหมดทดสอบ"
+                            : "ยังไม่พร้อมให้บริการ"}
                     </div>
                     <div className="mt-1 text-xs leading-5 text-muted-foreground">
                       {profile
-                        ? `LINE: ${profile.displayName || profile.userId}`
+                        ? `บัญชี LINE: ${profile.displayName || "ยืนยันแล้ว"}`
                         : liffId
-                          ? "ถ้าเปิดใน LINE ระบบจะขออนุญาตและดึง userId ให้อัตโนมัติ"
-                          : "ยังไม่ได้ตั้งค่า LIFF ID จึงแสดงช่องทดสอบสำหรับเจ้าหน้าที่"}
+                          ? "ระบบจะขออนุญาตเชื่อมบัญชี LINE โดยอัตโนมัติ"
+                          : allowTestIdentity
+                            ? "ใช้สำหรับทดสอบในเครื่องเท่านั้น"
+                            : "กรุณาติดต่อเจ้าหน้าที่ เนื่องจากยังไม่ได้ตั้งค่าช่องทาง LINE"}
                     </div>
                   </div>
                 </div>
               </div>
 
-              {!liffId && !profile && (
+              {allowTestIdentity && !profile && (
                 <div className="space-y-3 rounded-lg border border-dashed p-3">
-                  <div className="text-xs font-semibold text-muted-foreground">ช่องทดสอบสำหรับ local เท่านั้น</div>
+                  <div className="text-xs font-semibold text-muted-foreground">
+                    ช่องทดสอบสำหรับ local เท่านั้น
+                  </div>
                   <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-muted-foreground">LINE userId จาก webhook/test tool</label>
-                    <Input value={manualLineUserId} onChange={(event) => setManualLineUserId(event.target.value)} placeholder="Uxxxxxxxxxxxxxxxxxxxx" />
+                    <label className="text-xs font-medium text-muted-foreground">
+                      LINE userId จาก webhook/test tool
+                    </label>
+                    <Input
+                      value={manualLineUserId}
+                      onChange={(event) => setManualLineUserId(event.target.value)}
+                      placeholder="Uxxxxxxxxxxxxxxxxxxxx"
+                    />
                   </div>
                   <div className="space-y-1.5">
                     <label className="text-xs font-medium text-muted-foreground">ชื่อใน LINE</label>
-                    <Input value={manualDisplayName} onChange={(event) => setManualDisplayName(event.target.value)} placeholder="ไม่บังคับ" />
+                    <Input
+                      value={manualDisplayName}
+                      onChange={(event) => setManualDisplayName(event.target.value)}
+                      placeholder="ไม่บังคับ"
+                    />
                   </div>
                 </div>
               )}
 
-              <Button className="w-full gap-2" disabled={!canConfirm} onClick={() => mutation.mutate()}>
+              <Button
+                className="w-full gap-2"
+                disabled={!canConfirm}
+                onClick={() => mutation.mutate()}
+              >
                 {mutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
                 ยืนยันและผูก LINE
               </Button>
